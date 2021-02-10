@@ -16,11 +16,12 @@ unsigned long irvalue;
 IRrecv irrecv(RECV_PIN);
 decode_results results;
 #include <Adafruit_NeoPixel.h>
-#define LED_PIN    8
+#define LED_PIN    2
 // How many NeoPixels are attached to the Arduino?
 #define LED_COUNT 4
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
+byte R,G,B;
 long firstPixelHue ;
 uint32_t timerRainbow;
 
@@ -80,88 +81,122 @@ A95B515 - Я
 
 byte clocpationsl;// счётчик совпадени. как только он равен размеру массива, значит это зелье сварено
 byte first = 0;
+byte step_t = 0;
+byte step_l = 15;
 byte clocfirst = 0;
 byte startcoldren = 0;
 const char  *word_t[][12]  =
 {
-  { //  0 Зелье Плавунчика или Морское зелье +
-    "40D9EF2A96A80",     // 0 Чешуя рыбы убийцы
-    "4FB9FF2A96A80",     // 1 Вытяжка зародыше апаллала
-    "4AC9EF2A96A80",     // 2 Хребты Рыбы-Льва
-    "49F9EF2A96A80",     // 3 Сок мурлакомля
-    "4749FF2A96A81",     // 4 Стандартный ингридиент Н
-    "4849FF2A96A81",     // 5 Морские жёлуди
-    "4039FF2A96A81",     // 6 Безумные Многоножки
-    "4A89EF2A96A80",     // 7 Лёд со дна серебристого озера
-    "4FF9FF2A96A80",     // 8 Слизь Флоббер-Червя
+  { //  0 Милая Скво
+    "AB33315",      // 
+    "AC2AD15",      // 
+    "AB85B15",      // 
+    "4B042921F6F80",// 
+    "A95B515",      //
+    "A048815",      // 
+    "ABD8315",      // 
+    "4C143921F6F80",// 
+    "AA54515",      // 
+    "x",            // 
+    "x",            // 
+    "x",            // 
+
+  },
+
+  
+  {
+    //1 духи рядом
+    "45143921F6F81",     // 0 
+    "A09A415",     // 1 
+    "A368615",     // 2 
+    "AC2AD15",     // 3 
+    "A9E7315",     // 4 
+    "A95B515",     // 5 
+    "45143921F6F81",     // 6 
+    "AA54515",                 // 7
+    "AB33315",                 // 8
     "x",                 // 9
     "x",                 // 10
     "x",                 // 11
 
   },
 
-  { //1 злодейское зелье
-    "44F9DF2A96A80",     // 0 Плоть мертвеца
-    "4B89EF2A96A80",     // 1 Ядовитый Колокольчик
-    "43F9DF2A96A80",     // 2 Волосы Ламии
-    "4319DF2A96A81",     // 3 Порошок из костей фестрала
-    "46A9EF2A96A80",     // 4 Лоскут одежды Баньши
-    "4639DF2A96A80",     // 5 икра красной Жабы-людоеда
-    "4469EF2A96A81",     // 6 Сушёная крапива
-    "47C9FF2A96A81",     // 7 Экстракт Фенхеля
-    "48C9FF2A96A81",     // 8 Глаз Слепого Кота
-    "4889FF2A96A81",     // 9 Крысиная Селезёнка
-    "40B9FF2A96A81",     // 10 Кровь Саламандры
-    "x",                 // 11
-
-  },
-  { // 2 Зелье ловкости
-    "4DE9EF2A96A80",     // 0 Жилы кентавра
-    "4EF9FF2A96A80",     // 1 Когти грифона
-    "45A9EF2A96A80",     // 2 Дыхание Амистра
-    "4569EF2A96A81",     // 3 Иглы Дикобраза
-    "4139FF2A96A81",     // 4 Крошечные глаза жуков
-    "4749FF2A96A81",     // 4 Стандартный ингридиент Н
-    "40E9DF2A96A80",     // 6 Костная Мука
-    "4039FF2A96A81",     // 7 Безумные Многоножки
-    "4199EF2A96A80",     // 8 Перья Выскакунчика
-    "4B49EF2A96A80",     // 9 Огненная Соль
+  { //1 ищи в книгах
+    "AC2AD15",     // 0
+    "A480915",     // 1
+    "AC2AD15",     // 2
+    "4C143921F6F80",     // 3
+    "ABD8315",     // 4
+    "AAE0315",     // 5
+    "AC2AD15",                 // 6
+    "40143921F6F81",                 // 7
+    "4B042921F6F80",                 // 8
+    "A368615",                 // 9
     "x",                 // 10
     "x",                 // 11
 
   },
-  { // 3 Зелье «Каменная кожа»
-    "4EE9EF2A96A80",   // 0 Шкура Саламандры
-    "45E9EF2A96A81",     // 1 Драконья кровь
-    "40E9DF2A96A80",     // 2 костная мука
-    "4499DF2A96A81",     // 3 Прах вампира
-    "4EF9FF2A96A80",     // 4 Когти грифона
-    "4BF9FF2A96A80",     // 5 Порошок рога единорога
-    "4119EF2A96A80",     // 6 Сок ягоды Бум
-    "44E9EF2A96A81",     // 7 Капли мёртвой воды!!!!!!!!!!!11111111111111111111111111111111111111111111111
-    "46E9EF2A96A80",     // 8 Сепосфера
-    "4219EF2A96A80",     // 9 Собачий корень
-    "4429EF2A96A81",     // 10 Корешки Маргариток
+  {  //2 нужем медиум
+    "AAE0315",     // 0
+    "A09A415",     // 1
+    "42E43921F6F81",     // 2
+    "44043921F6F81",     // 3
+    "AAE0315",     // 4
+    "AB33315",     // 5
+    "44043921F6F81",                 // 6
+    "45143921F6F81",                 // 7
+    "AC2AD15",                 // 8
+    "A09A415",                 // 9
+    "AB33315",                 // 10
     "x",                 // 11
 
   },
-  {
-    //4 Рвотное зелье
-    "4079FF2A96A81",     // 0 Слизб болотника
-    "4629EF2A96A81",     // 1 Сопли тролля
-    "40A9DF2A96A80",     // 2 челюсти пучеглазки
-    "43D9DF2A96A81",     // 3 Нашинкованные мёртвые гусенницы
-    "4749FF2A96A81",     // 4 стандартный ингридиент Н
-    "4849FF2A96A81",     // 5 Морские жёлуди
-    "44B9DF2A96A80",     // 6 Травной стручёк
-    "x",                 // 7
+  {  //3 чую магию
+    "A3EFA15",     // 0
+    "A09A415",     // 1
+    "A922715",     // 2
+    "AB33315",     // 3
+    "4B042921F6F80",     // 4
+    "40143921F6F81",     // 5
+    "AC2AD15",                 // 6
+    "A922715",                 // 7
     "x",                 // 8
     "x",                 // 9
     "x",                 // 10
     "x",                 // 11
 
   },
+  { // 4 птица в сети
+    "AA01515",     // 0
+    "A06F715",     // 1
+    "AC2AD15",     // 2
+    "A3AA815",     // 3
+    "4B042921F6F80",//4
+    "4C143921F6F80",     // 5
+    "A048815",     // 6
+    "44043921F6F81",           // 7
+    "A06F715",                 // 8
+    "AC2AD15",                 // 9
+    "x",                 // 10
+    "x",                 // 11
+    
 
+  },
+  {  // 5 оживи ведьму
+    "AA54515",     // 0
+    "42E43921F6F81",     // 1
+    "AC2AD15",     // 2
+    "4C143921F6F80",     // 3
+    "AC2AD15",     // 4
+    "4C143921F6F80",     // 5
+    "44043921F6F81",                 // 6
+    "45143921F6F81",                 // 7
+    "A559015",                 // 8
+    "AB33315",                 // 9
+    "A09A415",                 // 10
+    "x",                 // 11
+
+  },
   {
     "4439DF2A96A80",     // 0
     "4219EF2A96A80",     // 1
@@ -190,21 +225,39 @@ void setup() {
   SPI.begin();  //  инициализация SPI / Init SPI bus.
   mfrc522.PCD_Init();     // инициализация MFRC522 / Init MFRC522 card.
   delay(500);
-  
+    randomSeed(analogRead(0));
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
-  strip.setBrightness(210); // Set BRIGHTNESS to about 1/5 (max = 255)
+  strip.setBrightness(70); // Set BRIGHTNESS to about 1/5 (max = 255)
   irrecv.enableIRIn(); // Start the receiver
 
 }
 void loop() {
+
+
+if (first==0)
+{
+  first=1;
+  clocfirst = random(1, 6);
+}
+strip.clear(); // 
+
+if (step_l>16)
+{G=step_l;R=1;B=1;}
+else
+{G=30;R=30;B=30;}
+  
+  for(int i=0; i<LED_COUNT; i++) { // For each pixel...
+  strip.setPixelColor(i, strip.Color(R, G, B));
+  strip.show();   
+   }
 
   
     if (irrecv.decode(&results)) {
       irvalue = results.value;
       irrecv.resume(); // Receive the next value
       Serial.println(irvalue);
-      if ((irvalue == 16726215) || (irvalue == 1111000004)) {
-        delay (100);
+      if ((irvalue == 16726215) || (irvalue == 1111000006)) {
+       delay (100);
        
         Serial.println(irvalue);
       if (irrecv.decode(&results)) {
@@ -213,16 +266,6 @@ void loop() {
         }
       }
     }
-
- 
-
-    if ((millis() - timerRainbow >= 20) && (first == 0))
-    {
-      timerRainbow = millis();              // сброс таймера
-      rainbow();             // Flowing rainbow cycle along the whole strip
-    }
-
-   
 
     // Поиск новой мет ки
     if ( ! mfrc522.PICC_IsNewCardPresent()) {
@@ -248,22 +291,53 @@ void loop() {
      Serial.println(uidDec);  //  "Сообщение: "
 
 
+            Serial.print("clocfirst ");
+            Serial.print(clocfirst);
+            Serial.print("[step_t] ");
+            Serial.print(step_t);
+            Serial.print(" uidDec ");
+            Serial.print(uidDec);
+            Serial.print(" step_l ");
+            Serial.println (step_l);//  "Сообщение: "
 
-   
-}
+            Serial.print("R");
+            Serial.print(R);
+            Serial.print(" G ");
+            Serial.print(G);
+            Serial.print(" B ");
+            Serial.println (B);//  "Сообщение: "
+       
+        uidDec == word_t[clocfirst][step_t] ? step_l=+step_l+5 : step_l=15;
+        
+        if (step_t==11)
+        {
+          clocfirst=0;
+          first=0;
+          step_t=0;
+        }
+        
+        else if  ("x"== word_t[clocfirst][step_t+1])
+        {
+          clocfirst=0;
+          first=0;
+          step_t=0;
+        }
+        if (step_l>=90)
+        {
+          step_t++;
+          step_l=15;
+        }
+        
+          /*
+            Serial.print("clocfirst ");
+            Serial.print(clocfirst);
+            Serial.print(" i ");
+            Serial.print(i);
+            Serial.print(" Find ");
+            Serial.println (godlist[i]);//  "Сообщение: "
+          */
+delay(20);
 
-
-
-void rainbow() {
-
-  // if (firstPixelHue < 5*65536)
-  firstPixelHue += 256;
-
-  for (int i = 0; i < strip.numPixels(); i++) { // For each pixel in strip...
-
-    int pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
-    strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(pixelHue)));
-  }
-  strip.show(); // Update strip with new contents
-
-}
+      }
+    
+  
