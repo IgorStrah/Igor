@@ -224,7 +224,7 @@ void loop() {
         Serial.println(irvalue);
         irvalue = "";
         servo.attach(6);  // attaches the servo on pin 9 to the servo object
-        servo.write(164);                  // sets the servo position according to the scaled value
+        servo.write(178);                  // sets the servo position according to the scaled value
         first = 0;
 
         if (irrecv.decode(&results)) {
@@ -268,7 +268,7 @@ void loop() {
         strip.clear(); // Set all pixel colors to 'off'
         strip.show();   // Send the updated pixel colors to the hardware.
         digitalWrite(2, LOW);    // turn the LED off by making the voltage LOW
-        servo.detach();
+      //  servo.detach();
       }
       else
         digitalWrite(2, LOW);    // turn the LED off by making the voltage LOW

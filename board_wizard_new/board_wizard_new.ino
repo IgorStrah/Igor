@@ -60,8 +60,8 @@ A559015 - Ь
 A594915 - Э
 A922715 - Ю
 A95B515 - Я
-49642921F6F80 - привет
-49F42921F6F80 - Пока
+49F42921F6F80 - привет
+49642921F6F80 - Пока
 4A742921F6F80 - Нет
 48D42921F6F80 - да
 4A742921F6F80 - 0
@@ -80,14 +80,24 @@ A95B515 - Я
 
 
 byte clocpationsl;// счётчик совпадени. как только он равен размеру массива, значит это зелье сварено
-byte first = 0;
+byte first = 2; // 0 - firt tep/ 1 - step to find, /2 - wit to tart /3  - wait to IR start / 4 - darkening
 byte step_t = 0;
 byte step_l = 15;
 byte clocfirst = 0;
 byte startcoldren = 0;
+byte onoff; // 1- on, 0 off
 
 byte word_t[][13]  =
 {
+  { //  привет - вкючение и вкл светодиод
+    31,5,19,21,12,1,4,1,0,0,0,0,0,            // 
+
+  },
+  { //  Пока - включение и вкл светодиоды
+    31,5,19,21,12,1,4,1,0,0,0,0,0,            // 
+
+  },
+  
   { //  ядухмага
     31,5,19,21,12,1,4,1,0,0,0,0,0,            // 
 
@@ -98,7 +108,7 @@ byte word_t[][13]  =
 
   },
 
-  { //  бося ведьмы
+  { //  бойся ведьмы
     2,14,9,17,31,3,6,5,28,12,27,0,            // 
 
   },
@@ -131,7 +141,7 @@ void setup() {
   SPI.begin();  //  инициализация SPI / Init SPI bus.
   mfrc522.PCD_Init();     // инициализация MFRC522 / Init MFRC522 card.
   delay(500);
-    randomSeed(analogRead(0));
+  randomSeed(analogRead(0));
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.setBrightness(70); // Set BRIGHTNESS to about 1/5 (max = 255)
   irrecv.enableIRIn(); // Start the receiver
@@ -140,26 +150,72 @@ void setup() {
 void loop() {
 
 
-if (first==0)
-{
-  first=1;
-  clocfirst = random(1, 7);
+ // Поиск новой мет ки
+    if ( ! mfrc522.PICC_IsNewCardPresent()) {
+      return;
+    }
+    // Выбор метки
+    if ( ! mfrc522.PICC_ReadCardSerial()) {
+      return;
+    }
 
-}
-strip.clear(); 
+    String content = "";
+    byte letter;
+    for (byte i = 0; i < mfrc522.uid.size; i++)
+    {
+      content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
+      content.concat(String(mfrc522.uid.uidByte[i], HEX));
+    }
 
-if (step_l>16)
-{G=step_l;R=1;B=1;}
-else
-{G=30;R=30;B=30;}
-  
-  for(int i=0; i<LED_COUNT; i++) { // For each pixel...
-  strip.setPixelColor(i, strip.Color(R, G, B));
-  strip.show();   
-   }
+      content.toUpperCase();
+      uidDec = content.substring(1);
+      Serial.print("UID : ");  //  "Сообщение: "
+      Serial.println(uidDec);  //  "Сообщение: "
 
-  
-    if (irrecv.decode(&results)) {
+
+      if (uidDec =="49642921F6F80")
+      {
+        onoff++;
+        if (onoff>=10)
+        {
+          for(int i=0; i<G; i++)
+          {
+        G--;R--;B--;
+        for(int i=0; i<LED_COUNT; i++) { // For each pixel...
+        strip.setPixelColor(i, strip.Color(R, G, B));
+        strip.show(); 
+        delay(10);  
+         }
+          }
+        first=2;
+        }
+      }
+       else { onoff=0;}
+
+      if  (first==2) // привет
+      {
+                    
+      if (uidDec =="49F42921F6F80")
+      {
+           G+=4;;R+=4;B+=4;
+        for(int i=0; i<LED_COUNT; i++) { // For each pixel...
+        strip.setPixelColor(i, strip.Color(R, G, B));
+        strip.show();   
+         }
+        if (B>=30)
+        {first=0;}
+      }
+      }
+
+
+         
+    
+
+
+      
+
+      
+ if (irrecv.decode(&results)) {
       irvalue = results.value;
       irrecv.resume(); // Receive the next value
       Serial.println(irvalue);
@@ -174,64 +230,69 @@ else
       }
     }
 
-    // Поиск новой мет ки
-    if ( ! mfrc522.PICC_IsNewCardPresent()) {
-      return;
-    }
-    // Выбор метки
-    if ( ! mfrc522.PICC_ReadCardSerial()) {
-      return;
-    }
 
+if (first==0)
+{
+  first=1;
+  clocfirst = random(1, 7);
+}
+strip.clear(); 
 
-    String content = "";
-    byte letter;
-    for (byte i = 0; i < mfrc522.uid.size; i++)
-    {
-      content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
-      content.concat(String(mfrc522.uid.uidByte[i], HEX));
-    }
+if (step_l>16)
+{G=step_l;R=1;B=1;}
+else if (first==1)
+{G=30;R=30;B=30;}
+else if (first==4)
+{
 
-      content.toUpperCase();
-      uidDec = content.substring(1);
-     Serial.print("UID : ");  //  "Сообщение: "
-     Serial.println(uidDec);  //  "Сообщение: "
+  R!=0?R--:R=0;
+  G!=0?G--:G=0;
+  B!=0?B--:B=0;  
+  G==0?first=2:first=4;
+  }
 
+    
+  for(int i=0; i<LED_COUNT; i++) { // For each pixel...
+  strip.setPixelColor(i, strip.Color(R, G, B));
+  strip.show();   
+   }
 
-            
+            Serial.print(" clocfirst    ");
+            Serial.println( clocfirst );
             Serial.print("[step_t] ");
             Serial.print(step_t);
             Serial.print(" step_l ");
             Serial.println (step_l);//  "Сообщение: "
-
-/*
+   
+ /* 
+            
+  
+            Serial.print("word_t[clocfirst][step_t]     ");
+            Serial.println(word_t[clocfirst][step_t]);
+            Serial.print("String Uidnew " );
+            Serial.println (fainduid((word_t[clocfirst][step_t])));//  "Сообщение: "
+          
+            
+ 
             Serial.print("R");
             Serial.print(R);
             Serial.print(" G ");
             Serial.print(G);
             Serial.print(" B ");
             Serial.println (B);//  "Сообщение: "
-
-*/   
-    
-            Serial.print(" clocfirst    ");
-            Serial.println( clocfirst );
-            Serial.print("word_t[clocfirst][step_t]     ");
-            Serial.println(word_t[clocfirst][step_t]);
-            Serial.print("String Uidnew " );
-            Serial.println (fainduid((word_t[clocfirst][step_t])));//  "Сообщение: "
-
+    */          
 
        
-           
+         if (first==1) 
+         { 
          uidDec == fainduid((word_t[clocfirst][step_t])) ? step_l=+step_l+7 : step_l=15;
         
         if (step_t==13)
         {
           clocfirst=0;
-          first=0;
+          first=4;
           step_t=0;
-        }
+         }
         
        
         if (step_l>=90)
@@ -242,22 +303,14 @@ else
         if  (0 == word_t[clocfirst][step_t])
         {
           clocfirst=0;
-          first=0;
+          first=4;
           step_t=0;
+         
         }
         
-          /*
-            Serial.print("clocfirst ");
-            Serial.print(clocfirst);
-            Serial.print(" i ");
-            Serial.print(i);
-            Serial.print(" Find ");
-            Serial.println (godlist[i]);//  "Сообщение: "
-          */
-delay(15);
-
+    delay(15);
       }
-
+}
 
 
 String fainduid(byte char_word) {
@@ -357,16 +410,16 @@ String fainduid(byte char_word) {
       uidDecOld = "A95B515";
       break;
     case 32:
-      uidDecOld ="A95B515";
+      uidDecOld ="49642921F6F80";
       break;
     case 33:
-      uidDecOld = "A95B515";
+      uidDecOld = "49F42921F6F80";
       break;
     case 34:
-      uidDecOld = "A95B515";
+      uidDecOld = "4A742921F6F80";
       break;
     case 35:
-      uidDecOld = "A95B515";
+      uidDecOld = "48D42921F6F80";
       break;
     case 36:
       uidDecOld ="A95B515";
@@ -374,7 +427,7 @@ String fainduid(byte char_word) {
     case 37:
       uidDecOld = "A95B515";
     break;
-
+    
     
     return uidDecOld;
   }
