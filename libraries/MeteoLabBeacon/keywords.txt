@@ -1,0 +1,35 @@
+###########################################
+# Syntax Coloring Map For MeteoLabBeacon
+###########################################
+
+###########################################
+# Datatypes (KEYWORD1)
+###########################################
+
+MeteoLabBeacon	KEYWORD1	MeteoLabBeacon
+
+###########################################
+# Methods and Functions (KEYWORD2)
+###########################################
+
+to_nRF_Float	KEYWORD2
+readTemperature	KEYWORD2
+long getVoltage	KEYWORD2
+getBatteryCapacity	KEYWORD2
+begin	KEYWORD2
+setChannel	KEYWORD2
+hopChannel	KEYWORD2
+advertise	KEYWORD2
+listen	KEYWORD2
+preparePacket	KEYWORD2
+addChunk	KEYWORD2
+transmitPacket	KEYWORD2
+sleep	KEYWORD2
+broadcast	KEYWORD2
+broadcastBatteryCapacity	KEYWORD2
+
+###########################################
+# Constants (LITERAL1)
+###########################################
+
+buffer	LITERAL1

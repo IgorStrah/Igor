@@ -1,5 +1,4 @@
 
-#include "IRLremote.h"
 #include <SPI.h>
 #include <MFRC522.h> // библиотека "RFID".
 
@@ -10,11 +9,6 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);
 String uidDec;  // для храниения номера метки в десятичном формате
 //String uidDecOld;  // для храниения номера метки в десятичном формате
 
-#include <IRremote.h>
-int RECV_PIN = 3;
-unsigned long irvalue;
-IRrecv irrecv(RECV_PIN);
-decode_results results;
 #include <Adafruit_NeoPixel.h>
 #define LED_PIN    2
 // How many NeoPixels are attached to the Arduino?
@@ -144,7 +138,7 @@ void setup() {
   randomSeed(analogRead(0));
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.setBrightness(70); // Set BRIGHTNESS to about 1/5 (max = 255)
-  irrecv.enableIRIn(); // Start the receiver
+
 
 }
 void loop() {
@@ -207,28 +201,6 @@ void loop() {
       }
       }
 
-
-         
-    
-
-
-      
-
-      
- if (irrecv.decode(&results)) {
-      irvalue = results.value;
-      irrecv.resume(); // Receive the next value
-      Serial.println(irvalue);
-      if ((irvalue == 16726215) || (irvalue == 1111000006)) {
-       delay (100);
-       
-        Serial.println(irvalue);
-      if (irrecv.decode(&results)) {
-      irvalue = results.value;
-      irrecv.resume(); // Receive the next
-        }
-      }
-    }
 
 
 if (first==0)

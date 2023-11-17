@@ -21,13 +21,12 @@ void setup() {
  
   stepper.setRunMode(KEEP_SPEED);
   stepper.setSpeedDeg(-20);   // медленно крутимся НАЗАД
-
+  Serial.begin(115200);
   // пока кнопка не нажата
   while(digitalRead(A0)) {    
     stepper.tick();
-
   }
-  
+   stepper.setSpeedDeg(+30);
   stepper.reset();
 
   // дальше например врубаем FOLLOW_POS
