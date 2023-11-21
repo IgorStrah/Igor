@@ -1,22 +1,21 @@
-
 #define DECODE_DISTANCE_WIDTH  // Universal decoder for pulse distance width protocols
-//#define DECODE_HASH
-
-#include <FastLED.h>
-#define NUM_LEDS 1
-#define DATA_PIN PB4
-
+//#define DECODE_HASHя
 // Define the array of leds
-CRGB leds[NUM_LEDS];
+
 int timerled;
 #include <IRremote.h>
-#define F_CPU 8000000  //F_CPU 8000000. This is used by delay.h library
+//#define F_CPU 8000000  //F_CPU 8000000. This is used by delay.h library
 unsigned long timing;  // Переменная для хранения точки отсчета
 unsigned long sliptimer;  // Переменная для хранения точки отсчета
 int timingwatchdog=0;         // Переменная для хранения точки отсчета
 int lightoff=0;
 
 
+#define TLED_ORDER ORDER_RGB   // порядок цветов
+#define TLED_CHIP LED_WS2812   // чип светодиода ленты
+#include "tinyLED.h"
+tinyLED<4> strip;       // указываем пин (в порядке порта)
+#define NUMLEDS 1 // количество светодиодов (для циклов)
 
 #include <avr/sleep.h>
 #include <avr/wdt.h>
@@ -47,23 +46,6 @@ void setup_watchdog(int ii)
 }
 
 
-// system wakes up when watchdog is timed out
-void system_sleep() 
-{
-  cbi(ADCSRA,ADEN);                    // switch Analog to Digitalconverter OFF
-  setup_watchdog(6);                   // approximately 8 seconds sleep
- 
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN); // sleep mode is set here
-  sleep_enable();
-  sei();                               // Enable the Interrupts so the wdt can wake us up
-
-  sleep_mode();                        // System sleeps here
-
-  sleep_disable();                     // System continues execution here when watchdog timed out 
-  sbi(ADCSRA,ADEN);                    // switch Analog to Digitalconverter ON
-}
-
-
 
 
 
@@ -72,14 +54,8 @@ void setup() {
   CLKPR = 0x80;  // enable clock prescale change
   CLKPR = 0;     // no prescale
   interrupts();
-
-  FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);
-  FastLED.setBrightness(200);
-  leds[0] = CRGB::Black;
-  FastLED.show();
   IrReceiver.begin(PB3, ENABLE_LED_FEEDBACK);
   delay(100);  // Delay for 1 second
-
 }
 
 
@@ -91,15 +67,14 @@ void loop() {
     timing = millis();
     
     if (timerled >= 2) {
-      leds[0] = CHSV(random8(50, 90), 255, random8(160, 200));
-      // Show the leds
-      FastLED.show();
+      
+      strip.sendRGB(random(100, 180), 250, random(30, 90));
+     
       timerled--;
     } else if (timerled == 1) {
       lightoff = 30;
       while (lightoff != 0) {
-        leds[0] = CHSV(60, 222, lightoff * 4);
-        FastLED.show();
+    strip.sendRGB(0, 0, 0);
         delay(50);
         lightoff--;
       }
@@ -107,12 +82,11 @@ void loop() {
     
     } else {
 
-      leds[0] = CRGB::Black;
-      FastLED.show();
+     strip.sendRGB(0, 0, 0);
    
       if (timerled <= -20) {
         timerled = 0;
-        system_sleep();
+        
       }
       timerled--;
    
@@ -142,14 +116,11 @@ void loop() {
 
     if ((newCode == 16724175) || (newCode == 1111000001)) {
 
-      leds[0] = CRGB::Red;
-      FastLED.show();
+      strip.sendRGB(0, 0, 0);
       delay(500);
       // Now turn the LED off, then pause
-      leds[0] = CRGB::Black;
-      FastLED.show();
       delay(500);
-      timerled = 600;
+      timerled = 6000;
       newCode = 0;
     }
 

@@ -1,102 +1,233 @@
-// this example will play a track and then every 60 seconds
-// it will play an advertisement
-//
-// it expects the sd card to contain the following mp3 files
-// but doesn't care whats in them
-//
-// sd:/01/001.mp3 - the song to play, the longer the better
-// sd:/advert/0001.mp3 - the advertisement to interrupt the song, keep it short
 
-#include <SoftwareSerial.h>
-#include <DFMiniMp3.h>
+/**
+   --------------------------------------------------------------------------------------------------------------------
+   Example sketch/program showing how to read data from more than one PICC to serial.
+   --------------------------------------------------------------------------------------------------------------------
+   This is a MFRC522 library example; for further details and other examples see: https://github.com/miguelbalboa/rfid
 
-// implement a notification class,
-// its member methods will get called 
-//
-int n;
-class Mp3Notify
-{
-public:
-  static void PrintlnSourceAction(DfMp3_PlaySources source, const char* action)
-  {
-    if (source & DfMp3_PlaySources_Sd) 
-    {
-        Serial.print("SD Card, ");
-    }
-    if (source & DfMp3_PlaySources_Usb) 
-    {
-        Serial.print("USB Disk, ");
-    }
-    if (source & DfMp3_PlaySources_Flash) 
-    {
-        Serial.print("Flash, ");
-    }
-    Serial.println(action);
-  }
-  static void OnError(uint16_t errorCode)
-  {
-    // see DfMp3_Error for code meaning
-    Serial.println();
-    Serial.print("Com Error ");
-    Serial.println(errorCode);
-  }
-  static void OnPlayFinished(DfMp3_PlaySources source, uint16_t track)
-  {
-    Serial.print("Play finished for #");
-    Serial.println(track);  
-  }
-  static void OnPlaySourceOnline(DfMp3_PlaySources source)
-  {
-    PrintlnSourceAction(source, "online");
-  }
-  static void OnPlaySourceInserted(DfMp3_PlaySources source)
-  {
-    PrintlnSourceAction(source, "inserted");
-  }
-  static void OnPlaySourceRemoved(DfMp3_PlaySources source)
-  {
-    PrintlnSourceAction(source, "removed");
-  }
+   Example sketch/program showing how to read data from more than one PICC (that is: a RFID Tag or Card) using a
+   MFRC522 based RFID Reader on the Arduino SPI interface.
+
+   Warning: This may not work! Multiple devices at one SPI are difficult and cause many trouble!! Engineering skill
+            and knowledge are required!
+
+   @license Released into the public domain.
+
+   Typical pin layout used:
+   -----------------------------------------------------------------------------------------
+               MFRC522      Arduino       Arduino   Arduino    Arduino          Arduino
+               Reader/PCD   Uno/101       Mega      Nano v3    Leonardo/Micro   Pro Micro
+   Signal      Pin          Pin           Pin       Pin        Pin              Pin
+   -----------------------------------------------------------------------------------------
+   RST/Reset   RST          9             5         D9         RESET/ICSP-5     RST
+   SPI SS 1    SDA(SS)      ** custom, take a unused pin, only HIGH/LOW required *
+   SPI SS 2    SDA(SS)      ** custom, take a unused pin, only HIGH/LOW required *
+   SPI MOSI    MOSI         11 / ICSP-4   51        D11        ICSP-4           16
+   SPI MISO    MISO         12 / ICSP-1   50        D12        ICSP-1           14
+   SPI SCK     SCK          13 / ICSP-3   52        D13        ICSP-3           15
+
+*/
+
+#include <SPI.h>
+#include <MFRC522.h>
+
+// PIN Numbers : RESET + SDAs
+#define RST_PIN         9
+#define SS_1_PIN        10
+#define SS_2_PIN        8
+#define SS_3_PIN        7
+#define SS_4_PIN        6
+
+// Led and Relay PINS
+#define GreenLed        2
+#define relayIN         3
+#define RedLed          4
+
+
+// List of Tags UIDs that are allowed to open the puzzle
+byte tagarray[][4] = {
+  {0x4B, 0x17, 0xBC, 0x79},
+  {0x8A, 0x2B, 0xBC, 0x79}, 
+  {0x81, 0x29, 0xBC, 0x79},
+  {0xE6, 0xDF, 0xBB, 0x79},
 };
 
-// instance a DFMiniMp3 object, 
-// defined with the above notification class and the hardware serial class
-//
-//DFMiniMp3<HardwareSerial, Mp3Notify> mp3(Serial1);
+// Inlocking status :
+int tagcount = 0;
+bool access = false;
 
-// Some arduino boards only have one hardware serial port, so a software serial port is needed instead.
-// comment out the above definition and uncomment these lines
-SoftwareSerial secondarySerial(8,9); // RX, TX
-DFMiniMp3<SoftwareSerial, Mp3Notify> mp3(secondarySerial);
+#define NR_OF_READERS   4
 
-uint32_t lastAdvert; // track time for last advertisement
+byte ssPins[] = {SS_1_PIN, SS_2_PIN, SS_3_PIN, SS_4_PIN};
 
-void setup() 
-{
-  Serial.begin(115200);
+// Create an MFRC522 instance :
+MFRC522 mfrc522[NR_OF_READERS];
 
-  Serial.println("initializing...");
-  
-  mp3.begin();
- 
-  mp3.setVolume(20);
+/**
+   Initialize.
+*/
+void setup() {
+
+  Serial.begin(9600);           // Initialize serial communications with the PC
+  while (!Serial);              // Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
+
+  SPI.begin();                  // Init SPI bus
+
+  /* Initializing Inputs and Outputs */
+  pinMode(GreenLed, OUTPUT);
+  digitalWrite(GreenLed, LOW);
+  pinMode(relayIN, OUTPUT);
+  digitalWrite(relayIN, HIGH);
+  pinMode(RedLed, OUTPUT);
+  digitalWrite(RedLed, LOW);
 
 
-  lastAdvert = millis()+8000;
-}
-
-void loop() 
-{
-  uint32_t now = millis();
-  if ((now - lastAdvert) > 10000)
-  {
-    n++;
-    // interrupt the song and10 play the advertisement, it will
-    // return to the song when its done playing automatically
-    mp3.playFolderTrack(2,n); // sd:/advert/0001.mp3
-Serial.print("trac  ");
-Serial.print(n);
-    lastAdvert = now;
+  /* looking for MFRC522 readers */
+  for (uint8_t reader = 0; reader < NR_OF_READERS; reader++) {
+    mfrc522[reader].PCD_Init(ssPins[reader], RST_PIN);
+    Serial.print(F("Reader "));
+    Serial.print(reader);
+    Serial.print(F(": "));
+    mfrc522[reader].PCD_DumpVersionToSerial();
+    //mfrc522[reader].PCD_SetAntennaGain(mfrc522[reader].RxGain_max);
   }
-  mp3.loop();
 }
+
+/*
+   Main loop.
+*/
+
+void loop() {
+
+  for (uint8_t reader = 0; reader < NR_OF_READERS; reader++) {
+
+    // Looking for new cards
+    if (mfrc522[reader].PICC_IsNewCardPresent() && mfrc522[reader].PICC_ReadCardSerial()) {
+      Serial.print(F("Reader "));
+      Serial.print(reader);
+
+      // Show some details of the PICC (that is: the tag/card)
+      Serial.print(F(": Card UID:"));
+      dump_byte_array(mfrc522[reader].uid.uidByte, mfrc522[reader].uid.size);
+      Serial.println();
+
+      for (int x = 0; x < sizeof(tagarray); x++)                  // tagarray's row
+      {
+        for (int i = 0; i < mfrc522[reader].uid.size; i++)        //tagarray's columns
+        {
+          if ( mfrc522[reader].uid.uidByte[i] != tagarray[x][i])  //Comparing the UID in the buffer to the UID in the tag array.
+          {
+            DenyingTag();
+            break;
+          }
+          else
+          {
+            if (i == mfrc522[reader].uid.size - 1)                // Test if we browesed the whole UID.
+            {
+              AllowTag();
+            }
+            else
+            {
+              continue;                                           // We still didn't reach the last cell/column : continue testing!
+            }
+          }
+        }
+        if (access) break;                                        // If the Tag is allowed, quit the test.
+      }
+
+
+      if (access)
+      {
+        if (tagcount == NR_OF_READERS)
+        {
+          OpenDoor();
+        }
+        else
+        {
+          MoreTagsNeeded();
+        }
+      }
+      else
+      {
+        UnknownTag();
+      }
+      /*Serial.print(F("PICC type: "));
+        MFRC522::PICC_Type piccType = mfrc522[reader].PICC_GetType(mfrc522[reader].uid.sak);
+        Serial.println(mfrc522[reader].PICC_GetTypeName(piccType));*/
+      // Halt PICC
+      mfrc522[reader].PICC_HaltA();
+      // Stop encryption on PCD
+      mfrc522[reader].PCD_StopCrypto1();
+    } //if (mfrc522[reader].PICC_IsNewC..
+  } //for(uint8_t reader..
+}
+
+/**
+   Helper routine to dump a byte array as hex values to Serial.
+*/
+void dump_byte_array(byte * buffer, byte bufferSize) {
+  for (byte i = 0; i < bufferSize; i++) {
+    Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+    Serial.print(buffer[i], HEX);
+  }
+}
+
+void printTagcount() {
+  Serial.print("Tag n°");
+  Serial.println(tagcount);
+}
+
+void DenyingTag()
+{
+  tagcount = tagcount;
+  access = false;
+}
+
+void AllowTag()
+{
+  tagcount = tagcount + 1;
+  access = true;
+}
+
+void Initialize()
+{
+  tagcount = 0;
+  access = false;
+}
+
+void OpenDoor()
+{
+  Serial.println("Welcome! the door is now open");
+  Initialize();
+  digitalWrite(relayIN, LOW);
+  digitalWrite(GreenLed, HIGH);
+  delay(2000);
+  digitalWrite(relayIN, HIGH);
+  delay(500);
+  digitalWrite(GreenLed, LOW);
+}
+
+void MoreTagsNeeded()
+{
+  printTagcount();
+  Serial.println("System needs more cards");
+  digitalWrite(RedLed, HIGH);
+  delay(1000);
+  digitalWrite(RedLed, LOW);
+  access = false;
+}
+
+void UnknownTag()
+{
+  Serial.println("This Tag isn't allowed!");
+  printTagcount();
+  for (int flash = 0; flash < 5; flash++)
+  {
+    digitalWrite(RedLed, HIGH);
+    delay(100);
+    digitalWrite(RedLed, LOW);
+    delay(100);
+  }
+}
+
+

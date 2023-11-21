@@ -8,7 +8,7 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #define BTN_RIGHT 4
 #define BTN_SELECT 5
 #define BTN_NONE 10
-int RECV_PIN = A3;
+int RECV_PIN = 2;
 IRrecv irrecv(RECV_PIN);
 decode_results results;
 
@@ -62,7 +62,7 @@ void loop() {
 
 
   if (irrecv.decode(&results)) {
-    Serial.println(results.value, HEX);
+    Serial.println(results.value);
     
     lcd.setCursor(0, 0);
     lcd.print("IR code");
