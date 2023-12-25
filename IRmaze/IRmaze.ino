@@ -120,8 +120,6 @@ while ((stepper1.currentPosition()!=0)&&(stepper2.currentPosition()!=0))
 
 
  
-
-
     lr=lrmap;updw=updwmap; 
     // Serial.println(results.value);
 
