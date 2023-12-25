@@ -86,7 +86,11 @@ void loop() {
    
       if (timerled <= -20) {
         timerled = 0;
+<<<<<<< HEAD
         
+=======
+      //  system_sleep();
+>>>>>>> 1ee6cf2a8d496dc6108698c1adff1bf967470a5a
       }
       timerled--;
    
@@ -125,7 +129,7 @@ void loop() {
     }
 
 
-    if ((newCode == 16718055) || (newCode == 1111000002)) {
+    if ((newCode == 16718055) || (newCode == 1111000005)) {
       timerled = 1;
     }
     IrReceiver.resume();

@@ -1,6 +1,8 @@
 #include <LiquidCrystal.h>
-#include <IRremote.h>
+#include <IRremote.hpp>
 
+unsigned long code,timing_welcome;
+unsigned long newCode;
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #define BTN_UP   1
 #define BTN_DOWN 2
@@ -9,8 +11,12 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #define BTN_SELECT 5
 #define BTN_NONE 10
 int RECV_PIN = 2;
+<<<<<<< HEAD
 IRrecv irrecv(RECV_PIN);
 decode_results results;
+=======
+
+>>>>>>> 1ee6cf2a8d496dc6108698c1adff1bf967470a5a
 
 
 int detectButton() {
@@ -48,7 +54,7 @@ void printDisplay(String message) {
 
 }
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   lcd.begin(16, 2);
   lcd.print("Arduino Master");
   delay(3000);
@@ -56,19 +62,38 @@ void setup() {
   lcd.print("                     ");
   lcd.setCursor(0, 0);
   lcd.print("Read IR");
-  irrecv.enableIRIn(); // Start the receiver
+  IrReceiver.begin(2);
 }
 void loop() {
 
 
+<<<<<<< HEAD
   if (irrecv.decode(&results)) {
     Serial.println(results.value);
     
+=======
+
+    if (IrReceiver.decode()) {
+      newCode=0;
+      code=0;
+      code=IrReceiver.decodedIRData.decodedRawData;
+ 
+>>>>>>> 1ee6cf2a8d496dc6108698c1adff1bf967470a5a
     lcd.setCursor(0, 0);
     lcd.print("IR code");
     lcd.setCursor(0, 1);
-    lcd.print(results.value);
-    irrecv.resume(); // Receive the next value
+    for (int i = 0; i < 32; i++) {
+          // Extract the ith bit from the old code
+          unsigned long bit = (code >> (31 - i)) & 1;
+
+          // Set the ith bit in the new code
+          newCode |= (bit << i);
+        }
+         lcd.print("               ");
+             lcd.setCursor(0, 1);
+       lcd.print(newCode);
+         Serial.println(newCode);
+    IrReceiver.resume(); // Receive the next value
 
   }
   delay(100);

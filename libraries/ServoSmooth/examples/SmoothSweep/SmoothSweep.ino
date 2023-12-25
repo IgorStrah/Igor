@@ -1,5 +1,6 @@
 /*
    Данный код плавно двигает туда-сюда одной сервой (на пине 5)
+   Документация: https://alexgyver.ru/servosmooth/
 */
 
 #include <ServoSmooth.h>
@@ -11,8 +12,8 @@ boolean flag;
 void setup() {
   Serial.begin(9600);
   servo.attach(5);        // подключить
-  servo.setSpeed(30);     // ограничить скорость
-  servo.setAccel(0.05);   // установить ускорение (разгон и торможение)
+  servo.setSpeed(130);    // ограничить скорость
+  servo.setAccel(0.1);   	  // установить ускорение (разгон и торможение)
 }
 
 void loop() {

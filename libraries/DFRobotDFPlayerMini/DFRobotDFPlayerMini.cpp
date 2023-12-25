@@ -7,7 +7,7 @@
  * @copyright	GNU Lesser General Public License
  *
  * @author [Angelo](Angelo.qiao@dfrobot.com)
- * @version  V1.0.3
+ * @version  V1.0.6
  * @date  2016-12-07
  */
 
@@ -34,7 +34,7 @@ void DFRobotDFPlayerMini::sendStack(){
   if (_sending[Stack_ACK]) {  //if the ack mode is on wait until the last transmition
     while (_isSending) {
       delay(0);
-      available();
+      waitAvailable();
     }
   }
 
@@ -88,7 +88,7 @@ bool DFRobotDFPlayerMini::waitAvailable(unsigned long duration){
   }
   while (!available()){
     if (millis() - timer > duration) {
-      return false;
+      return handleError(TimeOut);
     }
     delay(0);
   }
@@ -158,6 +158,7 @@ void DFRobotDFPlayerMini::parseStack(){
   _handleParameter =  arrayToUint16(_received + Stack_Parameter);
 
   switch (_handleCommand) {
+    case 0x3C:
     case 0x3D:
       handleMessage(DFPlayerPlayFinished, _handleParameter);
       break;
@@ -191,7 +192,6 @@ void DFRobotDFPlayerMini::parseStack(){
     case 0x40:
       handleMessage(DFPlayerError, _handleParameter);
       break;
-    case 0x3C:
     case 0x3E:
     case 0x42:
     case 0x43:
@@ -281,9 +281,6 @@ bool DFRobotDFPlayerMini::available(){
     }
   }
   
-  if (_isSending && (millis()-_timeOutTimer>=_timeOutDuration)) {
-    return handleError(TimeOut);
-  }
   
   return _isAvailable;
 }

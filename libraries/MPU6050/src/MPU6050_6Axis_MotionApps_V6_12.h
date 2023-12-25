@@ -50,6 +50,8 @@ THE SOFTWARE.
 // http://forum.arduino.cc/index.php?topic=129407.0
 #ifdef __AVR__
     #include <avr/pgmspace.h>
+#elif defined(ESP8266) || defined(ESP32)
+ #include <pgmspace.h>
 #else
     // Teensy 3.0 library conditional PROGMEM code from Paul Stoffregen
     #ifndef __PGMSPACE_H_
@@ -610,6 +612,12 @@ uint8_t MPU6050::dmpReadAndProcessFIFOPacket(uint8_t numPackets, uint8_t *proces
 // void MPU6050::dmpOverrideQuaternion(long *q);
 uint16_t MPU6050::dmpGetFIFOPacketSize() {
     return dmpPacketSize;
+}
+
+
+
+uint8_t MPU6050::dmpGetCurrentFIFOPacket(uint8_t *data) { // overflow proof
+    return(GetCurrentFIFOPacket(data, dmpPacketSize));
 }
 
 #endif /* _MPU6050_6AXIS_MOTIONAPPS20_H_ */
