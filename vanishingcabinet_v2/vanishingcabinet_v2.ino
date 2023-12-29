@@ -329,11 +329,6 @@ void loop(void) {
 
 
 
-
-   
-
-
-
 unsigned long ReadUid(byte numReader) {
   uint8_t success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
