@@ -22,13 +22,18 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define USMIN 1000     // This is the rounded 'minimum' microsecond length based on the minimum pulse of 150
 #define USMAX 1600     // This is the rounded 'maximum' microsecond length based on the maximum pulse of 600
 #define SERVO_FREQ 50  // Analog servos run at ~50 Hz updates
-int eyelidup, eyeliddown, eyel, eyer, eyeu, eyed;
+int eyelid_upper, eyelid_lower, eye_left, eye_right, eye_up, eye_down;
 // our servo # counter
 uint8_t servonum = 0;
 uint32_t cardid = 0;
-uint32_t cardidnew = 0;
+uint32_t cardid_prev = 0;
 
-int massa,massascal,massascalold, moovstep;
+int mass, mass_scaled, mass_scaled_prev, state, glass_mass, expected_mass;
+
+// each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
+uint32_t ingredient_list[1][3] = {
+  {338367744, 29, 100}
+};
 
 
 void setup() {
@@ -48,14 +53,14 @@ void setup() {
     Serial.print("Didn't find PN53x board");
     while (1)
       ;                         // halt
-    scale.set_scale(420.0983);  // TODO you need to calibrate this yourself.
+    scale.set_scale(42.00983);  // TODO you need to calibrate this yourself.
     scale.tare();
 
     Serial.print("UNITS: ");
     Serial.println(scale.get_units(10));
   }
-   scale.begin(dataPin, clockPin);
-  scale.set_scale(-1930.0146);       // TODO you need to calibrate this yourself.
+  scale.begin(dataPin, clockPin);
+  scale.set_scale(-193.00146);  // TODO you need to calibrate this yourself.
   scale.tare();
 
   for (uint16_t microsec = 1700; microsec > 1000; microsec--) {
@@ -64,13 +69,14 @@ void setup() {
 
 
 
-eyelidup = 1695;
-  eyeliddown = 1265;
+  eyelid_upper = 1695;
+  eyelid_lower = 1265;
 
 
-    pwm.writeMicroseconds(3, eyelidup);
-    pwm.writeMicroseconds(2, eyeliddown);
-  
+  pwm.writeMicroseconds(3, eyelid_upper);
+  pwm.writeMicroseconds(2, eyelid_lower);
+
+  pwm.sleep();
 }
 
 // You can use this function if you'd like to set the pulse length in seconds
@@ -92,10 +98,73 @@ void setServoPulse(uint8_t n, double pulse) {
 }
 
 void loop() {
+  cardid = readRFID();
+  if (cardid_prev != cardid) {
+    Serial.print("  UID : ");
+    Serial.println(cardid);
+    Serial.println("");
+    mass = 0;
 
+    for (int i = 0; i < sizeof(ingredient_list) / sizeof(ingredient_list[0]); i++) {
+      if (cardid == ingredient_list[i][0]) {
+        glass_mass = ingredient_list[i][1];
+        expected_mass = ingredient_list[i][2] + glass_mass;
+
+        Serial.print("Glass mass : ");
+        Serial.println(glass_mass);
+        Serial.println("");
+
+        Serial.print("Expected mass (incl. glass): ");
+        Serial.println(expected_mass);
+        Serial.println("");
+
+        state = 1;
+      }
+    }
+    // if (cardid == 338367744) {
+    //   mass = 50;
+    //   state = 1;
+    //   Serial.print("  mass : ");
+    //   Serial.println(mass);
+    //   Serial.println("");
+    // }
+
+    cardid_prev = cardid;
+  }
+
+  if (state == 1) {
+    openeye();
+    state = 2;
+  }
+
+
+  if (state == 2) {
+
+    //Serial.print("UNITS: ");
+    //  Serial.println(scale.get_units(10));
+    mass_scaled = scale.get_units(10);
+    Serial.print("mass_scaled: ");
+    Serial.println(mass_scaled);
+
+    if (mass > mass_scaled && mass_scaled != mass_scaled_prev) {
+      litl();
+      Serial.print("mooo: ");
+      Serial.println(mass_scaled_prev);
+    } else if (mass < mass_scaled && mass_scaled != mass_scaled_prev) {
+      mooo();
+      Serial.print("litl: ");
+      Serial.println(mass_scaled_prev);
+    }
+
+    mass_scaled_prev = mass_scaled;
+  }
+}
+
+uint32_t readRFID() {
   uint8_t success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
   uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
+  uint32_t cardid = 0;
 
   // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
   // 'uid' will be populated with the UID, and uidLength will indicate
@@ -114,82 +183,35 @@ void loop() {
         }
       }
     }
-   if (cardidnew != cardid) {
-      Serial.print("  UID : ");
-      Serial.println(cardid);
-      Serial.println("");
-      massa = 0;
-
-      if (cardid == 338367744) {
-        massa = 50;
-        moovstep = 1;
-        Serial.print("  massa : ");
-        Serial.println(massa);
-        Serial.println("");
-      }
-
-
-      cardidnew = cardid;
-    }
   }
-  if (moovstep == 1)
-{
-  openeye();
-moovstep=2;
+
+  return cardid;
 }
 
-if (moovstep==2)
-{
-
-  //Serial.print("UNITS: ");
-//  Serial.println(scale.get_units(10));
-massascal=scale.get_units(10);
-Serial.print("massascal: ");
-Serial.println(massascal);
-
-  if (massa>massascal&&massascal!=massascalold)
-{
-litl();
-Serial.print("mooo: ");
-Serial.println(massascalold);
-}
-  else if (massa<massascal&&massascal!=massascalold)
-{
-mooo();
-Serial.print("litl: ");
-Serial.println(massascalold);
-}
-
-massascalold=massascal;
-}
-
-
-
-
- 
-}
 void openeye() {
+  pwm.wakeup();
+  
   //up
   for (uint16_t microsec = 1000; microsec < 1700; microsec++) {
     pwm.writeMicroseconds(4, microsec);
   }
 
-  eyelidup = 1695;
-  eyeliddown = 1265;
+  eyelid_upper = 1705;
+  eyelid_lower = 1265;
   //open
   for (uint16_t microsec = 0; microsec < 40; microsec++) {
-    eyelidup = eyelidup - 3;
-    eyeliddown = eyeliddown + 3;
-    pwm.writeMicroseconds(3, eyelidup);
-    pwm.writeMicroseconds(2, eyeliddown);
+    eyelid_upper = eyelid_upper - 3;
+    eyelid_lower = eyelid_lower + 3;
+    pwm.writeMicroseconds(3, eyelid_upper);
+    pwm.writeMicroseconds(2, eyelid_lower);
   }
   delay(555);
 
   for (uint16_t microsec = 0; microsec < 35; microsec++) {
-    eyelidup = eyelidup - 3;
-    eyeliddown = eyeliddown + 3;
-    pwm.writeMicroseconds(3, eyelidup);
-    pwm.writeMicroseconds(2, eyeliddown);
+    eyelid_upper = eyelid_upper - 3;
+    eyelid_lower = eyelid_lower + 3;
+    pwm.writeMicroseconds(3, eyelid_upper);
+    pwm.writeMicroseconds(2, eyelid_lower);
   }
 
 
@@ -209,10 +231,10 @@ void openeye() {
   delay(100);
 
   for (uint16_t microsec = 60; microsec > 1; microsec--) {
-    eyelidup = eyelidup + 3;
-    eyeliddown = eyeliddown - 3;
-    pwm.writeMicroseconds(3, eyelidup);
-    pwm.writeMicroseconds(2, eyeliddown);
+    eyelid_upper = eyelid_upper + 3;
+    eyelid_lower = eyelid_lower - 3;
+    pwm.writeMicroseconds(3, eyelid_upper);
+    pwm.writeMicroseconds(2, eyelid_lower);
   }
 
 
@@ -237,11 +259,13 @@ void openeye() {
   //close
 
   for (uint16_t microsec = 5; microsec > 1; microsec--) {
-    eyelidup = eyelidup + 3;
-    eyeliddown = eyeliddown - 3;
-    pwm.writeMicroseconds(3, eyelidup);
-    pwm.writeMicroseconds(2, eyeliddown);
+    eyelid_upper = eyelid_upper + 3;
+    eyelid_lower = eyelid_lower - 3;
+    pwm.writeMicroseconds(3, eyelid_upper);
+    pwm.writeMicroseconds(2, eyelid_lower);
   }
+
+  pwm.sleep();
 }
 
 
@@ -249,23 +273,21 @@ void mooo() {
 
   //open
   for (uint16_t microsec = 0; microsec < 5; microsec++) {
-    eyelidup = eyelidup - 3;
-    eyeliddown = eyeliddown + 3;
-    pwm.writeMicroseconds(3, eyelidup);
-    pwm.writeMicroseconds(2, eyeliddown);
+    eyelid_upper = eyelid_upper - 3;
+    eyelid_lower = eyelid_lower + 3;
+    pwm.writeMicroseconds(3, eyelid_upper);
+    pwm.writeMicroseconds(2, eyelid_lower);
   }
   delay(555);
 }
 
 
 void litl() {
-  for (uint16_t microsec = 5; microsec >1; microsec--) {
-    eyelidup = eyelidup + 3;
-    eyeliddown = eyeliddown - 3;
-    pwm.writeMicroseconds(3, eyelidup);
-    pwm.writeMicroseconds(2, eyeliddown);
+  for (uint16_t microsec = 5; microsec > 1; microsec--) {
+    eyelid_upper = eyelid_upper + 3;
+    eyelid_lower = eyelid_lower - 3;
+    pwm.writeMicroseconds(3, eyelid_upper);
+    pwm.writeMicroseconds(2, eyelid_lower);
   }
   delay(555);
 }
-
-
