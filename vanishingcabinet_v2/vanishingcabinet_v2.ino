@@ -61,13 +61,13 @@ uint32_t potions[][8] = {
 
   {
     //  1 Упокоение пикси
-    3351844096,  // 0 кружка из верёвки
-    1604719872,  // 1 
-    1687819520,  // 2 
+    209392896,  // 0 бокал со змеями
+    1687819520,  // 2 флоббер-червь
     1771771136,  // 3 гнездо пикси
-    473044224,   // 4 
-    554308864,   // 5 
-    594771968,   // 6 книга, вклеен спереди и сзади книги (uid такой же как у карточки-рецепта философского камня)
+    1855526144,  // 6 медальон
+    473044224,   // 4 шкатулка с глазом
+    554308864,   // 5 книга
+    1604719872,  // 1 лоскут одеяла
     204150016,   // 7 пятиугольная карточка-рецепт
   },
   {
@@ -165,11 +165,13 @@ void setup(void) {
     Serial.println("Couldn't find PCF8574");
     //  while (1);
   }
-  for (uint8_t p = 0; p < 8; p++) {
-    pcf.pinMode(0, OUTPUT);
-    pcf.pinMode(1, OUTPUT);
-    pcf.pinMode(5, OUTPUT);
-  }
+  // for (uint8_t p = 0; p < 8; p++) {
+    pcf.pinMode(0, OUTPUT); 
+    pcf.pinMode(1, OUTPUT); // release from top
+    pcf.pinMode(2, OUTPUT); // bottom-rightmost door
+    pcf.pinMode(3, OUTPUT); // bottom mid-left door
+    pcf.pinMode(4, OUTPUT); // bottom mid-right door
+  // }
 
   startstep = 0;
   Stepper_calibrated();
@@ -189,8 +191,8 @@ void loop(void) {
     timing = millis();
     reader == 7 ? reader = 0 : reader++;
     Uidtable[reader] = ReadUid(reader);
-    //Serial.print(" cardid : ");  //  "Сообщение: "
-    //Serial.println(Uidtable[reader]);      //  "Сообщение: "
+    Serial.print(" cardid : ");  //  "Сообщение: "
+    Serial.println(Uidtable[reader]);      //  "Сообщение: "
     if (startstep >= 1) {
       lathent();
     }
@@ -216,13 +218,14 @@ void loop(void) {
   }
 
    if ((newCode == 1111000005) || (newCode == 16726215)) {
-          pcf.digitalWrite(5, HIGH);  // turn LED off by turning off sinking transistor
-          delay(1000);
-          pcf.digitalWrite(5, LOW);  // turn LED on by sinking current to ground
-          newCode=0;
+    pcf.digitalWrite(4, HIGH);  // turn LED off by turning off sinking transistor
+    delay(1000);
+    pcf.digitalWrite(4, LOW);  // turn LED on by sinking current to ground
+    newCode=0;
+    Serial.print("Open 4");           
   }
 
-  if ((newCode == 1111000004) || (newCode == 16716015)) {
+  if (((newCode == 1111000004) || (newCode == 16716015)) && startstep != 2) {
     startstep = 1;
     newCode = 0;
     Serial.print("startstep ");
@@ -276,10 +279,10 @@ void loop(void) {
 
           
        
-          pcf.digitalWrite(0, HIGH);  // turn LED off by turning off sinking transistor
+          pcf.digitalWrite(i+2, HIGH);  // turn LED off by turning off sinking transistor
           delay(1000);
           pcf.digitalWrite(1, LOW);  // turn LED on by sinking current to ground
-          pcf.digitalWrite(0, LOW);  // turn LED on by sinking current to ground
+          pcf.digitalWrite(i+2, LOW);  // turn LED on by sinking current to ground
           delay(1000);
 
           delay(5000);
