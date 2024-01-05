@@ -28,11 +28,11 @@ uint8_t servonum = 0;
 uint32_t cardid = 0;
 uint32_t cardid_prev = 0;
 
-int mass, mass_scaled, mass_scaled_prev, state, glass_mass, expected_mass;
+int mass = 0, mass_prev = 0, mass_prev_prev = 0, state = 0, glass_mass, expected_mass;
 
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
 uint32_t ingredient_list[1][3] = {
-  {338367744, 29, 100}
+  { 338367744, 29, 100 }
 };
 
 
@@ -99,65 +99,69 @@ void setServoPulse(uint8_t n, double pulse) {
 
 void loop() {
   cardid = readRFID();
-  if (cardid_prev != cardid) {
+  mass = scale.get_units(10);
+
+  Serial.print("Current mass: ");
+  Serial.println(mass);
+
+  if ((cardid_prev != cardid) && (mass > 1)) {
     Serial.print("  UID : ");
     Serial.println(cardid);
     Serial.println("");
-    mass = 0;
 
     for (int i = 0; i < sizeof(ingredient_list) / sizeof(ingredient_list[0]); i++) {
       if (cardid == ingredient_list[i][0]) {
         glass_mass = ingredient_list[i][1];
-        expected_mass = ingredient_list[i][2] + glass_mass;
+        expected_mass = ingredient_list[i][2];
 
         Serial.print("Glass mass : ");
         Serial.println(glass_mass);
         Serial.println("");
 
-        Serial.print("Expected mass (incl. glass): ");
+        Serial.print("Expected contents mass: ");
         Serial.println(expected_mass);
         Serial.println("");
 
         state = 1;
       }
     }
-    // if (cardid == 338367744) {
-    //   mass = 50;
-    //   state = 1;
-    //   Serial.print("  mass : ");
-    //   Serial.println(mass);
-    //   Serial.println("");
-    // }
-
     cardid_prev = cardid;
   }
 
   if (state == 1) {
+    Serial.println("Glass with recognized RFID present");
     openeye();
     state = 2;
   }
 
-
   if (state == 2) {
-
-    //Serial.print("UNITS: ");
-    //  Serial.println(scale.get_units(10));
-    mass_scaled = scale.get_units(10);
-    Serial.print("mass_scaled: ");
-    Serial.println(mass_scaled);
-
-    if (mass > mass_scaled && mass_scaled != mass_scaled_prev) {
-      litl();
-      Serial.print("mooo: ");
-      Serial.println(mass_scaled_prev);
-    } else if (mass < mass_scaled && mass_scaled != mass_scaled_prev) {
-      mooo();
-      Serial.print("litl: ");
-      Serial.println(mass_scaled_prev);
+    // if glass contains something and mass hasn't changed in the last 3 iterations
+    if ((mass > glass_mass + 1) && (mass == mass_prev) && (mass_prev == mass_prev_prev)) {
+        int contents_mass = mass - glass_mass;
+        Serial.print("Contents mass: ");
+        Serial.println(contents_mass);
+        
+        if (contents_mass * 10 < expected_mass * 6) {
+          // less than 60% of the expected contents mass
+          Serial.println("Too little!");
+        } else if ((contents_mass * 10 >= expected_mass * 6) && (contents_mass * 10 < expected_mass * 9)) {
+          // between 60% and 90% of the expected contents mass
+          Serial.println("A little more!");
+        } else if ((contents_mass * 10 >= expected_mass * 9) && (contents_mass * 10 <= expected_mass * 11)) {
+          // between 90% and 110% of the expected contents mass
+          Serial.println("Just right!");
+        } else if ((contents_mass * 10 > expected_mass * 11) && contents_mass * 10 <= expected_mass * 16) {
+          // between 110% and 160% of the expected mass
+          Serial.println("A little less!");
+        } else {
+          // more than 160% of the expected mass
+          Serial.println("Too much!");
+        }
     }
-
-    mass_scaled_prev = mass_scaled;
   }
+
+  mass_prev = mass;
+  mass_prev_prev = mass_prev;
 }
 
 uint32_t readRFID() {
@@ -169,7 +173,7 @@ uint32_t readRFID() {
   // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
   // 'uid' will be populated with the UID, and uidLength will indicate
   // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
-  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength);
+  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 100);
 
   if (success) {
     for (byte i2 = 0; i2 < uidLength; i2++) {
@@ -190,7 +194,7 @@ uint32_t readRFID() {
 
 void openeye() {
   pwm.wakeup();
-  
+
   //up
   for (uint16_t microsec = 1000; microsec < 1700; microsec++) {
     pwm.writeMicroseconds(4, microsec);
