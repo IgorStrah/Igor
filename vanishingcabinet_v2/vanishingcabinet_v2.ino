@@ -48,27 +48,27 @@ unsigned long Uidtable[8];
 
 uint32_t potions[][8] = {
   {
-    //  0 Зелье Плавунчика или Морское зелье +
-    902960384,   // бизуар
-    1498617088,  // 1 Вытяжка зародыше апаллала
-    269948160,   // 2 Хребты Рыбы-Льва
-    666047744,   // 3 Сок мурлакомля
-    3206550784,  // 4 Стандартный ингридиент Н
-    1940264192,  // 5 Морские жёлуди
-    2111444224,  // 6 Безумные Многоножки
-    594771968,   // 7 Лёд со дна серебристого озера
+    //  0 Философский камень
+    902960384,   // 0 безоар
+    1498617088,  // 1 
+    269948160,   // 2 
+    666047744,   // 3 
+    3206550784,  // 4 
+    1940264192,  // 5 
+    2111444224,  // 6 
+    594771968,   // 7 пятиугольная карточка-рецепт 
   },
 
   {
-    //  0 Зелье Плавунчика или Морское зелье +
-    0,           // 0 философский камень
-    338367744,   // 1 Вытяжка зародыше апаллала
-    1498617088,  // 2 Хребты Рыбы-Льва
-    666047744,   // 3 Сок мурлакомля
-    269948160,   // 4 Стандартный ингридиент Н
-    0,           // 5 Морские жёлуди
-    0,           // 6 Безумные Многоножки
-    0,           // 7 Лёд со дна серебристого озера
+    //  1 Упокоение пикси
+    209392896,  // 0 бокал со змеями
+    1687819520,  // 2 флоббер-червь
+    1771771136,  // 3 гнездо пикси
+    1855526144,  // 6 медальон
+    594772224,   // 4 бирюзовая шкатулка
+    554308864,   // 5 книга
+    1604719872,  // 1 лоскут одеяла
+    204150016,   // 7 пятиугольная карточка-рецепт
   },
   {
     //  0 Зелье Плавунчика или Морское зелье +
@@ -165,11 +165,13 @@ void setup(void) {
     Serial.println("Couldn't find PCF8574");
     //  while (1);
   }
-  for (uint8_t p = 0; p < 8; p++) {
-    pcf.pinMode(0, OUTPUT);
-    pcf.pinMode(1, OUTPUT);
-    pcf.pinMode(5, OUTPUT);
-  }
+  // for (uint8_t p = 0; p < 8; p++) {
+    pcf.pinMode(0, OUTPUT); 
+    pcf.pinMode(1, OUTPUT); // release from top
+    pcf.pinMode(2, OUTPUT); // bottom-rightmost door
+    pcf.pinMode(3, OUTPUT); // bottom mid-left door
+    pcf.pinMode(4, OUTPUT); // bottom mid-right door
+  // }
 
   startstep = 0;
   Stepper_calibrated();
@@ -189,8 +191,8 @@ void loop(void) {
     timing = millis();
     reader == 7 ? reader = 0 : reader++;
     Uidtable[reader] = ReadUid(reader);
-    //Serial.print(" cardid : ");  //  "Сообщение: "
-    //Serial.println(Uidtable[reader]);      //  "Сообщение: "
+    Serial.print(" cardid : ");  //  "Сообщение: "
+    Serial.println(Uidtable[reader]);      //  "Сообщение: "
     if (startstep >= 1) {
       lathent();
     }
@@ -216,13 +218,14 @@ void loop(void) {
   }
 
    if ((newCode == 1111000005) || (newCode == 16726215)) {
-          pcf.digitalWrite(5, HIGH);  // turn LED off by turning off sinking transistor
-          delay(1000);
-          pcf.digitalWrite(5, LOW);  // turn LED on by sinking current to ground
-          newCode=0;
+    pcf.digitalWrite(4, HIGH);  // turn LED off by turning off sinking transistor
+    delay(1000);
+    pcf.digitalWrite(4, LOW);  // turn LED on by sinking current to ground
+    newCode=0;
+    Serial.print("Open 4");           
   }
 
-  if ((newCode == 1111000004) || (newCode == 16716015)) {
+  if (((newCode == 1111000004) || (newCode == 16716015)) && startstep != 2) {
     startstep = 1;
     newCode = 0;
     Serial.print("startstep ");
@@ -276,10 +279,10 @@ void loop(void) {
 
           
        
-          pcf.digitalWrite(0, HIGH);  // turn LED off by turning off sinking transistor
+          pcf.digitalWrite(i+2, HIGH);  // turn LED off by turning off sinking transistor
           delay(1000);
           pcf.digitalWrite(1, LOW);  // turn LED on by sinking current to ground
-          pcf.digitalWrite(0, LOW);  // turn LED on by sinking current to ground
+          pcf.digitalWrite(i+2, LOW);  // turn LED on by sinking current to ground
           delay(1000);
 
           delay(5000);
@@ -326,11 +329,6 @@ void loop(void) {
 
 
 }
-
-
-
-
-   
 
 
 
