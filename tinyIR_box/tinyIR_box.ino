@@ -27,8 +27,6 @@ void setup() {
   IrReceiver.begin(PB3, ENABLE_LED_FEEDBACK);
   delay(100);            // Delay for 1 second
   pinMode(PB4, OUTPUT);  // кнопка на D12 и GND
-  digitalWrite(PB4, 1);
-  delay(500);
   digitalWrite(PB4, 0);
 }
 
