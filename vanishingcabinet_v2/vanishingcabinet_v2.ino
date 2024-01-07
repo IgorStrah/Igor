@@ -1,7 +1,7 @@
 #define EXCLUDE_EXOTIC_PROTOCOLS  // saves around 240 bytes program memory if IrSender.write is used
-#define NO_LED_FEEDBACK_CODE
-#define DECODE_NEC  // Includes Apple and Onkyo
-#define DECODE_SAMSUNG
+  #define NO_LED_FEEDBACK_CODE
+  #define DECODE_NEC  // Includes Apple and Onkyo
+  #define DECODE_SAMSUNG
 #define STRIP_PIN 3  // пин ленты
 #define NUMLEDS 35   // кол-во светодиодов
 
