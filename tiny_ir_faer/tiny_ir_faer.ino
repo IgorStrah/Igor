@@ -1,198 +1,119 @@
-#include <avr/wdt.h>
-#define DECODE_DISTANCE_WIDTH  // Universal decoder for pulse distance width protocols
-//#define DECODE_HASH
+#include <Adafruit_NeoPixel.h>
+#include <Arduino.h>
 
+#include "ATtinySerialOut.hpp" // TX is at pin 2 - Available as Arduino library "ATtinySerialOut" - Saves up to 700 bytes program memory and 70 bytes 
+#define IR_RECEIVE_PIN    0 // PCINT0
 
-volatile boolean f_wdt = 1;
-bool firestart=0;
-int clocker;
+#include "TinyIRReceiver.hpp"
 
-#define STRIP_PIN 0     // пин ленты
-#define NUMLEDS 27      // кол-во светодиодов
+#define LED_COUNT 27  // Количество светодиодов в ленте
+#define GROUP_SIZE 4  // Размер группы светодиодов
 
-#define COLOR_DEBTH 3
-#include <microLED.h>   // подключаем библу
-microLED<NUMLEDS, STRIP_PIN, MLED_NO_CLOCK, LED_WS2818, ORDER_GRB, CLI_AVER> strip;
-#include <FastLEDsupport.h> // вкл поддержку FL
+#if !defined(STR_HELPER)
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+#endif
 
-
-bool fireEffectActive = false;
-uint8_t situation = 0;
-uint8_t START = 0;
-uint8_t x = 0;
-uint8_t BIT = 0;
-uint8_t Id = 0;
-uint8_t Id_inv = 0;
-uint8_t Data = 0;
-uint8_t Data_back = 0;
-uint8_t Data_inv = 0;
-uint8_t Repeat = 0;
-uint8_t sended = 0;
-
-uint16_t Time_old = 0;
-uint16_t Time = 0;
-uint16_t TimeDelta = 0;
+volatile struct TinyIRReceiverCallbackDataStruct sCallbackData;
 uint16_t Timer_Fire;
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(LED_COUNT, 3, NEO_GRB + NEO_KHZ800);
 volatile boolean f_wdt = 1;
-
-DEFINE_GRADIENT_PALETTE( heatmap_gp ) {   // делаем палитру огня
-  0,     0,  0,  0,     // black
-  128,   255,  0,  0,   // red
-  224,   255, 255,  0,  // bright yellow
-  255,   255, 255, 255  // full white
-};
-CRGBPalette16 fire_p = heatmap_gp;
+int aCommandn,newcod;
 void setup() {
-  
-  noInterrupts();
+       noInterrupts();
   CLKPR = 0x80;  // enable clock prescale change
   CLKPR = 0;     // no prescale
   interrupts();
-  wdt_reset();
-  attachInterrupt(0, IR_Read, FALLING);
-  
-  pinMode(1,OUTPUT);
-  digitalWrite(1,LOW);
-// Routines to set and clear bits (used in the sleep code)
-#ifndef cbi
-#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#endif
-#ifndef sbi
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-#endif
-  strip.setBrightness(250);
-  strip.clear();
-   strip.show();  
-   delay(100);
-     strip.clear();
-   strip.show();  
-}
+    Serial.begin(115200);
 
+    // Enables the interrupt generation on change of IR input signal
+    if (!initPCIInterruptForTinyReceiver()) {
+        Serial.println(F("No interrupt available for pin " STR(IR_RECEIVE_PIN))); // optimized out by the compiler, if not required :-)
+    }
+  strip.setBrightness(55);
+  strip.begin();
+  strip.show();   // Инициализация ленты
+  strip.clear();  // Инициализация ленты
+Serial.println("Start ");
+
+}
 
 void loop() {
 
 
-if (Timer_Fire==1)
-{
-  for (int i=255; i>0; i--) {
- strip.setBrightness(i);
- strip.show();  
- delay(10);
- Timer_Fire=0;
- fireEffectActive = false;
-}
 
-
-}
-if (fireEffectActive) {
-    fireEffect();
+  if (Timer_Fire == 1) {
+    for (int i = 100; i > 0; i--) {
+      strip.setBrightness(i);
       strip.show();
-    Timer_Fire--;
-    delay(90);
+      delay(10);
+    } 
+    Timer_Fire = 0;
+    strip.clear();  // Инициализация ленты
   }
-
-
-  if(sended == 1) {
-    if (Data_back == 48 || Data_back==131) { // Замените на код, который соответствует кнопке на вашем ИК-пульте
-    strip.setBrightness(255);
-    fireEffectActive = !fireEffectActive; 
-    Timer_Fire=6000;   // Включаем/выключаем эффект огня
-  }
-if (Data_back == 24 || Data_back==75) { // Замените на код, который соответствует кнопке на вашем ИК-пульте
-    fireEffectActive = false;
-    strip.clear(); 
-    strip.show();
-  }
-
-
-  //  DigiUSB.println(Data_back, DEC);
-    sended = 0;
-  } else {
-  delay(10);
+  if (Timer_Fire!=0) {
+    fireEffect();
   }
 
 
 
 
-
-
-
-}
-
-
-void fireEffect()
+if (newcod==1)
 {
-  static int count = 0;
-  count += 10;
-  for (int i = 0; i < 27; i++) {
-    count += 2;
-   strip.set(i, CRGBtoData(ColorFromPalette(fire_p, inoise8(i * 15, count), 255, LINEARBLEND)));
-  }
+Serial.println(1);
+Serial.println(aCommandn);
+//delay(100);
+newcod=0;
 }
 
-void IR_Read(void) {
-  digitalWrite(1,HIGH);
-  Time = micros();
-  if (Time_old != 0) {
-    TimeDelta = Time - Time_old;
-    if ((TimeDelta > 12000)&&(TimeDelta < 14000)) {
-      START = 1;
-      x = 0;
-      situation = 1;
-      Id = 0;
-      Id_inv = 0;
-      Data = 0;
-      Data_inv = 0;
-    } else if ((TimeDelta > 10000)&&(TimeDelta < 12000)) {
-      situation = 2; // repeat
-    } else if ((TimeDelta > 1500)&&(TimeDelta < 2500)) {
-      situation = 3; //"1"
-      BIT = 1;
-    } else if ((TimeDelta > 1000)&&(TimeDelta < 1500)) {
-      situation = 3; //"0"
-      BIT = 0;
-    } else situation = 5; 
-    if (situation == 3) {
-      if (x < 8) {
-        Id |= BIT;
-        if (x < 7) Id <<= 1;  
-        x++;
-      } else if (x < 16) {
-        Id_inv |= BIT;
-        if (x < 15) Id_inv <<= 1;
-        x++;
-      } else if (x < 24) {
-        Data |= BIT;
-        if (x < 23) Data <<= 1;
-        x++;
-      } else if (x < 32) {
-        Data_inv |= BIT;
-        if (x < 31) {
-          Data_inv <<= 1;
-        } else {
-          
-          /* DO SOMETHING HERE */
-          sended = 1;
-          
-          Data_back = Data;
-          Repeat = 0;
-        }
-        x++;
-      }
-    } else if (situation == 2) {
-      if(Repeat == 1) {
-        
-        /* DO SOMETHING HERE */
-        /*sended = 1;*/
-        
-      } else {
-        Repeat = 1;
-      }
+ 
+}
+
+
+
+
+void handleReceivedTinyIRData(uint8_t aAddress, uint8_t aCommand, uint8_t aFlags)
+
+{
+   
+     if (aFlags != IRDATA_FLAGS_IS_REPEAT) {
+        aCommandn=aCommand;
+        Serial.println(1);
+        Serial.println(aCommandn);
+       // newcod=1;
+    }
+
+    if (aCommand==12)
+    {
+      strip.setBrightness(255);
+       Timer_Fire = 9000; 
+aCommandn=aCommand;
+    newcod=1;
+    }
+
+        if (aCommand==24)
+    {
+      Timer_Fire=1;
+
+    aCommandn=aCommand;
+    newcod=1;
+    }
+
+}
+
+
+
+void fireEffect() {
+  // Реализация эффекта колыхания огня на адресной ленте с разными оттенками для групп по 4 пикселя
+  for (int i = 0; i < LED_COUNT; i += GROUP_SIZE) {
+    int baseFlicker = random(180, 255);  // Основной оттенок для группы
+    for (int j = 0; j < GROUP_SIZE; j++) {
+      int flicker = baseFlicker - j * 10;  // Различные оттенки внутри группы
+     // strip.setPixelColor(i + j, strip.Color(flicker/20, flicker / 7, flicker/6));
+      strip.setPixelColor(i + j, strip.Color(flicker, flicker / 15,flicker));
     }
   }
-  Time_old = Time;
-  digitalWrite(1,LOW);
+  strip.show();
+  delay(random(20, 100));  // Задержка между итерациями эффекта
+  Timer_Fire--;
 }
-
-
-

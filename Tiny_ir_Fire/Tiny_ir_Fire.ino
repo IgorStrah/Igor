@@ -169,6 +169,7 @@ void IR_Read(void) {
 
 
 void fireEffect() {
+  /*
   // Реализация эффекта колыхания огня на адресной ленте с разными оттенками для групп по 4 пикселя
   for (int i = 0; i < LED_COUNT; i += GROUP_SIZE) {
     int baseFlicker = random(180, 255);  // Основной оттенок для группы
@@ -179,5 +180,12 @@ void fireEffect() {
   }
   strip.show();
   delay(random(20, 100));  // Задержка между итерациями эффекта
+  */
+
+    static int count = 0;
+  count += 10;
+  for (int i = 0; i < 50; i++)
+    strip.send(CRGBtoData(ColorFromPalette(fire_p, inoise8(i * 25, count), 255, LINEARBLEND)));
+  delay(30);
   Timer_Fire--;
 }

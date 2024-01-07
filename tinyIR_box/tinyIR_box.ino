@@ -3,10 +3,13 @@
 //#define DECODE_HASH
 
 
+#include "ATtinySerialOut.hpp" // TX is at pin 2 - Available as Arduino library "ATtinySerialOut" - Saves up to 700 bytes program memory and 70 bytes 
 
 #include <IRremote.h>
 #define F_CPU 8000000  //F_CPU 8000000. This is used by delay.h library
 volatile boolean f_wdt = 1;
+
+
 
 
 void setup() {
@@ -22,9 +25,10 @@ void setup() {
 #ifndef sbi
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
-
+    Serial.begin(115200);
+    Serial.println("Start ");
   wdt_enable(WDTO_8S);
-  IrReceiver.begin(PB3, ENABLE_LED_FEEDBACK);
+  IrReceiver.begin(PB0, ENABLE_LED_FEEDBACK);
   delay(100);            // Delay for 1 second
   pinMode(PB4, OUTPUT);  // кнопка на D12 и GND
   digitalWrite(PB4, 0);
@@ -45,6 +49,7 @@ void loop() {
       // Set the ith bit in the new code
       newCode |= (bit << i);
     }
+    Serial.println(newCode);
     if ((newCode == 1111000005) || (newCode == 16726215)) {
       digitalWrite(PB4, 1);
       delay(2000);
