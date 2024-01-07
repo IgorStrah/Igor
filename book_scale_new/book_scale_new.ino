@@ -28,7 +28,9 @@ uint8_t servonum = 0;
 uint32_t cardid = 0;
 uint32_t cardid_prev = 0;
 
-int mass = 0, mass_prev = 0, mass_prev_prev = 0, state = 0, glass_mass, expected_mass;
+int mass = 0, mass_prev = 0, mass_prev_prev = 0, state = 0, state_prev = 0, glass_mass, expected_mass;
+int cycle_counter = 0;
+bool eye_is_up = false;
 
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
 uint32_t ingredient_list[1][3] = {
@@ -128,9 +130,14 @@ void loop() {
     cardid_prev = cardid;
   }
 
+  if (cardid == 0) {
+    state = 0;
+  }
+
   if (state == 1) {
     Serial.println("Glass with recognized RFID present");
     openeye();
+    eye_is_up = true;
     state = 2;
   }
 
@@ -167,8 +174,20 @@ void loop() {
     }
   }
 
+  if (state != state_prev) {
+    state_prev = state;
+    cycle_counter = 0;
+  }
+
+  if ((cycle_counter > 10)  && (state == 0) && (state_prev == 0) && eye_is_up) {
+    Serial.println("Inactive, going to sleep");
+    lowereye();
+    cycle_counter = 0;
+  }
+
   mass_prev = mass;
   mass_prev_prev = mass_prev;
+  cycle_counter++;
 }
 
 uint32_t readRFID() {
@@ -300,6 +319,16 @@ void openeye() {
   }
 
   pwm.sleep();
+}
+
+void lowereye() {
+  //down
+  pwm.wakeup();
+  for (uint16_t microsec = 1700; microsec > 1000; microsec--) {
+    pwm.writeMicroseconds(4, microsec);
+  }
+  pwm.sleep();
+  eye_is_up = false;
 }
 
 
