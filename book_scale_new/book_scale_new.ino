@@ -343,28 +343,3 @@ void lowereye() {
   pwm.sleep();
   eye_is_up = false;
 }
-
-
-void mooo() {
-  pwm.wakeup();
-  //open
-  for (uint16_t microsec = 0; microsec < 5; microsec++) {
-    eyelid_upper = eyelid_upper - 3;
-    eyelid_lower = eyelid_lower + 3;
-    pwm.writeMicroseconds(3, eyelid_upper);
-    pwm.writeMicroseconds(2, eyelid_lower);
-  }
-  pwm.sleep();
-  delay(555);
-}
-
-
-void litl() {
-  for (uint16_t microsec = 5; microsec > 1; microsec--) {
-    eyelid_upper = eyelid_upper + 3;
-    eyelid_lower = eyelid_lower - 3;
-    pwm.writeMicroseconds(3, eyelid_upper);
-    pwm.writeMicroseconds(2, eyelid_lower);
-  }
-  delay(555);
-}
