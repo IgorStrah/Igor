@@ -136,8 +136,10 @@ void loop() {
 
   if (state == 1) {
     Serial.println("Glass with recognized RFID present");
-    openeye();
-    eye_is_up = true;
+    if (!eye_is_up) {
+      openeye();
+      eye_is_up = true;
+    }
     state = 2;
   }
 
@@ -153,23 +155,23 @@ void loop() {
       if (contents_vs_expected < 6) {
         // less than 60% of the expected contents mass
         Serial.println("Too little!");
-        seteyelidposition(1240);
+        seteyelidposition(1300);
       } else if ((contents_vs_expected >= 6) && (contents_vs_expected < 9)) {
         // between 60% and 90% of the expected contents mass
         Serial.println("A little more!");
-        seteyelidposition(1300);
+        seteyelidposition(1370);
       } else if ((contents_vs_expected >= 9) && (contents_vs_expected <= 11)) {
         // between 90% and 110% of the expected contents mass
         Serial.println("Just right!");
-        seteyelidposition(1370);
+        seteyelidposition(1430);
       } else if ((contents_vs_expected > 11) && (contents_vs_expected <= 16)) {
         // between 110% and 160% of the expected mass
         Serial.println("A little less!");
-        seteyelidposition(1430);
+        seteyelidposition(1490);
       } else {
         // more than 160% of the expected mass
         Serial.println("Too much!");
-        seteyelidposition(1490);
+        seteyelidposition(1550);
       }
     }
   }
@@ -179,7 +181,11 @@ void loop() {
     cycle_counter = 0;
   }
 
-  if ((cycle_counter > 10)  && (state == 0) && (state_prev == 0) && eye_is_up) {
+  if (eye_is_up & (cycle_counter % 5 == 0)) {
+    blink();
+  }
+
+  if ((cycle_counter > 10) && (state == 0) && (state_prev == 0) && eye_is_up) {
     Serial.println("Inactive, going to sleep");
     lowereye();
     cycle_counter = 0;
@@ -242,6 +248,13 @@ void seteyelidposition(int eyelid_lower_new) {
     pwm.writeMicroseconds(2, eyelid_lower);
     pwm.sleep();
   }
+}
+
+void blink() {
+  int eyelid_lower_old = eyelid_lower;
+  seteyelidposition(1240);
+  // seteyelidposition(1490);
+  seteyelidposition(eyelid_lower_old);
 }
 
 void openeye() {
