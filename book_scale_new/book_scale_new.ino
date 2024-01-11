@@ -92,7 +92,7 @@ void setup() {
 
   // sound setup
   player.begin();
-  player.setVolume(10);
+  player.setVolume(25);
 }
 
 // You can use this function if you'd like to set the pulse length in seconds
