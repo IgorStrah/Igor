@@ -7,6 +7,12 @@
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
 #include "HX711.h"
 
+// for sound
+#include <SoftwareSerial.h>
+#include "DYPlayerArduino.h"
+SoftwareSerial mySerial(2, 3);  // RX, TX
+DY::Player player(&mySerial);
+
 HX711 scale;
 
 uint8_t dataPin = 6;
@@ -79,6 +85,10 @@ void setup() {
   pwm.writeMicroseconds(2, eyelid_lower);
 
   pwm.sleep();
+
+  // sound setup
+  player.begin();
+  player.setVolume(10);
 }
 
 // You can use this function if you'd like to set the pulse length in seconds
@@ -156,23 +166,34 @@ void loop() {
         // less than 60% of the expected contents mass
         Serial.println("Too little!");
         seteyelidposition(1300);
+        player.playSpecified(4); // says "more!"
+        delay(5000);
       } else if ((contents_vs_expected >= 6) && (contents_vs_expected < 9)) {
         // between 60% and 90% of the expected contents mass
         Serial.println("A little more!");
         seteyelidposition(1370);
+        player.playSpecified(2); // says "a little bit more!"
+        delay(5000);
       } else if ((contents_vs_expected >= 9) && (contents_vs_expected <= 11)) {
         // between 90% and 110% of the expected contents mass
         Serial.println("Just right!");
         seteyelidposition(1430);
+        player.playSpecified(1); // says "exactly!"
+        delay(5000);
       } else if ((contents_vs_expected > 11) && (contents_vs_expected <= 16)) {
         // between 110% and 160% of the expected mass
         Serial.println("A little less!");
         seteyelidposition(1490);
+        player.playSpecified(5); // says "a little less!"
+        delay(5000);
       } else {
         // more than 160% of the expected mass
         Serial.println("Too much!");
         seteyelidposition(1550);
+        player.playSpecified(3); // says "less!"
+        delay(5000);
       }
+      player.stop();
     }
   }
 
