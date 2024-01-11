@@ -37,6 +37,7 @@ uint32_t cardid_prev = 0;
 int mass = 0, mass_prev = 0, mass_prev_prev = 0, state = 0, state_prev = 0, glass_mass, expected_mass;
 int cycle_counter = 0;
 bool eye_is_up = false;
+bool play_sound = true;
 
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
 uint32_t ingredient_list[1][3] = {
@@ -153,6 +154,8 @@ void loop() {
     state = 2;
   }
 
+  if (mass_prev != mass) { play_sound = true; }
+
   if (state == 2) {
     // if glass contains something and mass hasn't changed in the last 3 iterations
     if ((mass > glass_mass + 1) && (mass == mass_prev) && (mass_prev == mass_prev_prev)) {
@@ -166,34 +169,45 @@ void loop() {
         // less than 60% of the expected contents mass
         Serial.println("Too little!");
         seteyelidposition(1300);
-        player.playSpecified(4); // says "more!"
-        delay(5000);
+        if (play_sound) {
+          player.playSpecified(4);  // says "more!"
+          delay(5000);
+        }
       } else if ((contents_vs_expected >= 6) && (contents_vs_expected < 9)) {
         // between 60% and 90% of the expected contents mass
         Serial.println("A little more!");
         seteyelidposition(1370);
-        player.playSpecified(2); // says "a little bit more!"
-        delay(5000);
+        if (play_sound) {
+          player.playSpecified(2);  // says "a little bit more!"
+          delay(5000);
+        }
       } else if ((contents_vs_expected >= 9) && (contents_vs_expected <= 11)) {
         // between 90% and 110% of the expected contents mass
         Serial.println("Just right!");
         seteyelidposition(1430);
-        player.playSpecified(1); // says "exactly!"
-        delay(5000);
+        if (play_sound) {
+          player.playSpecified(1);  // says "exactly!"
+          delay(5000);
+        }
       } else if ((contents_vs_expected > 11) && (contents_vs_expected <= 16)) {
         // between 110% and 160% of the expected mass
         Serial.println("A little less!");
         seteyelidposition(1490);
-        player.playSpecified(5); // says "a little less!"
-        delay(5000);
+        if (play_sound) {
+          player.playSpecified(5);  // says "a little less!"
+          delay(5000);
+        }
       } else {
         // more than 160% of the expected mass
         Serial.println("Too much!");
         seteyelidposition(1550);
-        player.playSpecified(3); // says "less!"
-        delay(5000);
+        if (play_sound) {
+          player.playSpecified(3);  // says "less!"
+          delay(5000);
+        }
       }
       player.stop();
+      play_sound = false;
     }
   }
 
