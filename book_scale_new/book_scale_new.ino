@@ -40,8 +40,11 @@ bool eye_is_up = false;
 bool play_sound = true;
 
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
-uint32_t ingredient_list[1][3] = {
-  { 338367744, 29, 100 }
+uint32_t ingredient_list[4][3] = {
+  { 338367744, 29, 100 },
+  { 477304064, 254, 200 },
+  { 3464107264, 125, 300 },
+  { 260773120, 120, 400 }
 };
 
 
@@ -149,7 +152,6 @@ void loop() {
     Serial.println("Glass with recognized RFID present");
     if (!eye_is_up) {
       openeye();
-      eye_is_up = true;
     }
     state = 2;
   }
@@ -168,42 +170,44 @@ void loop() {
       if (contents_vs_expected < 6) {
         // less than 60% of the expected contents mass
         Serial.println("Too little!");
-        seteyelidposition(1300);
+        seteyelidposition(1265);
         if (play_sound) {
           player.playSpecified(4);  // says "more!"
-          delay(5000);
+          delay(3000);
         }
       } else if ((contents_vs_expected >= 6) && (contents_vs_expected < 9)) {
         // between 60% and 90% of the expected contents mass
         Serial.println("A little more!");
-        seteyelidposition(1370);
+        seteyelidposition(1300);
         if (play_sound) {
           player.playSpecified(2);  // says "a little bit more!"
-          delay(5000);
+          delay(3000);
         }
       } else if ((contents_vs_expected >= 9) && (contents_vs_expected <= 11)) {
         // between 90% and 110% of the expected contents mass
         Serial.println("Just right!");
-        seteyelidposition(1430);
+        seteyelidposition(1330);
         if (play_sound) {
           player.playSpecified(1);  // says "exactly!"
-          delay(5000);
+          delay(3000);
         }
+        lowereye();
+        state = 0;
       } else if ((contents_vs_expected > 11) && (contents_vs_expected <= 16)) {
         // between 110% and 160% of the expected mass
         Serial.println("A little less!");
-        seteyelidposition(1490);
+        seteyelidposition(1365);
         if (play_sound) {
           player.playSpecified(5);  // says "a little less!"
-          delay(5000);
+          delay(3000);
         }
       } else {
         // more than 160% of the expected mass
         Serial.println("Too much!");
-        seteyelidposition(1550);
+        seteyelidposition(1400);
         if (play_sound) {
           player.playSpecified(3);  // says "less!"
-          delay(5000);
+          delay(3000);
         }
       }
       player.stop();
@@ -214,10 +218,6 @@ void loop() {
   if (state != state_prev) {
     state_prev = state;
     cycle_counter = 0;
-  }
-
-  if (eye_is_up & (cycle_counter % 5 == 0)) {
-    blink();
   }
 
   if ((cycle_counter > 10) && (state == 0) && (state_prev == 0) && eye_is_up) {
@@ -285,13 +285,6 @@ void seteyelidposition(int eyelid_lower_new) {
   }
 }
 
-void blink() {
-  int eyelid_lower_old = eyelid_lower;
-  seteyelidposition(1240);
-  // seteyelidposition(1490);
-  seteyelidposition(eyelid_lower_old);
-}
-
 void openeye() {
   pwm.wakeup();
 
@@ -300,7 +293,7 @@ void openeye() {
     pwm.writeMicroseconds(4, microsec);
   }
 
-  eyelid_upper = 1705;
+  eyelid_upper = 1600;
   eyelid_lower = 1265;
   //open
   for (uint16_t microsec = 0; microsec < 40; microsec++) {
@@ -332,9 +325,11 @@ void openeye() {
     pwm.writeMicroseconds(1, microsec);
   }
 
+  eye_is_up = true;
+
   delay(100);
 
-  for (uint16_t microsec = 60; microsec > 1; microsec--) {
+  for (uint16_t microsec = 50; microsec > 1; microsec--) {
     eyelid_upper = eyelid_upper + 3;
     eyelid_lower = eyelid_lower - 3;
     pwm.writeMicroseconds(3, eyelid_upper);
@@ -356,21 +351,12 @@ void openeye() {
     pwm.writeMicroseconds(0, microsec);
   }
 
-
-  //close
-
-  for (uint16_t microsec = 5; microsec > 1; microsec--) {
-    eyelid_upper = eyelid_upper + 3;
-    eyelid_lower = eyelid_lower - 3;
-    pwm.writeMicroseconds(3, eyelid_upper);
-    pwm.writeMicroseconds(2, eyelid_lower);
-  }
-
   pwm.sleep();
 }
 
 void lowereye() {
   //down
+  seteyelidposition(1265);
   pwm.wakeup();
   for (uint16_t microsec = 1700; microsec > 1000; microsec--) {
     pwm.writeMicroseconds(4, microsec);
