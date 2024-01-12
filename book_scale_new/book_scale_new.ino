@@ -152,6 +152,8 @@ void loop() {
     Serial.println("Glass with recognized RFID present");
     if (!eye_is_up) {
       openeye();
+    } else {
+      blink();
     }
     state = 2;
   }
@@ -170,6 +172,7 @@ void loop() {
       if (contents_vs_expected < 6) {
         // less than 60% of the expected contents mass
         Serial.println("Too little!");
+        if (play_sound) { blink(); }
         seteyelidposition(1265);
         if (play_sound) {
           player.playSpecified(4);  // says "more!"
@@ -178,6 +181,7 @@ void loop() {
       } else if ((contents_vs_expected >= 6) && (contents_vs_expected < 9)) {
         // between 60% and 90% of the expected contents mass
         Serial.println("A little more!");
+        if (play_sound) { blink(); }
         seteyelidposition(1300);
         if (play_sound) {
           player.playSpecified(2);  // says "a little bit more!"
@@ -186,6 +190,7 @@ void loop() {
       } else if ((contents_vs_expected >= 9) && (contents_vs_expected <= 11)) {
         // between 90% and 110% of the expected contents mass
         Serial.println("Just right!");
+        if (play_sound) { blink(); }
         seteyelidposition(1330);
         if (play_sound) {
           player.playSpecified(1);  // says "exactly!"
@@ -196,6 +201,7 @@ void loop() {
       } else if ((contents_vs_expected > 11) && (contents_vs_expected <= 16)) {
         // between 110% and 160% of the expected mass
         Serial.println("A little less!");
+        if (play_sound) { blink(); }
         seteyelidposition(1365);
         if (play_sound) {
           player.playSpecified(5);  // says "a little less!"
@@ -204,6 +210,7 @@ void loop() {
       } else {
         // more than 160% of the expected mass
         Serial.println("Too much!");
+        if (play_sound) { blink(); }
         seteyelidposition(1400);
         if (play_sound) {
           player.playSpecified(3);  // says "less!"
@@ -351,7 +358,22 @@ void openeye() {
     pwm.writeMicroseconds(0, microsec);
   }
 
+  //close
+
+  for (uint16_t microsec = 5; microsec > 1; microsec--) {
+    eyelid_upper = eyelid_upper + 3;
+    eyelid_lower = eyelid_lower - 3;
+    pwm.writeMicroseconds(3, eyelid_upper);
+    pwm.writeMicroseconds(2, eyelid_lower);
+  }
+
   pwm.sleep();
+}
+
+void blink() {
+  int eyelid_lower_old = eyelid_lower;
+  seteyelidposition(1230);
+  seteyelidposition(eyelid_lower_old);
 }
 
 void lowereye() {
