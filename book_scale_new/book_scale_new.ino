@@ -41,10 +41,10 @@ bool play_sound = true;
 
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
 uint32_t ingredient_list[4][3] = {
-  { 338367744, 29, 100 },
-  { 477304064, 254, 200 },
-  { 3464107264, 125, 300 },
-  { 260773120, 120, 400 }
+  { 338367744, 29, 9 }, // tiny plastic cup, to measure potassium nitrate (phoenix claw) and ammonium chloride (phoenix ashes) for stormglass- same mass required
+  { 477304064, 254, 120 }, // glass that looks like twisted vase, to measure alcohol (phoenix tears) for stormglass
+  { 3464107264, 125, 36 }, // glass that looks like almost closed flower, to measure camphor (fland nut husk) for stormglass
+  { 260773120, 120, 103 } // glass that looks like open flower, to measure water (phoenix song) for stormglass
 };
 
 
@@ -167,9 +167,9 @@ void loop() {
       Serial.print("Contents mass: ");
       Serial.println(contents_mass);
 
-      int contents_vs_expected = contents_mass * 10 / expected_mass;
+      int contents_vs_expected = contents_mass * 100 / expected_mass;
 
-      if (contents_vs_expected < 6) {
+      if (contents_vs_expected < 60) {
         // less than 60% of the expected contents mass
         Serial.println("Too little!");
         if (play_sound) { blink(); }
@@ -178,7 +178,7 @@ void loop() {
           player.playSpecified(4);  // says "more!"
           delay(3000);
         }
-      } else if ((contents_vs_expected >= 6) && (contents_vs_expected < 9)) {
+      } else if ((contents_vs_expected >= 60) && (contents_vs_expected < 90)) {
         // between 60% and 90% of the expected contents mass
         Serial.println("A little more!");
         if (play_sound) { blink(); }
@@ -187,7 +187,7 @@ void loop() {
           player.playSpecified(2);  // says "a little bit more!"
           delay(3000);
         }
-      } else if ((contents_vs_expected >= 9) && (contents_vs_expected <= 11)) {
+      } else if ((contents_vs_expected >= 90) && (contents_vs_expected <= 110)) {
         // between 90% and 110% of the expected contents mass
         Serial.println("Just right!");
         if (play_sound) { blink(); }
@@ -198,7 +198,7 @@ void loop() {
         }
         lowereye();
         state = 0;
-      } else if ((contents_vs_expected > 11) && (contents_vs_expected <= 16)) {
+      } else if ((contents_vs_expected > 110) && (contents_vs_expected <= 160)) {
         // between 110% and 160% of the expected mass
         Serial.println("A little less!");
         if (play_sound) { blink(); }
@@ -227,7 +227,7 @@ void loop() {
     cycle_counter = 0;
   }
 
-  if ((cycle_counter > 10) && (state == 0) && (state_prev == 0) && eye_is_up) {
+  if ((cycle_counter > 15) && (state == 0) && (state_prev == 0) && eye_is_up) {
     Serial.println("Inactive, going to sleep");
     lowereye();
     cycle_counter = 0;
