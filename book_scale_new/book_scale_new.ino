@@ -40,11 +40,11 @@ bool eye_is_up = false;
 bool play_sound = true;
 
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
-uint32_t ingredient_list[4][3] = {
-  { 338367744, 29, 9 }, // tiny plastic cup, to measure potassium nitrate (phoenix claw) and ammonium chloride (phoenix ashes) for stormglass- same mass required
-  { 477304064, 254, 120 }, // glass that looks like twisted vase, to measure alcohol (phoenix tears) for stormglass
-  { 3464107264, 125, 36 }, // glass that looks like almost closed flower, to measure camphor (fland nut husk) for stormglass
-  { 260773120, 120, 103 } // glass that looks like open flower, to measure water (phoenix song) for stormglass
+uint32_t ingredient_list[5][3] = {
+  { 338367744, 377, 100 }, // spine cup, to measure vinegar for peruvian night potion
+  { 594771968, 488, 300 }, // goblet, to measure water for peruvian night potion
+  { 3464107264, 125, 2 }, // glass that looks like almost closed flower, to vitamin C for peruvian night potion
+  { 477304064, 254, 120 } // glass that looks like twisted vase, to measure hydrogen peroxide for peruvian night potion
 };
 
 
