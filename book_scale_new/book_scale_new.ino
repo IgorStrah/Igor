@@ -42,9 +42,7 @@ bool play_sound = true;
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
 uint32_t ingredient_list[5][3] = {
   { 338367744, 377, 100 }, // spine cup, to measure vinegar for peruvian night potion
-  { 594771968, 488, 300 }, // goblet, to measure water for peruvian night potion
-  { 3464107264, 125, 2 }, // glass that looks like almost closed flower, to vitamin C for peruvian night potion
-  { 477304064, 254, 120 } // glass that looks like twisted vase, to measure hydrogen peroxide for peruvian night potion
+  { 594771968, 495, 300 } // goblet, to measure water for peruvian night potion
 };
 
 
@@ -163,11 +161,11 @@ void loop() {
   if (state == 2) {
     // if glass contains something and mass hasn't changed in the last 3 iterations
     if ((mass > glass_mass + 1) && (mass == mass_prev) && (mass_prev == mass_prev_prev)) {
-      int contents_mass = mass - glass_mass;
+      uint16_t contents_mass = mass - glass_mass;
       Serial.print("Contents mass: ");
       Serial.println(contents_mass);
 
-      int contents_vs_expected = contents_mass * 100 / expected_mass;
+      int contents_vs_expected = (contents_mass * 100) / expected_mass;
 
       if (contents_vs_expected < 60) {
         // less than 60% of the expected contents mass
