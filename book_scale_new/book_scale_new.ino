@@ -76,7 +76,7 @@ void setup() {
   scale.set_scale(-193.00146);  // TODO you need to calibrate this yourself.
   scale.tare();
 
-  for (uint16_t microsec = 1700; microsec > 1000; microsec--) {
+  for (uint16_t microsec = 1800; microsec > 1000; microsec--) {
     pwm.writeMicroseconds(4, microsec);
   }
 
@@ -125,9 +125,13 @@ void loop() {
 
   if (IR.check()) {                // Если в буфере имеются данные, принятые с пульта (была нажата кнопка)
     Serial.println(IR.data);  // Выводим код нажатой кнопки
+    if ((IR.data == 1111000005) || (IR.data == 16716015)) {
+      openeye(1000, 1550);
+      state = 1;
+    }
   }
 
-  if ((cardid_prev != cardid) && (mass > 1)) {
+  if ((cardid_prev != cardid) && (mass > 10) && (state > 0)) {
     Serial.print("  UID : ");
     Serial.println(cardid);
     Serial.println("");
@@ -145,29 +149,25 @@ void loop() {
         Serial.println(expected_mass);
         Serial.println("");
 
-        state = 1;
+        state = 2;
       }
     }
     cardid_prev = cardid;
   }
 
-  if (cardid == 0) {
-    state = 0;
-  }
-
-  if (state == 1) {
+  if (state == 2) {
     Serial.println("Glass with recognized RFID present");
-    if (!eye_is_up) {
-      openeye();
+    if (eye_up == 1550) {
+      openeye(1550, 1800);
     } else {
       blink();
     }
-    state = 2;
+    state = 3;
   }
 
   if (mass_prev != mass) { play_sound = true; }
 
-  if (state == 2) {
+  if (state == 3) {
     // if glass contains something and mass hasn't changed in the last 3 iterations
     if ((mass > glass_mass + 1) && (mass == mass_prev) && (mass_prev == mass_prev_prev)) {
       uint16_t contents_mass = mass - glass_mass;
@@ -203,8 +203,7 @@ void loop() {
           player.playSpecified(1);  // says "exactly!"
           delay(3000);
         }
-        lowereye();
-        state = 0;
+        state = 1;
       } else if ((contents_vs_expected > 110) && (contents_vs_expected <= 160)) {
         // between 110% and 160% of the expected mass
         Serial.println("A little less!");
@@ -231,13 +230,14 @@ void loop() {
 
   if (state != state_prev) {
     state_prev = state;
-    cycle_counter = 0;
+    // cycle_counter = 0;
   }
 
-  if ((cycle_counter > 15) && (state == 0) && (state_prev == 0) && eye_is_up) {
+  if ((cycle_counter > 300) && eye_is_up) {
     Serial.println("Inactive, going to sleep");
     lowereye();
     cycle_counter = 0;
+    state = 0;
   }
 
   mass_prev = mass;
@@ -299,13 +299,14 @@ void seteyelidposition(int eyelid_lower_new) {
   }
 }
 
-void openeye() {
+void openeye(int lift_from, int lift_to) {
   pwm.wakeup();
 
   //up
-  for (uint16_t microsec = 1000; microsec < 1700; microsec++) {
+  for (uint16_t microsec = lift_from; microsec < lift_to; microsec++) {
     pwm.writeMicroseconds(4, microsec);
   }
+  eye_up = lift_to;
 
   eyelid_upper = 1600;
   eyelid_lower = 1265;
@@ -339,7 +340,9 @@ void openeye() {
     pwm.writeMicroseconds(1, microsec);
   }
 
-  eye_is_up = true;
+  if (lift_to == 1800) {
+    eye_is_up = true;
+  }
 
   delay(100);
 
@@ -387,7 +390,7 @@ void lowereye() {
   //down
   seteyelidposition(1265);
   pwm.wakeup();
-  for (uint16_t microsec = 1700; microsec > 1000; microsec--) {
+  for (uint16_t microsec = eye_up; microsec > 1000; microsec--) {
     pwm.writeMicroseconds(4, microsec);
   }
   pwm.sleep();
