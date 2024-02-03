@@ -7,6 +7,9 @@
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
 #include "HX711.h"
 
+#include <iarduino_IR_RX.h>  // Подключаем библиотеку для работы с ИК-приёмником
+iarduino_IR_RX IR(4);        // Объявляем объект IR, с указанием вывода к которому подключён ИК-приёмник
+
 // for sound
 #include <SoftwareSerial.h>
 #include "DYPlayerArduino.h"
@@ -41,8 +44,8 @@ bool play_sound = true;
 
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
 uint32_t ingredient_list[5][3] = {
-  { 338367744, 377, 100 }, // spine cup, to measure vinegar for peruvian night potion
-  { 594771968, 495, 300 } // goblet, to measure water for peruvian night potion
+  { 338367744, 377, 100 },  // spine cup, to measure vinegar for peruvian night potion
+  { 594771968, 495, 300 }   // goblet, to measure water for peruvian night potion
 };
 
 
@@ -91,6 +94,8 @@ void setup() {
   // sound setup
   player.begin();
   player.setVolume(25);
+
+  IR.begin();  // Инициируем работу с ИК-приёмником
 }
 
 // You can use this function if you'd like to set the pulse length in seconds
@@ -117,6 +122,10 @@ void loop() {
 
   Serial.print("Current mass: ");
   Serial.println(mass);
+
+  if (IR.check()) {                // Если в буфере имеются данные, принятые с пульта (была нажата кнопка)
+    Serial.println(IR.data);  // Выводим код нажатой кнопки
+  }
 
   if ((cardid_prev != cardid) && (mass > 1)) {
     Serial.print("  UID : ");
