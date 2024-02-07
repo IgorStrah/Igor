@@ -34,8 +34,8 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 int eyelid_upper, eyelid_lower, eye_left, eye_right, eye_up, eye_down;
 // our servo # counter
 uint8_t servonum = 0;
-uint32_t cardid = 0;
-uint32_t cardid_prev = 0;
+String cardid = "0";
+String cardid_prev = "0";
 
 int mass = 0, mass_prev = 0, mass_prev_prev = 0, state = 0, state_prev = 0, glass_mass, expected_mass;
 int cycle_counter = 0;
@@ -43,9 +43,10 @@ bool eye_is_up = false;
 bool play_sound = true;
 
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
-uint32_t ingredient_list[5][3] = {
-  { 338367744, 377, 100 },  // spine cup, to measure vinegar for peruvian night potion
-  { 594771968, 495, 300 }   // goblet, to measure water for peruvian night potion
+String ingredient_list[5][3] = {
+  { "4a142b15", "380", "100" },  // spine cup, to measure vinegar for peruvian night potion
+  { "3a1c7315", "335", "100" }, // copy of previous row in case that one fails
+  { "04598e1a237380", "495", "300" }  // goblet, to measure water for peruvian night potion
 };
 
 
@@ -123,9 +124,9 @@ void loop() {
   Serial.print("Current mass: ");
   Serial.println(mass);
 
-  if (IR.check()) {                // Если в буфере имеются данные, принятые с пульта (была нажата кнопка)
+  if (IR.check()) {           // Если в буфере имеются данные, принятые с пульта (была нажата кнопка)
     Serial.println(IR.data);  // Выводим код нажатой кнопки
-    if ((IR.data == 1111000005) || (IR.data == 16716015)) {
+    if ((IR.data == 1111000004) || (IR.data == 16716015)) {
       openeye(1000, 1550);
       state = 1;
     }
@@ -138,8 +139,8 @@ void loop() {
 
     for (int i = 0; i < sizeof(ingredient_list) / sizeof(ingredient_list[0]); i++) {
       if (cardid == ingredient_list[i][0]) {
-        glass_mass = ingredient_list[i][1];
-        expected_mass = ingredient_list[i][2];
+        glass_mass = ingredient_list[i][1].toInt();
+        expected_mass = ingredient_list[i][2].toInt();
 
         Serial.print("Glass mass : ");
         Serial.println(glass_mass);
@@ -169,7 +170,7 @@ void loop() {
 
   if (state == 3) {
     // if glass contains something and mass hasn't changed in the last 3 iterations
-    if ((mass > glass_mass + 1) && (mass == mass_prev) && (mass_prev == mass_prev_prev)) {
+    if ((mass > glass_mass + 5) && (mass == mass_prev) && (mass_prev == mass_prev_prev)) {
       uint16_t contents_mass = mass - glass_mass;
       Serial.print("Contents mass: ");
       Serial.println(contents_mass);
@@ -245,7 +246,7 @@ void loop() {
   cycle_counter++;
 }
 
-uint32_t readRFID() {
+String readRFID() {
   uint8_t success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
   uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
@@ -256,21 +257,16 @@ uint32_t readRFID() {
   // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
   success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 100);
 
-  if (success) {
-    for (byte i2 = 0; i2 < uidLength; i2++) {
-      if (i2 == 0) {
-        cardid = uid[i2];
-        cardid <<= 8;
-      } else {
-        {
-          cardid |= uid[i2];
-          cardid <<= 8;
-        }
-      }
+  String hexString = "";
+  for (int i = 0; i < uidLength; i++) {
+    if (uid[i] < 0x10) {
+      // If the value is less than 0x10, add a leading zero for better formatting
+      hexString += "0";
     }
+    hexString += String(uid[i], HEX);
   }
 
-  return cardid;
+  return hexString;
 }
 
 void seteyelidposition(int eyelid_lower_new) {
