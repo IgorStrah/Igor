@@ -43,10 +43,11 @@ bool eye_is_up = false;
 bool play_sound = true;
 
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
-String ingredient_list[5][3] = {
-  { "4a142b15", "380", "100" },  // spine cup, to measure vinegar for peruvian night potion
-  { "3a1c7315", "335", "100" }, // copy of previous row in case that one fails
-  { "04598e1a237380", "495", "300" }  // goblet, to measure water for peruvian night potion
+String ingredient_list[4][3] = {
+  { "4a142b15", "380", "100" },        // spine cup, to measure vinegar for peruvian night potion or water for stormglass
+  { "3a1c7315", "335", "120" },        // twisted glass to measure alcohol for stormglass
+  { "04598e1a237380", "495", "300" },  // goblet, to measure water for peruvian night potion
+  { "3a0f8b15", "120", "36" }          // glass that looks like open flower to measure camphor for stormglass
 };
 
 
@@ -229,11 +230,6 @@ void loop() {
     }
   }
 
-  if (state != state_prev) {
-    state_prev = state;
-    // cycle_counter = 0;
-  }
-
   if ((cycle_counter > 300) && eye_is_up) {
     Serial.println("Inactive, going to sleep");
     lowereye();
@@ -241,9 +237,12 @@ void loop() {
     state = 0;
   }
 
+  state_prev = state;
   mass_prev = mass;
   mass_prev_prev = mass_prev;
-  cycle_counter++;
+  if (eye_is_up) {
+    cycle_counter++;
+  }
 }
 
 String readRFID() {
