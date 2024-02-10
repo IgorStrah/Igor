@@ -8,7 +8,7 @@
 #include "HX711.h"
 
 #include <iarduino_IR_RX.h>  // Подключаем библиотеку для работы с ИК-приёмником
-iarduino_IR_RX IR(4);        // Объявляем объект IR, с указанием вывода к которому подключён ИК-приёмник
+iarduino_IR_RX IR(8);        // Объявляем объект IR, с указанием вывода к которому подключён ИК-приёмник
 
 // for sound
 #include <SoftwareSerial.h>
@@ -60,7 +60,7 @@ void setup() {
   pwm.setOscillatorFrequency(27000000);
   pwm.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
   Serial.println("NFC test!");
-  delay(10);
+  delay(100);
   nfc.begin();
 
   uint32_t versiondata = nfc.getFirmwareVersion();
@@ -84,12 +84,12 @@ void setup() {
 
 
 
-  eyelid_upper = 1695;
-  eyelid_lower = 1265;
+  // eyelid_upper = 1695;
+  // eyelid_lower = 1265;
 
 
-  pwm.writeMicroseconds(3, eyelid_upper);
-  pwm.writeMicroseconds(2, eyelid_lower);
+  // pwm.writeMicroseconds(3, eyelid_upper);
+  // pwm.writeMicroseconds(2, eyelid_lower);
 
   pwm.sleep();
 
@@ -365,12 +365,12 @@ void openeye(int lift_from, int lift_to) {
 
   //close
 
-  for (uint16_t microsec = 5; microsec > 1; microsec--) {
-    eyelid_upper = eyelid_upper + 3;
-    eyelid_lower = eyelid_lower - 3;
-    pwm.writeMicroseconds(3, eyelid_upper);
-    pwm.writeMicroseconds(2, eyelid_lower);
-  }
+  // for (uint16_t microsec = 5; microsec > 1; microsec--) {
+  //   eyelid_upper = eyelid_upper + 3;
+  //   eyelid_lower = eyelid_lower - 3;
+  //   pwm.writeMicroseconds(3, eyelid_upper);
+  //   pwm.writeMicroseconds(2, eyelid_lower);
+  // }
 
   pwm.sleep();
 }
