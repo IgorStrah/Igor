@@ -42,7 +42,22 @@ MFRC522::MIFARE_Key key;
 
 // Init array that will store new NUID
 byte nuidPICC[4];
-String RFID = "0", RFID_prev = "0";
+
+String RFID = "0";
+
+// row is quiz selection, column is language selection (RU, LV, EN)
+const byte GAME_COUNT = 2;
+const byte LANGUAGE_COUNT = 3;
+String quiz_cards[GAME_COUNT][LANGUAGE_COUNT] = {
+  { "040d8f1a237380", "04118f1a237380", "04198f1a237380" },
+  { "04868e1a237380", "04828e1a237380", "047e8e1a237380" }
+};
+
+String force_stop_card = "048e8e1a237380";
+
+bool game_in_progress = false;
+byte selected_game;
+byte selected_language;
 
 void setup() {
   Serial.begin(115200);
@@ -52,35 +67,39 @@ void setup() {
   for (byte i = 0; i < 6; i++) {
     key.keyByte[i] = 0xFF;
   }
-
-  Serial.println(F("This code scans the MIFARE Classic NUID."));
-  Serial.print(F("Using the following key:"));
-  printHex(key.keyByte, MFRC522::MF_KEY_SIZE);
 }
 
 void loop() {
   RFID = readRFID();
 
-  if (RFID != RFID_prev) {
-    Serial.println(RFID);
+  if (!game_in_progress) {
+    for (byte i = 0; i < GAME_COUNT; i++) {
+      for (byte j = 0; j < LANGUAGE_COUNT; j++) {
+        if (RFID == quiz_cards[i][j]) {
+          selected_game = i;
+          selected_language = j;
+          game_in_progress = true;
+          Serial.println("Match found");
+          Serial.print("Starting game: ");
+          Serial.println(selected_game);
+          Serial.print("Selected language (0 - RU, 1 - LV, 2 - EN): ");
+          Serial.println(selected_language);
+          Serial.println();
+        }
+      }
+    }
   }
-
-  RFID_prev = RFID;
 }
 
 String readRFID() {
-
+  String hexString = "";
   // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
   if (!rfid.PICC_IsNewCardPresent())
     return;
 
-  // Verify if the NUID has been read
+  // Verify if the NUID has been readed
   if (!rfid.PICC_ReadCardSerial())
     return;
-
-  // Serial.print(F("PICC type: "));
-  // MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
-  // Serial.println(rfid.PICC_GetTypeName(piccType));
 
   if (rfid.uid.uidByte[0] != nuidPICC[0] || rfid.uid.uidByte[1] != nuidPICC[1] || rfid.uid.uidByte[2] != nuidPICC[2] || rfid.uid.uidByte[3] != nuidPICC[3]) {
     Serial.println(F("A new card has been detected."));
@@ -90,13 +109,16 @@ String readRFID() {
       nuidPICC[i] = rfid.uid.uidByte[i];
     }
 
-    // Serial.println(F("The NUID tag is:"));
-    // Serial.print(F("In hex: "));
-    // printHex(rfid.uid.uidByte, rfid.uid.size);
-    // Serial.println();
-    // Serial.print(F("In dec: "));
-    // printDec(rfid.uid.uidByte, rfid.uid.size);
-    // Serial.println();
+    for (int i = 0; i < rfid.uid.size; i++) {
+      if (rfid.uid.uidByte[i] < 0x10) {
+        // If the value is less than 0x10, add a leading zero for better formatting
+        hexString += "0";
+      }
+      hexString += String(rfid.uid.uidByte[i], HEX);
+    }
+
+    Serial.println(hexString);
+    Serial.println();
   } else Serial.println(F("Card read previously."));
 
   // Halt PICC
@@ -105,25 +127,5 @@ String readRFID() {
   // Stop encryption on PCD
   rfid.PCD_StopCrypto1();
 
-  String hexString = "";
-  for (int i = 0; i < rfid.uid.size; i++) {
-    if (rfid.uid.uidByte[i] < 0x10) {
-      // If the value is less than 0x10, add a leading zero for better formatting
-      hexString += "0";
-    }
-    hexString += String(rfid.uid.uidByte[i], HEX);
-  }
-
   return hexString;
-}
-
-
-/**
- * Helper routine to dump a byte array as hex values to Serial. 
- */
-void printHex(byte *buffer, byte bufferSize) {
-  for (byte i = 0; i < bufferSize; i++) {
-    Serial.print(buffer[i] < 0x10 ? " 0" : " ");
-    Serial.print(buffer[i], HEX);
-  }
 }
