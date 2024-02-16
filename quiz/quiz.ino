@@ -89,6 +89,11 @@ void loop() {
       }
     }
   }
+
+  if (game_in_progress && (RFID == force_stop_card)) {
+    game_in_progress = false;
+    Serial.println("Game stopped");
+  }
 }
 
 String readRFID() {
