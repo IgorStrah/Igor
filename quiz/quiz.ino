@@ -54,10 +54,17 @@ String quiz_cards[GAME_COUNT][LANGUAGE_COUNT] = {
 };
 
 String force_stop_card = "048e8e1a237380";
+String repeat_question_card = "047a8e1a237380";
+
+const byte QUESTION_COUNT = 20;
+byte* questions[QUESTION_COUNT];
+byte last_question_played = 0;
 
 bool game_in_progress = false;
 byte selected_game;
 byte selected_language;
+
+static uint32_t rebootTimer = millis();
 
 void setup() {
   Serial.begin(115200);
@@ -67,9 +74,26 @@ void setup() {
   for (byte i = 0; i < 6; i++) {
     key.keyByte[i] = 0xFF;
   }
+
+  randomSeed(analogRead(0));
+
+  // Initialize questions
+  for (int i = 0; i < QUESTION_COUNT; i++) {
+    byte* value = new byte(i);  // Allocate memory for the byte value
+    questions[i] = value;       // Assign the pointer to the array element
+  }
 }
 
 void loop() {
+  // 7 lines below this are needed to fight RFID freeze. Solution found here: https://alexgyver.ru/arduino-rfid/
+  if (millis() - rebootTimer >= 1000) {  // Таймер с периодом 1000 мс
+    rebootTimer = millis();              // Обновляем таймер
+    digitalWrite(RST_PIN, HIGH);         // Сбрасываем модуль
+    delayMicroseconds(2);                // Ждем 2 мкс
+    digitalWrite(RST_PIN, LOW);          // Отпускаем сброс
+    rfid.PCD_Init();                     // Инициализируем заново
+  }
+
   RFID = readRFID();
 
   if (!game_in_progress) {
@@ -85,14 +109,44 @@ void loop() {
           Serial.print("Selected language (0 - RU, 1 - LV, 2 - EN): ");
           Serial.println(selected_language);
           Serial.println();
+
+          shuffle_questions();
+
+          // reading rules
+          Serial.println("Playing rules recording");
+          // play recording
         }
       }
     }
   }
 
-  if (game_in_progress && (RFID == force_stop_card)) {
-    game_in_progress = false;
-    Serial.println("Game stopped");
+  if (game_in_progress) {
+    // reading question
+    Serial.println(last_question_played);
+    Serial.print("Playing question: ");
+    // play recording
+
+    last_question_played++;
+
+    if (last_question_played >= QUESTION_COUNT) {
+      Serial.println("Game finished");
+      game_in_progress = false;
+      RFID = "";
+      // play recording
+      // give out coins
+      // reduce coin counter to 0
+      shuffle_questions();
+      Serial.println("Questions shuffled");
+      last_question_played = 0;
+      // turn off all lights
+    }
+
+    if (RFID == force_stop_card) {
+      game_in_progress = false;
+      Serial.println("Game stopped");
+    } else if (repeat_question_card) {
+      // play last question again
+    }
   }
 }
 
@@ -106,25 +160,25 @@ String readRFID() {
   if (!rfid.PICC_ReadCardSerial())
     return;
 
-  if (rfid.uid.uidByte[0] != nuidPICC[0] || rfid.uid.uidByte[1] != nuidPICC[1] || rfid.uid.uidByte[2] != nuidPICC[2] || rfid.uid.uidByte[3] != nuidPICC[3]) {
-    Serial.println(F("A new card has been detected."));
+  // if (rfid.uid.uidByte[0] != nuidPICC[0] || rfid.uid.uidByte[1] != nuidPICC[1] || rfid.uid.uidByte[2] != nuidPICC[2] || rfid.uid.uidByte[3] != nuidPICC[3]) {
+  //   Serial.println(F("A new card has been detected."));
 
-    // Store NUID into nuidPICC array
-    for (byte i = 0; i < 4; i++) {
-      nuidPICC[i] = rfid.uid.uidByte[i];
+  // Store NUID into nuidPICC array
+  for (byte i = 0; i < 4; i++) {
+    nuidPICC[i] = rfid.uid.uidByte[i];
+  }
+
+  for (int i = 0; i < rfid.uid.size; i++) {
+    if (rfid.uid.uidByte[i] < 0x10) {
+      // If the value is less than 0x10, add a leading zero for better formatting
+      hexString += "0";
     }
+    hexString += String(rfid.uid.uidByte[i], HEX);
+  }
 
-    for (int i = 0; i < rfid.uid.size; i++) {
-      if (rfid.uid.uidByte[i] < 0x10) {
-        // If the value is less than 0x10, add a leading zero for better formatting
-        hexString += "0";
-      }
-      hexString += String(rfid.uid.uidByte[i], HEX);
-    }
-
-    Serial.println(hexString);
-    Serial.println();
-  } else Serial.println(F("Card read previously."));
+  Serial.println(hexString);
+  Serial.println();
+  // } else Serial.println(F("Card read previously."));
 
   // Halt PICC
   rfid.PICC_HaltA();
@@ -133,4 +187,15 @@ String readRFID() {
   rfid.PCD_StopCrypto1();
 
   return hexString;
+}
+
+void shuffle_questions() {
+  // Shuffle questions using Fisher-Yates algorithm
+  for (int i = QUESTION_COUNT - 1; i > 0; --i) {
+    int j = random(0, i + 1);  // Generate a random index from 0 to i
+    // Swap the elements at indices i and j
+    byte* temp = questions[i];
+    questions[i] = questions[j];
+    questions[j] = temp;
+  }
 }
