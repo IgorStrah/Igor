@@ -3,8 +3,8 @@
 #include <Adafruit_PWMServoDriver.h>
 #include <SPI.h>
 #include <Adafruit_PN532.h>
-#define PN532_IRQ (2)
-#define PN532_RESET (3)  // Not connected by default on the NFC Shield
+#define PN532_IRQ (4)
+#define PN532_RESET (5)  // Not connected by default on the NFC Shield
 #include "HX711.h"
 
 #include <iarduino_IR_RX.h>  // Подключаем библиотеку для работы с ИК-приёмником
@@ -20,7 +20,6 @@ HX711 scale;
 
 uint8_t dataPin = 6;
 uint8_t clockPin = 7;
-float w1, w2, previous = 0;
 
 Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
 // called this way, it uses the default address 0x40
@@ -31,25 +30,38 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define USMIN 1000     // This is the rounded 'minimum' microsecond length based on the minimum pulse of 150
 #define USMAX 1600     // This is the rounded 'maximum' microsecond length based on the maximum pulse of 600
 #define SERVO_FREQ 50  // Analog servos run at ~50 Hz updates
-int eyelid_upper, eyelid_lower, eye_left, eye_right, eye_up, eye_down;
-// our servo # counter
-uint8_t servonum = 0;
-String cardid = "0";
-String cardid_prev = "0";
+uint16_t eyelid_upper, eyelid_lower, eye_up;
 
-int mass = 0, mass_prev = 0, mass_prev_prev = 0, state = 0, state_prev = 0, glass_mass, expected_mass;
-int cycle_counter = 0;
+String cardid = "";
+String cardid_prev = "";
+
+uint8_t state = 0, state_prev = 0, cycle_counter = 0;
+uint16_t mass = 0, mass_prev = 0, mass_prev_prev = 0, glass_mass, expected_mass;
 bool eye_is_up = false;
 bool play_sound = true;
 
-// each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
-String ingredient_list[4][3] = {
-  { "4a142b15", "380", "100" },        // spine cup, to measure vinegar for peruvian night potion or water for stormglass
-  { "3a1c7315", "335", "120" },        // twisted glass to measure alcohol for stormglass
-  { "04598e1a237380", "495", "300" },  // goblet, to measure water for peruvian night potion
-  { "3a0f8b15", "120", "36" }          // glass that looks like open flower to measure camphor for stormglass
+// each row contains glass RFID UID as a string 
+const String CUP_LIST[7] = {
+  "4A142B15",        // spine cup, to measure vinegar for peruvian night potion or water for stormglass
+  "3A1C7315",        // twisted glass to measure alcohol for stormglass
+  "04598E1A237380",  // goblet, to measure water for peruvian night potion and slime
+  "3A0F8B15",        // glass that looks like open flower to measure camphor for stormglass
+  "3A201F15",        // twisted tall glass to measure PVAlc. for slime
+  "3A18E315",        // cup with a claw to measure borax solution for slime
+  "3A22B715",        // cup with a skull stack to measure dry borax for slime
 };
 
+// each row contains glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
+// each row corresponds to RFID defined in the previous array
+const uint16_t MASS_LIST[7][2] = {
+  { 380, 100 },
+  { 335, 120 },
+  { 495, 376 },
+  { 120, 36 },
+  { 465, 400 },
+  { 420, 127 },
+  { 389, 51 }
+};
 
 void setup() {
   Serial.begin(115200);
@@ -67,13 +79,11 @@ void setup() {
   if (!versiondata) {
     Serial.print("Didn't find PN53x board");
     while (1)
-      ;                         // halt
-    scale.set_scale(42.00983);  // TODO you need to calibrate this yourself.
-    scale.tare();
-
-    Serial.print("UNITS: ");
-    Serial.println(scale.get_units(10));
+      ;  // halt
   }
+  scale.set_scale(42.00983);  // TODO you need to calibrate this yourself.
+  scale.tare();
+
   scale.begin(dataPin, clockPin);
   scale.set_scale(-193.00146);  // TODO you need to calibrate this yourself.
   scale.tare();
@@ -81,15 +91,6 @@ void setup() {
   for (uint16_t microsec = 1800; microsec > 1000; microsec--) {
     pwm.writeMicroseconds(4, microsec);
   }
-
-
-
-  // eyelid_upper = 1695;
-  // eyelid_lower = 1265;
-
-
-  // pwm.writeMicroseconds(3, eyelid_upper);
-  // pwm.writeMicroseconds(2, eyelid_lower);
 
   pwm.sleep();
 
@@ -119,14 +120,16 @@ void setServoPulse(uint8_t n, double pulse) {
 }
 
 void loop() {
-  cardid = readRFID();
-  mass = scale.get_units(10);
+  if (state > 0) {
+    readRFID();
+  }
 
+  mass = scale.get_units(10);
   Serial.print("Current mass: ");
   Serial.println(mass);
 
-  if (IR.check()) {           // Если в буфере имеются данные, принятые с пульта (была нажата кнопка)
-    Serial.println(IR.data);  // Выводим код нажатой кнопки
+  if ((state == 0) && IR.check()) {  // Если в буфере имеются данные, принятые с пульта (была нажата кнопка)
+    Serial.println(IR.data);         // Выводим код нажатой кнопки
     if ((IR.data == 1111000004) || (IR.data == 16716015)) {
       openeye(1000, 1550);
       state = 1;
@@ -138,10 +141,10 @@ void loop() {
     Serial.println(cardid);
     Serial.println("");
 
-    for (int i = 0; i < sizeof(ingredient_list) / sizeof(ingredient_list[0]); i++) {
-      if (cardid == ingredient_list[i][0]) {
-        glass_mass = ingredient_list[i][1].toInt();
-        expected_mass = ingredient_list[i][2].toInt();
+    for (int i = 0; i < sizeof(CUP_LIST) / sizeof(CUP_LIST[0]); i++) {
+      if (cardid == CUP_LIST[i]) {
+        glass_mass = MASS_LIST[i][0];
+        expected_mass = MASS_LIST[i][1];
 
         Serial.print("Glass mass : ");
         Serial.println(glass_mass);
@@ -154,7 +157,6 @@ void loop() {
         state = 2;
       }
     }
-    cardid_prev = cardid;
   }
 
   if (state == 2) {
@@ -219,7 +221,7 @@ void loop() {
         // more than 160% of the expected mass
         Serial.println("Too much!");
         if (play_sound) { blink(); }
-        seteyelidposition(1400);
+        seteyelidposition(1390);
         if (play_sound) {
           player.playSpecified(3);  // says "less!"
           delay(3000);
@@ -240,32 +242,31 @@ void loop() {
   state_prev = state;
   mass_prev = mass;
   mass_prev_prev = mass_prev;
+  cardid_prev = cardid;
   if (eye_is_up) {
     cycle_counter++;
   }
 }
 
-String readRFID() {
+void readRFID() {
   uint8_t success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
   uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
-  uint32_t cardid = 0;
+  cardid = "";
+  uint32_t szPos;
 
-  // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
-  // 'uid' will be populated with the UID, and uidLength will indicate
-  // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
-  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 100);
-
-  String hexString = "";
-  for (int i = 0; i < uidLength; i++) {
-    if (uid[i] < 0x10) {
-      // If the value is less than 0x10, add a leading zero for better formatting
-      hexString += "0";
+  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 500);
+  if (success) {
+    // nfc.PrintHex(uid, uidLength);
+    for (szPos = 0; szPos < uidLength; szPos++) {
+      // Append leading 0 for small values
+      if (uid[szPos] <= 0xF) {
+        cardid += "0";
+      }
+      cardid.concat(String(uid[szPos], HEX));
     }
-    hexString += String(uid[i], HEX);
+    cardid.toUpperCase();
   }
-
-  return hexString;
 }
 
 void seteyelidposition(int eyelid_lower_new) {
@@ -362,15 +363,6 @@ void openeye(int lift_from, int lift_to) {
     microsec++;  // microsec++;
     pwm.writeMicroseconds(0, microsec);
   }
-
-  //close
-
-  // for (uint16_t microsec = 5; microsec > 1; microsec--) {
-  //   eyelid_upper = eyelid_upper + 3;
-  //   eyelid_lower = eyelid_lower - 3;
-  //   pwm.writeMicroseconds(3, eyelid_upper);
-  //   pwm.writeMicroseconds(2, eyelid_lower);
-  // }
 
   pwm.sleep();
 }
