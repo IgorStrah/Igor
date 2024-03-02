@@ -43,26 +43,29 @@ MFRC522::MIFARE_Key key;
 // Init array that will store new NUID
 byte nuidPICC[4];
 
-String RFID = "0";
+String rfid_uid = "", rfid_uid_prev = "";
+byte rfid_data;
 
 // row is quiz selection, column is language selection (RU, LV, EN)
 const byte GAME_COUNT = 2;
 const byte LANGUAGE_COUNT = 3;
-String quiz_cards[GAME_COUNT][LANGUAGE_COUNT] = {
+const String QUIZ_CARDS[GAME_COUNT][LANGUAGE_COUNT] = {
   { "040d8f1a237380", "04118f1a237380", "04198f1a237380" },
   { "04868e1a237380", "04828e1a237380", "047e8e1a237380" }
 };
 
-String force_stop_card = "048e8e1a237380";
-String repeat_question_card = "047a8e1a237380";
+const String FORCE_STOP_CARD = "048e8e1a237380";
+const String REPEAT_QUESTION_CARD = "047a8e1a237380";
 
 const byte QUESTION_COUNT = 20;
-byte* questions[QUESTION_COUNT];
+byte questions[QUESTION_COUNT];
 byte last_question_played = 0;
 
 bool game_in_progress = false;
 byte selected_game;
 byte selected_language;
+
+bool question_played = false;
 
 static uint32_t rebootTimer = millis();
 
@@ -79,9 +82,10 @@ void setup() {
 
   // Initialize questions
   for (int i = 0; i < QUESTION_COUNT; i++) {
-    byte* value = new byte(i);  // Allocate memory for the byte value
-    questions[i] = value;       // Assign the pointer to the array element
+    questions[i] = i;
   }
+
+  Serial.println("Initialization complete");
 }
 
 void loop() {
@@ -94,12 +98,14 @@ void loop() {
     rfid.PCD_Init();                     // Инициализируем заново
   }
 
-  RFID = readRFID();
+  readRFID();
 
-  if (!game_in_progress) {
+  if (!game_in_progress && (rfid_uid_prev != rfid_uid)) {
     for (byte i = 0; i < GAME_COUNT; i++) {
       for (byte j = 0; j < LANGUAGE_COUNT; j++) {
-        if (RFID == quiz_cards[i][j]) {
+        if (rfid_uid == QUIZ_CARDS[i][j]) {
+          Serial.print("RFID card UID: ");
+          Serial.println(rfid_uid);
           selected_game = i;
           selected_language = j;
           game_in_progress = true;
@@ -121,17 +127,39 @@ void loop() {
   }
 
   if (game_in_progress) {
-    // reading question
-    Serial.println(last_question_played);
-    Serial.print("Playing question: ");
-    // play recording
+    if (!question_played) {
+      // reading question
+      Serial.print("Playing question: ");
+      Serial.println(questions[last_question_played]);
+      // play recording
+      question_played = true;
+    }
 
-    last_question_played++;
+    if (question_played && (rfid_uid != rfid_uid_prev) && is_answer_card()) {
+      if (rfid_data == questions[last_question_played] + QUESTION_COUNT * selected_game) {
+        Serial.print("Answer presented: ");
+        Serial.println(rfid_data);
+        Serial.println("Correct answer!");
+        // play recording
+        // grant coins
+        // move coin counter up
+        last_question_played++;
+        question_played = false;
+        rfid_uid = "";
+      } else {
+        Serial.print("Answer presented: ");
+        Serial.println(rfid_data);
+        Serial.println("Wrong answer!");
+        // play recording
+        // reduce coin count
+        // move coin counter down
+      }
+    }
 
     if (last_question_played >= QUESTION_COUNT) {
       Serial.println("Game finished");
       game_in_progress = false;
-      RFID = "";
+      rfid_uid = "";
       // play recording
       // give out coins
       // reduce coin counter to 0
@@ -141,22 +169,31 @@ void loop() {
       // turn off all lights
     }
 
-    if (RFID == force_stop_card) {
+    if (rfid_uid == FORCE_STOP_CARD) {
       game_in_progress = false;
       Serial.println("Game stopped");
-    } else if (repeat_question_card) {
+    } else if (REPEAT_QUESTION_CARD) {
       // play last question again
     }
   }
+
+  rfid_uid_prev = rfid_uid;
 }
 
-String readRFID() {
+void readRFID() {
   String hexString = "";
-  // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
-  if (!rfid.PICC_IsNewCardPresent())
-    return;
+  // 3 variables below to read data from RFID
+  uint8_t dataBlock[18];             // buffer to read RFID data into
+  uint8_t size = sizeof(dataBlock);  // buffer size
+  MFRC522::StatusCode status;
 
-  // Verify if the NUID has been readed
+  // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
+  if (!rfid.PICC_IsNewCardPresent()) {
+    hexString = "";
+    return;
+  }
+
+  // Verify if the NUID has been read
   if (!rfid.PICC_ReadCardSerial())
     return;
 
@@ -175,10 +212,16 @@ String readRFID() {
     }
     hexString += String(rfid.uid.uidByte[i], HEX);
   }
-
-  Serial.println(hexString);
-  Serial.println();
   // } else Serial.println(F("Card read previously."));
+
+  // reading data from block 15
+  status = rfid.MIFARE_Read(15, dataBlock, &size);  // Reading block 15 into buffer
+  if (status != MFRC522::STATUS_OK) {
+    Serial.println("Read error");  // If error occurs, it will be printed
+    return;
+  }
+
+  rfid_data = dataBlock[0];
 
   // Halt PICC
   rfid.PICC_HaltA();
@@ -186,16 +229,34 @@ String readRFID() {
   // Stop encryption on PCD
   rfid.PCD_StopCrypto1();
 
-  return hexString;
+  rfid_uid = hexString;
 }
 
 void shuffle_questions() {
   // Shuffle questions using Fisher-Yates algorithm
-  for (int i = QUESTION_COUNT - 1; i > 0; --i) {
+  for (int i = 0; i < QUESTION_COUNT; i++) {
     int j = random(0, i + 1);  // Generate a random index from 0 to i
     // Swap the elements at indices i and j
-    byte* temp = questions[i];
+    byte temp = questions[i];
     questions[i] = questions[j];
     questions[j] = temp;
   }
+
+  // Uncomment below to print shuffled question array
+  // for (int i = 0; i < QUESTION_COUNT; i++) {
+  //   Serial.print(questions[i]);
+  //   Serial.print(" ");
+  // }
+  // Serial.println();
+}
+
+// helper function to check whether last read RFID UID is answer card
+bool is_answer_card() {
+  if (rfid_uid == FORCE_STOP_CARD || rfid_uid == REPEAT_QUESTION_CARD) return false;
+  for (int i = 0; i < GAME_COUNT; i++) {
+    for (int j = 0; j < LANGUAGE_COUNT; j++) {
+      if (rfid_uid == QUIZ_CARDS[i][j]) return false;
+    }
+  }
+  return true;
 }
