@@ -169,11 +169,12 @@ void loop() {
       // turn off all lights
     }
 
-    if (rfid_uid == FORCE_STOP_CARD) {
+    if ((rfid_uid == FORCE_STOP_CARD) && (rfid_uid != rfid_uid_prev)) {
       game_in_progress = false;
       Serial.println("Game stopped");
-    } else if (REPEAT_QUESTION_CARD) {
-      // play last question again
+    } else if ((rfid_uid == REPEAT_QUESTION_CARD) && (rfid_uid != rfid_uid_prev)) {
+      question_played = false;
+      rfid_uid = "";
     }
   }
 
