@@ -33,6 +33,8 @@
 #include <SPI.h>
 #include <MFRC522.h>
 
+#include <Servo.h>
+
 #define SS_PIN 10
 #define RST_PIN 9
 
@@ -67,6 +69,11 @@ byte selected_language;
 
 bool question_played = false;
 
+// Servo that will be used for displaying coin count
+const SERVO_PIN = 6;
+Servo coin_counter;
+byte coin_counter_pos = 0;
+
 static uint32_t rebootTimer = millis();
 
 void setup() {
@@ -84,6 +91,10 @@ void setup() {
   for (int i = 0; i < QUESTION_COUNT; i++) {
     questions[i] = i;
   }
+
+  coin_counter.attach(SERVO_PIN);
+  coin_counter.write(coin_counter_pos);
+  coin_counter.detach();
 
   Serial.println("Initialization complete");
 }
@@ -141,8 +152,8 @@ void loop() {
         Serial.println(rfid_data);
         Serial.println("Correct answer!");
         // play recording
-        // grant coins
-        // move coin counter up
+        move_coin_counter(true);
+        delay(500);
         last_question_played++;
         question_played = false;
         rfid_uid = "";
@@ -151,8 +162,7 @@ void loop() {
         Serial.println(rfid_data);
         Serial.println("Wrong answer!");
         // play recording
-        // reduce coin count
-        // move coin counter down
+        move_coin_counter(false);
       }
     }
 
@@ -161,8 +171,11 @@ void loop() {
       game_in_progress = false;
       rfid_uid = "";
       // play recording
-      // give out coins
-      // reduce coin counter to 0
+      while (coin_counter_pos > 0) {
+        move_coin_counter(false);
+        delay(500);
+        // give out coin
+      }
       shuffle_questions();
       Serial.println("Questions shuffled");
       last_question_played = 0;
@@ -260,4 +273,21 @@ bool is_answer_card() {
     }
   }
   return true;
+}
+
+/* helper function to move coin counter up and down */
+void move_coin_counter(bool up) {
+  coin_counter.attach(SERVO_PIN);
+  for (byte i = 0; i < 180 / QUESTION_COUNT; i++) {
+    // in steps of 1 degree
+    coin_counter_pos += (up) ? 1 : -1;
+    if (coin_counter_pos > 180) {
+      coin_counter_pos = 0;
+      return;
+    } else {
+      coin_counter.write(coin_counter_pos);  // tell servo to go to position in variable 'pos'
+      delay(15);                             // waits 15 ms for the servo to reach the position
+    }
+  }
+  coin_counter.detach();
 }
