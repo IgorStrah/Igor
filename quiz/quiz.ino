@@ -70,7 +70,7 @@ byte selected_language;
 bool question_played = false;
 
 // Servo that will be used for displaying coin count
-const SERVO_PIN = 6;
+const byte SERVO_PIN = 6;
 Servo coin_counter;
 byte coin_counter_pos = 0;
 
