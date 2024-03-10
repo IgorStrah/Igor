@@ -35,6 +35,10 @@
 
 #include <Servo.h>
 
+#include <FastLED.h>
+
+#define DATA_PIN 3
+
 #define SS_PIN 10
 #define RST_PIN 9
 
@@ -59,7 +63,7 @@ const String QUIZ_CARDS[GAME_COUNT][LANGUAGE_COUNT] = {
 const String FORCE_STOP_CARD = "048e8e1a237380";
 const String REPEAT_QUESTION_CARD = "047a8e1a237380";
 
-const byte QUESTION_COUNT = 20;
+const byte QUESTION_COUNT = 5;
 byte questions[QUESTION_COUNT];
 byte last_question_played = 0;
 
@@ -75,6 +79,8 @@ Servo coin_counter;
 byte coin_counter_pos = 0;
 
 static uint32_t rebootTimer = millis();
+
+CRGB leds[QUESTION_COUNT];
 
 void setup() {
   Serial.begin(115200);
@@ -95,6 +101,16 @@ void setup() {
   coin_counter.attach(SERVO_PIN);
   coin_counter.write(coin_counter_pos);
   coin_counter.detach();
+
+  // Init LED strip, blink ligths LED green one by one
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, QUESTION_COUNT);  // GRB ordering is assumed
+  for (byte i = 0; i < QUESTION_COUNT; i++) {
+    leds[i] = CRGB::Red;
+    FastLED.show();
+    delay(100);
+    leds[i] = CRGB::Black;
+    FastLED.show();
+  }
 
   Serial.println("Initialization complete");
 }
@@ -152,8 +168,15 @@ void loop() {
         Serial.println(rfid_data);
         Serial.println("Correct answer!");
         // play recording
+
+        // turn off previous light, turn on new one
+        if (last_question_played > 0) leds[questions[last_question_played - 1]] = CRGB::Black;
+        leds[questions[last_question_played]] = CRGB::Red;
+        FastLED.show();
+
         move_coin_counter(true);
         delay(500);
+
         last_question_played++;
         question_played = false;
         rfid_uid = "";
@@ -178,6 +201,8 @@ void loop() {
       }
       shuffle_questions();
       Serial.println("Questions shuffled");
+      leds[questions[last_question_played - 1]] = CRGB::Black;
+      FastLED.show();
       last_question_played = 0;
       // turn off all lights
     }
