@@ -1,7 +1,7 @@
 #define EXCLUDE_EXOTIC_PROTOCOLS  // saves around 240 bytes program memory if IrSender.write is used
-  #define NO_LED_FEEDBACK_CODE
-  #define DECODE_NEC  // Includes Apple and Onkyo
-  #define DECODE_SAMSUNG
+#define NO_LED_FEEDBACK_CODE
+#define DECODE_NEC  // Includes Apple and Onkyo
+#define DECODE_SAMSUNG
 #define STRIP_PIN 3  // пин ленты
 #define NUMLEDS 35   // кол-во светодиодов
 
@@ -50,18 +50,18 @@ uint32_t potions[][8] = {
   {
     //  0 Философский камень
     902960384,   // 0 безоар
-    1498617088,  // 1 
-    269948160,   // 2 
-    666047744,   // 3 
-    594771968,  // 4 
-    1940264192,  // 5 
-    2111444224,  // 6 
-    594771968,   // 7 пятиугольная карточка-рецепт 
+    1498617088,  // 1
+    269948160,   // 2
+    666047744,   // 3
+    594771968,   // 4
+    1940264192,  // 5
+    2111444224,  // 6
+    594771968,   // 7 пятиугольная карточка-рецепт
   },
 
   {
     //  1 Упокоение пикси
-    209392896,  // 0 бокал со змеями
+    209392896,   // 0 бокал со змеями
     1687819520,  // 2 флоббер-червь
     1771771136,  // 3 гнездо пикси
     1855526144,  // 6 медальон
@@ -165,13 +165,10 @@ void setup(void) {
     Serial.println("Couldn't find PCF8574");
     //  while (1);
   }
-  // for (uint8_t p = 0; p < 8; p++) {
-    pcf.pinMode(0, OUTPUT); 
-    pcf.pinMode(1, OUTPUT); // release from top
-    pcf.pinMode(2, OUTPUT); // bottom-rightmost door
-    pcf.pinMode(3, OUTPUT); // bottom mid-left door
-    pcf.pinMode(4, OUTPUT); // bottom mid-right door
-  // }
+  for (uint8_t p = 0; p < 5; p++) {
+    pcf.pinMode(p, OUTPUT);
+    delay(1000);
+  }
 
   startstep = 0;
   Stepper_calibrated();
@@ -191,8 +188,8 @@ void loop(void) {
     timing = millis();
     reader == 7 ? reader = 0 : reader++;
     Uidtable[reader] = ReadUid(reader);
-    Serial.print(" cardid : ");  //  "Сообщение: "
-    Serial.println(Uidtable[reader]);      //  "Сообщение: "
+    Serial.print(" cardid : ");        //  "Сообщение: "
+    Serial.println(Uidtable[reader]);  //  "Сообщение: "
     if (startstep >= 1) {
       lathent();
     }
@@ -217,12 +214,12 @@ void loop(void) {
     IrReceiver.resume();
   }
 
-   if ((newCode == 1111000005) || (newCode == 16726215)) {
+  if ((newCode == 1111000005) || (newCode == 16726215)) {
     pcf.digitalWrite(4, HIGH);  // turn LED off by turning off sinking transistor
     delay(1000);
     pcf.digitalWrite(4, LOW);  // turn LED on by sinking current to ground
-    newCode=0;
-    Serial.print("Open 4");           
+    newCode = 0;
+    Serial.print("Open 4");
   }
 
   if (((newCode == 1111000004) || (newCode == 16716015)) && startstep != 2) {
@@ -250,21 +247,21 @@ void loop(void) {
       if (Uidtable[7] == potions[i][7] && Uidtable[7] != 0) {
         strip.fill(0, 7, mRGB(0, 0, 222));
         pcf.digitalWrite(1, HIGH);  // turn LED on by sinking current to ground
-        
-      
+
+
         movestop = 1;
         comparisonuid = 0;
         for (int t = 0; t < 8; t++) {
           if (Uidtable[t] == potions[i][t]) {
             strip.set(t, mRGB(111, 222, 222));
-            Serial.print("     potions[i][t]  ");
-            Serial.print(potions[i][t]);
+            // Serial.print("     potions[i][t]  ");
+            // Serial.print(potions[i][t]);
 
-            Serial.print("     Uidtable(t)  ");
-            Serial.print(Uidtable[t]);
+            // Serial.print("     Uidtable(t)  ");
+            // Serial.print(Uidtable[t]);
 
-            Serial.print("     [t]  ");
-            Serial.println(t);
+            // Serial.print("     [t]  ");
+            // Serial.println(t);
 
             comparisonuid++;
           } else if (Uidtable[t] != 0) {
@@ -277,12 +274,12 @@ void loop(void) {
           strip.fill(mRGB(0, 222, 222));
           strip.show();
 
-          
-       
-          pcf.digitalWrite(i+2, HIGH);  // turn LED off by turning off sinking transistor
+
+
+          pcf.digitalWrite(i + 2, HIGH);  // turn LED off by turning off sinking transistor
           delay(1000);
-          pcf.digitalWrite(1, LOW);  // turn LED on by sinking current to ground
-          pcf.digitalWrite(i+2, LOW);  // turn LED on by sinking current to ground
+          pcf.digitalWrite(1, LOW);      // turn LED on by sinking current to ground
+          pcf.digitalWrite(i + 2, LOW);  // turn LED on by sinking current to ground
           delay(1000);
 
           delay(5000);
@@ -299,7 +296,7 @@ void loop(void) {
 
       positionnow = positionnow + 30;
       if (positionnow > 2500) {
-      startstep=3;
+        startstep = 3;
       }
       stepper.setTarget(positionnow);
     }
@@ -311,23 +308,19 @@ void loop(void) {
     positionnow = 6500;
     stepper.setTarget(positionnow);
     //delay(100);
-      if (stepper.getCurrent() > 6000) {
+    if (stepper.getCurrent() > 6000) {
       startstep++;
-      }
-    
+    }
   }
-  
+
   if (startstep == 4) {
-      Stepper_calibrated();
-      startstep = 0;
-      movestop = 1;
-      strip.clear();
-      strip.show();
-      startstep=0;
+    Stepper_calibrated();
+    startstep = 0;
+    movestop = 1;
+    strip.clear();
+    strip.show();
+    startstep = 0;
   }
-
-
-
 }
 
 
