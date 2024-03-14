@@ -118,7 +118,7 @@ uint32_t potions[][8] = {
 
 };
 
-
+byte selected_recipe;
 
 
 void setup(void) {
@@ -245,49 +245,12 @@ void loop(void) {
 
     for (size_t i = 0; i < sizeof(potions) / sizeof(potions[0]); i++) {
       if (Uidtable[7] == potions[i][7] && Uidtable[7] != 0) {
-        strip.fill(0, 7, mRGB(0, 0, 222));
+        strip.fill(0, 7, mRGB(0, 0, 222)); // blue
         pcf.digitalWrite(1, HIGH);  // turn LED on by sinking current to ground
 
-
+        selected_recipe = i;
         movestop = 1;
-        comparisonuid = 0;
-        for (int t = 0; t < 8; t++) {
-          if (Uidtable[t] == potions[i][t]) {
-            strip.set(t, mRGB(111, 222, 222));
-            // Serial.print("     potions[i][t]  ");
-            // Serial.print(potions[i][t]);
-
-            // Serial.print("     Uidtable(t)  ");
-            // Serial.print(Uidtable[t]);
-
-            // Serial.print("     [t]  ");
-            // Serial.println(t);
-
-            comparisonuid++;
-          } else if (Uidtable[t] != 0) {
-            strip.set(t, mRGB(222, 0, 0));
-          }
-        }
-        if (comparisonuid == 8) {
-          strip.show();
-          delay(2000);
-          strip.fill(mRGB(0, 222, 222));
-          strip.show();
-
-
-
-          pcf.digitalWrite(i + 2, HIGH);  // turn LED off by turning off sinking transistor
-          delay(1000);
-          pcf.digitalWrite(1, LOW);      // turn LED on by sinking current to ground
-          pcf.digitalWrite(i + 2, LOW);  // turn LED on by sinking current to ground
-          delay(1000);
-
-          delay(5000);
-          Serial.print(" !!!!!! FINISH!!!!!!!!!!!!!!!!!!!!  ");
-          movestop = 0;
-          comparisonuid++;
-          startstep = 3;
-        }
+        startstep = 3;
       }
     }
 
@@ -296,13 +259,47 @@ void loop(void) {
 
       positionnow = positionnow + 30;
       if (positionnow > 2500) {
-        startstep = 3;
+        startstep = 4;
       }
       stepper.setTarget(positionnow);
     }
   }
 
+  // if recipe card found and recognized
   if (startstep == 3) {
+    comparisonuid = 0;
+    for (byte t = 0; t < 7; t++) {
+      if (Uidtable[t] == potions[selected_recipe][t]) {
+        strip.set(t, mRGB(111, 222, 222)); // light blue
+        comparisonuid++;
+      } else if (Uidtable[t] != 0) {
+        strip.set(t, mRGB(222, 0, 0)); // red
+      } else {
+        strip.fill(t, 7, mRGB(0, 0, 222)); // blue
+      }
+    }
+    strip.show();
+
+    if (comparisonuid == 7) {
+      delay(2000);
+      strip.fill(mRGB(0, 222, 222)); // light blue
+      strip.show();
+
+      pcf.digitalWrite(selected_recipe + 2, HIGH);  // turn LED off by turning off sinking transistor
+      delay(1000);
+      pcf.digitalWrite(1, LOW);                    // turn LED on by sinking current to ground
+      pcf.digitalWrite(selected_recipe + 2, LOW);  // turn LED on by sinking current to ground
+      delay(1000);
+
+      delay(5000);
+      Serial.print(" !!!!!! FINISH!!!!!!!!!!!!!!!!!!!!  ");
+      movestop = 0;
+      comparisonuid++;
+      startstep = 4;
+    }
+  }
+
+  if (startstep == 4) {
     Serial.print("startstep ");
     Serial.println(startstep);
     positionnow = 6500;
@@ -313,7 +310,7 @@ void loop(void) {
     }
   }
 
-  if (startstep == 4) {
+  if (startstep == 5) {
     Stepper_calibrated();
     startstep = 0;
     movestop = 1;
