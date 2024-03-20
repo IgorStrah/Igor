@@ -49,13 +49,13 @@ unsigned long Uidtable[8];
 uint32_t potions[][8] = {
   {
     //  0 Философский камень
-    902960384,   // 0 безоар
-    1498617088,  // 1
-    269948160,   // 2
-    666047744,   // 3
-    594771968,   // 4
-    1940264192,  // 5
-    2111444224,  // 6
+    269948160,   // 0 безоар
+    666047744,  // 1
+    594771968,   // 2 
+    1940264192,   // 3 
+    359601408,   // 4 
+    603395328,  // 5
+    202249472,  // 6
     594771968,   // 7 пятиугольная карточка-рецепт
   },
 
@@ -118,7 +118,7 @@ uint32_t potions[][8] = {
 
 };
 
-byte selected_recipe;
+int8_t selected_recipe = -1;
 
 
 void setup(void) {
@@ -294,6 +294,7 @@ void loop(void) {
       delay(5000);
       Serial.print(" !!!!!! FINISH!!!!!!!!!!!!!!!!!!!!  ");
       movestop = 0;
+      selected_recipe = -1;
       comparisonuid++;
       startstep = 4;
     }
@@ -347,7 +348,6 @@ unsigned long ReadUid(byte numReader) {
         }
       }
     }
-
 
     //  Serial.print(" Reader : ");  //  "Сообщение: "
     //  Serial.print(numReader);     //  "Сообщение: "
