@@ -9,7 +9,6 @@
 #include <Adafruit_PCF8574.h>
 #include <Wire.h>
 #include <Adafruit_PN532.h>
-#include <GyverStepper.h>
 #include <IRremote.hpp>
 #define COLOR_DEBTH 3
 #include <microLED.h>  // подключаем библу
@@ -19,10 +18,7 @@ microLED<NUMLEDS, STRIP_PIN, MLED_NO_CLOCK, LED_WS2813, ORDER_GRB, CLI_AVER> str
 #define NUMLEDS 8    // кол-во светодиодов
 #define PN532_IRQ (2)
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
-GStepper<STEPPER2WIRE> stepper(2048, 4, 5, 6);
-GStepper<STEPPER4WIRE> stepper2(2048, 10, 8, 9, 7);
-byte reader, comparisonuid, movestop;
-int step_rev, startstep, positionnow;
+byte reader, comparisonuid, startstep;
 int NB_NFC_READER = 7;
 unsigned long newCode;
 unsigned long code;
@@ -171,8 +167,6 @@ void setup(void) {
   }
 
   startstep = 0;
-  Stepper_calibrated();
-  // Stepper_calibrated_revolver();
 }
 
 
@@ -193,11 +187,6 @@ void loop(void) {
     if (startstep >= 1) {
       lathent();
     }
-  }
-
-
-
-  while (stepper.tick()) {
   }
 
   if (IrReceiver.decode()) {
@@ -223,22 +212,12 @@ void loop(void) {
   }
 
   if (((newCode == 1111000004) || (newCode == 16716015)) && startstep != 2) {
-    startstep = 1;
+    startstep = 2;
     newCode = 0;
     Serial.print("startstep ");
     Serial.print(startstep);
     strip.fill(mRGB(0, 222, 222));
     strip.show();
-  }
-
-  if (startstep == 1) {
-    startstep = 2;
-    Serial.print("startstep ");
-    Serial.print(startstep);
-    positionnow = 1700;
-    stepper.setTarget(positionnow);
-    delay(100);
-    movestop = 0;
   }
 
   if (startstep == 2) {
@@ -249,20 +228,11 @@ void loop(void) {
         pcf.digitalWrite(1, HIGH);  // turn LED on by sinking current to ground
 
         selected_recipe = i;
-        movestop = 1;
         startstep = 3;
       }
     }
 
     strip.show();
-    if (movestop == 0) {
-
-      positionnow = positionnow + 30;
-      if (positionnow > 2500) {
-        startstep = 4;
-      }
-      stepper.setTarget(positionnow);
-    }
   }
 
   // if recipe card found and recognized
@@ -293,7 +263,6 @@ void loop(void) {
 
       delay(5000);
       Serial.print(" !!!!!! FINISH!!!!!!!!!!!!!!!!!!!!  ");
-      movestop = 0;
       selected_recipe = -1;
       comparisonuid++;
       startstep = 4;
@@ -303,21 +272,6 @@ void loop(void) {
   if (startstep == 4) {
     Serial.print("startstep ");
     Serial.println(startstep);
-    positionnow = 6500;
-    stepper.setTarget(positionnow);
-    //delay(100);
-    if (stepper.getCurrent() > 6000) {
-      startstep++;
-    }
-  }
-
-  if (startstep == 5) {
-    Stepper_calibrated();
-    startstep = 0;
-    movestop = 1;
-    strip.clear();
-    strip.show();
-    startstep = 0;
   }
 }
 
@@ -357,63 +311,6 @@ unsigned long ReadUid(byte numReader) {
   }
   return (cardid);
 }
-
-void Stepper_calibrated() {
-  stepper.autoPower(true);
-  pinMode(12, INPUT_PULLUP);  // кнопка на D12 и GND
-  stepper.setRunMode(KEEP_SPEED);
-  stepper.setSpeedDeg(-60);  // медленно крутимся НАЗАД
-  while (digitalRead(12)) {
-    stepper.tick();
-  }
-
-  stepper.reset();
-  stepper.setSpeedDeg(-20);
-  while (stepper.getCurrent() != -390) {
-    stepper.tick();
-  }
-
-  stepper.reset();
-  stepper.setRunMode(FOLLOW_POS);
-  stepper.stop();
-}
-
-void Stepper_calibrated_revolver() {
-  stepper2.autoPower(true);
-  stepper2.setRunMode(KEEP_SPEED);
-  stepper2.setSpeedDeg(-70);  // медленно крутимся НАЗАД
-
-  // пока кнопка не нажата
-  while (digitalRead(11)) {
-    stepper2.tick();
-    // yield();	// для esp8266
-  }
-
-  stepper2.reset();
-  stepper2.setSpeedDeg(60);
-  while (stepper2.getCurrent() != 1550) {
-    stepper2.tick();
-  }
-
-  stepper2.reset();
-  stepper2.setSpeedDeg(-30);  // медленно крутимся НАЗАД
-
-  // пока кнопка не нажата
-  while (digitalRead(11)) {
-    stepper2.tick();
-  }
-
-  stepper2.reset();
-  stepper2.setSpeedDeg(33);
-  while (stepper2.getCurrent() != 1380) {
-    stepper2.tick();
-  }
-  stepper2.reset();
-  delay(3000);
-  stepper2.setSpeedDeg(60);
-  stepper2.setRunMode(FOLLOW_POS);
-}
-
 
 void tcaselect(uint8_t i2c_bus) {
   if (i2c_bus > 7) return;
