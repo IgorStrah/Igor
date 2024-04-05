@@ -39,7 +39,7 @@
 #include <SoftwareSerial.h>
 #include "DYPlayerArduino.h"
 
-#define DATA_PIN 3
+#define DATA_PIN 4
 
 #define SS_PIN 10
 #define RST_PIN 9
@@ -164,8 +164,11 @@ void loop() {
   }
 
   if (game_in_progress) {
-
     if (!question_played) {
+      // light up current question
+      leds[last_question_played] = CRGB::Purple;
+      FastLED.show();
+
       // reading question
       Serial.print("Playing question: ");
       Serial.println(questions[last_question_played]);
@@ -191,20 +194,22 @@ void loop() {
         Serial.println("Correct answer!");
         // play recording
 
-        // turn off previous light, turn on new one
-        if (last_question_played > 0) leds[questions[last_question_played - 1]] = CRGB::Black;
-        leds[questions[last_question_played]] = CRGB::Red;
-        FastLED.show();
-
-        last_question_played++;
-        question_played = false;
-        rfid_uid = "";
+        // turn the light corresponding to question green
+        leds[last_question_played] = CRGB::Red;
       } else {
         Serial.print("Answer presented: ");
         Serial.println(rfid_data);
         Serial.println("Wrong answer!");
+
+        // turn the light corresponding to question red
+        leds[last_question_played] = CRGB::Green;
+        
         // play recording
       }
+      FastLED.show();
+      last_question_played++;
+      question_played = false;
+      rfid_uid = "";
     }
 
     if (last_question_played >= QUESTION_COUNT) {
@@ -213,12 +218,18 @@ void loop() {
       rfid_uid = "";
       // play recording
       // give out coins
+      
+      // turn off all lights
+      while (last_question_played > 0) {
+        Serial.println(last_question_played);
+        leds[last_question_played - 1] = CRGB::Black;
+        FastLED.show();
+        delay(1000);
+        last_question_played--;
+      }
+
       shuffle_questions();
       Serial.println("Questions shuffled");
-      leds[questions[last_question_played - 1]] = CRGB::Black;
-      FastLED.show();
-      last_question_played = 0;
-      // turn off all lights
     }
 
     if ((rfid_uid == FORCE_STOP_CARD) && (rfid_uid != rfid_uid_prev)) {
