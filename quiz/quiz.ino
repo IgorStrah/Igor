@@ -37,10 +37,18 @@
 
 #include <FastLED.h>
 
+#include <Arduino.h>
+#include <SoftwareSerial.h>
+#include "DYPlayerArduino.h"
+
 #define DATA_PIN 3
 
 #define SS_PIN 10
 #define RST_PIN 9
+
+// Initialise the player on software serial port.
+SoftwareSerial SoftSerial(2, 3);
+DY::Player player(&SoftSerial);
 
 MFRC522 rfid(SS_PIN, RST_PIN);  // Instance of the class
 
@@ -91,6 +99,19 @@ void setup() {
     key.keyByte[i] = 0xFF;
   }
 
+  // Setting up sound
+  player.begin();
+  player.setVolume(25);  // 50% Volume
+  player.setCycleMode(DY::PlayMode::OneOff);
+  byte sd_card_status = (int16_t)player.getPlayingDevice();
+  if (sd_card_status == 1) {
+    Serial.println("SD card read succesfully");
+  } else {
+    Serial.println("SD card read failed");
+  }
+  Serial.print("Number of sound records found: ");
+  Serial.println((int16_t)player.getSoundCount());
+
   randomSeed(analogRead(0));
 
   // Initialize questions
@@ -139,7 +160,7 @@ void loop() {
           Serial.println("Match found");
           Serial.print("Starting game: ");
           Serial.println(selected_game);
-          Serial.print("Selected language (0 - RU, 1 - LV, 2 - EN): ");
+          Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
           Serial.println(selected_language);
           Serial.println();
 
@@ -154,10 +175,22 @@ void loop() {
   }
 
   if (game_in_progress) {
+    
     if (!question_played) {
       // reading question
       Serial.print("Playing question: ");
       Serial.println(questions[last_question_played]);
+
+      char path[] = "";
+      sprintf(path, "/%02d/%02d/%02d.mp3", selected_game + 1, selected_language, questions[last_question_played]);
+      Serial.print("Playing ");
+      Serial.println(path);
+      // DO NOT REMOVE DUPLICATE LINE
+      // for some reason it doesn't work the first time the function is called
+      player.playSpecifiedDevicePath(DY::Device::Sd, path);
+      player.playSpecifiedDevicePath(DY::Device::Sd, path);
+      delay(8000);
+
       // play recording
       question_played = true;
     }
