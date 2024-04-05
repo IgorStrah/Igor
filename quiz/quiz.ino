@@ -33,8 +33,6 @@
 #include <SPI.h>
 #include <MFRC522.h>
 
-#include <Servo.h>
-
 #include <FastLED.h>
 
 #include <Arduino.h>
@@ -81,11 +79,6 @@ byte selected_language;
 
 bool question_played = false;
 
-// Servo that will be used for displaying coin count
-const byte SERVO_PIN = 6;
-Servo coin_counter;
-byte coin_counter_pos = 0;
-
 static uint32_t rebootTimer = millis();
 
 CRGB leds[QUESTION_COUNT];
@@ -118,10 +111,6 @@ void setup() {
   for (int i = 0; i < QUESTION_COUNT; i++) {
     questions[i] = i;
   }
-
-  coin_counter.attach(SERVO_PIN);
-  coin_counter.write(coin_counter_pos);
-  coin_counter.detach();
 
   // Init LED strip, blink ligths LED green one by one
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, QUESTION_COUNT);  // GRB ordering is assumed
@@ -175,7 +164,7 @@ void loop() {
   }
 
   if (game_in_progress) {
-    
+
     if (!question_played) {
       // reading question
       Serial.print("Playing question: ");
@@ -207,9 +196,6 @@ void loop() {
         leds[questions[last_question_played]] = CRGB::Red;
         FastLED.show();
 
-        move_coin_counter(true);
-        delay(500);
-
         last_question_played++;
         question_played = false;
         rfid_uid = "";
@@ -218,7 +204,6 @@ void loop() {
         Serial.println(rfid_data);
         Serial.println("Wrong answer!");
         // play recording
-        move_coin_counter(false);
       }
     }
 
@@ -227,11 +212,7 @@ void loop() {
       game_in_progress = false;
       rfid_uid = "";
       // play recording
-      while (coin_counter_pos > 0) {
-        move_coin_counter(false);
-        delay(500);
-        // give out coin
-      }
+      // give out coins
       shuffle_questions();
       Serial.println("Questions shuffled");
       leds[questions[last_question_played - 1]] = CRGB::Black;
@@ -331,21 +312,4 @@ bool is_answer_card() {
     }
   }
   return true;
-}
-
-/* helper function to move coin counter up and down */
-void move_coin_counter(bool up) {
-  coin_counter.attach(SERVO_PIN);
-  for (byte i = 0; i < 180 / QUESTION_COUNT; i++) {
-    // in steps of 1 degree
-    coin_counter_pos += (up) ? 1 : -1;
-    if (coin_counter_pos > 180) {
-      coin_counter_pos = 0;
-      return;
-    } else {
-      coin_counter.write(coin_counter_pos);  // tell servo to go to position in variable 'pos'
-      delay(15);                             // waits 15 ms for the servo to reach the position
-    }
-  }
-  coin_counter.detach();
 }
