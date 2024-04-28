@@ -69,7 +69,7 @@ const String QUIZ_CARDS[GAME_COUNT][LANGUAGE_COUNT] = {
 const String FORCE_STOP_CARD = "048e8e1a237380";
 const String REPEAT_QUESTION_CARD = "047a8e1a237380";
 
-const byte QUESTION_COUNT = 5;
+const byte QUESTION_COUNT = 20;
 byte questions[QUESTION_COUNT];
 byte last_question_played = 0;
 
@@ -115,7 +115,7 @@ void setup() {
   // Init LED strip, blink ligths LED green one by one
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, QUESTION_COUNT);  // GRB ordering is assumed
   for (byte i = 0; i < QUESTION_COUNT; i++) {
-    leds[i] = CRGB::Red;
+    leds[i] = CRGB::Green;
     FastLED.show();
     delay(100);
     leds[i] = CRGB::Black;
@@ -157,7 +157,12 @@ void loop() {
 
           // reading rules
           Serial.println("Playing rules recording");
-          // play recording
+          char path[] = "";
+          sprintf(path, "/00/00/%02d.mp3", selected_language);
+          Serial.print("Playing ");
+          Serial.println(path);
+          player.playSpecifiedDevicePath(DY::Device::Sd, path);
+          while (player.checkPlayState() == DY::PlayState::Playing) {}
         }
       }
     }
@@ -177,13 +182,8 @@ void loop() {
       sprintf(path, "/%02d/%02d/%02d.mp3", selected_game + 1, selected_language, questions[last_question_played]);
       Serial.print("Playing ");
       Serial.println(path);
-      // DO NOT REMOVE DUPLICATE LINE
-      // for some reason it doesn't work the first time the function is called
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
-      player.playSpecifiedDevicePath(DY::Device::Sd, path);
-      delay(8000);
 
-      // play recording
       question_played = true;
     }
 
@@ -192,19 +192,34 @@ void loop() {
         Serial.print("Answer presented: ");
         Serial.println(rfid_data);
         Serial.println("Correct answer!");
+
         // play recording
+        int k = random(1, 6);  // Generate a random index from 1 to 5
+        char path[] = "";
+        sprintf(path, "/00/01/%02d/0/%01d.mp3", selected_language, k);
+        Serial.print("Playing ");
+        Serial.println(path);
+        player.playSpecifiedDevicePath(DY::Device::Sd, path);
+        while (player.checkPlayState() == DY::PlayState::Playing) {}
 
         // turn the light corresponding to question green
-        leds[last_question_played] = CRGB::Red;
+        leds[last_question_played] = CRGB::Green;
       } else {
         Serial.print("Answer presented: ");
         Serial.println(rfid_data);
         Serial.println("Wrong answer!");
 
         // turn the light corresponding to question red
-        leds[last_question_played] = CRGB::Green;
-        
+        leds[last_question_played] = CRGB::Red;
+
         // play recording
+        int k = random(1, 6);  // Generate a random index from 1 to 5
+        char path[] = "";
+        sprintf(path, "/00/01/%02d/1/%01d.mp3", selected_language, k);
+        Serial.print("Playing ");
+        Serial.println(path);
+        player.playSpecifiedDevicePath(DY::Device::Sd, path);
+        while (player.checkPlayState() == DY::PlayState::Playing) {}
       }
       FastLED.show();
       last_question_played++;
@@ -218,10 +233,9 @@ void loop() {
       rfid_uid = "";
       // play recording
       // give out coins
-      
+
       // turn off all lights
       while (last_question_played > 0) {
-        Serial.println(last_question_played);
         leds[last_question_played - 1] = CRGB::Black;
         FastLED.show();
         delay(1000);
