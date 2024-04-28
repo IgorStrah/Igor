@@ -81,6 +81,8 @@ bool question_played = false;
 
 static uint32_t rebootTimer = millis();
 
+byte newRFIDcardtimer = 0;
+
 CRGB leds[QUESTION_COUNT];
 
 void setup() {
@@ -135,7 +137,13 @@ void loop() {
     rfid.PCD_Init();                     // Инициализируем заново
   }
 
+  if (newRFIDcardtimer < 10) {
+    newRFIDcardtimer++;
+  }
   readRFID();
+  if (newRFIDcardtimer >= 10) {
+    rfid_uid = "";
+  }
 
   if (!game_in_progress && (rfid_uid_prev != rfid_uid)) {
     for (byte i = 0; i < GAME_COUNT; i++) {
@@ -183,11 +191,13 @@ void loop() {
       Serial.print("Playing ");
       Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
+      // while (player.checkPlayState() == DY::PlayState::Playing) {}
 
       question_played = true;
     }
 
-    if (question_played && (rfid_uid != rfid_uid_prev) && is_answer_card()) {
+    if (question_played && is_answer_card() && (rfid_uid != rfid_uid_prev) && (rfid_uid != "")) {
+      newRFIDcardtimer++;
       if (rfid_data == questions[last_question_played] + QUESTION_COUNT * selected_game) {
         Serial.print("Answer presented: ");
         Serial.println(rfid_data);
@@ -224,7 +234,6 @@ void loop() {
       FastLED.show();
       last_question_played++;
       question_played = false;
-      rfid_uid = "";
     }
 
     if (last_question_played >= QUESTION_COUNT) {
@@ -267,14 +276,16 @@ void readRFID() {
 
   // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
   if (!rfid.PICC_IsNewCardPresent()) {
-    hexString = "";
     return;
   }
 
   // Verify if the NUID has been read
-  if (!rfid.PICC_ReadCardSerial())
+  if (!rfid.PICC_ReadCardSerial()) {
     return;
+  }
 
+  newRFIDcardtimer = 0;
+  
   // if (rfid.uid.uidByte[0] != nuidPICC[0] || rfid.uid.uidByte[1] != nuidPICC[1] || rfid.uid.uidByte[2] != nuidPICC[2] || rfid.uid.uidByte[3] != nuidPICC[3]) {
   //   Serial.println(F("A new card has been detected."));
 
@@ -301,11 +312,11 @@ void readRFID() {
 
   rfid_data = dataBlock[0];
 
-  // Halt PICC
-  rfid.PICC_HaltA();
+  // // Halt PICC
+  // rfid.PICC_HaltA();
 
-  // Stop encryption on PCD
-  rfid.PCD_StopCrypto1();
+  // // Stop encryption on PCD
+  // rfid.PCD_StopCrypto1();
 
   rfid_uid = hexString;
 }
