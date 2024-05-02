@@ -44,6 +44,9 @@
 #define SS_PIN 10
 #define RST_PIN 9
 
+const byte MOTOR_PIN = 5;
+byte motor_value = 0;
+
 // Initialise the player on software serial port.
 SoftwareSerial SoftSerial(2, 3);
 DY::Player player(&SoftSerial);
@@ -170,7 +173,13 @@ void loop() {
           Serial.print("Playing ");
           Serial.println(path);
           player.playSpecifiedDevicePath(DY::Device::Sd, path);
-          while (player.checkPlayState() == DY::PlayState::Playing) {}
+          while (player.checkPlayState() == DY::PlayState::Playing) {
+            if (motor_value < 125) {
+              motor_value++;
+              analogWrite(MOTOR_PIN, motor_value);
+              delay(20);
+            }
+          }
         }
       }
     }
@@ -203,6 +212,10 @@ void loop() {
         Serial.println(rfid_data);
         Serial.println("Correct answer!");
 
+        // turn the light corresponding to question green
+        leds[last_question_played] = CRGB::Green;
+        FastLED.show();
+
         // play recording
         int k = random(1, 6);  // Generate a random index from 1 to 5
         char path[] = "";
@@ -210,10 +223,13 @@ void loop() {
         Serial.print("Playing ");
         Serial.println(path);
         player.playSpecifiedDevicePath(DY::Device::Sd, path);
-        while (player.checkPlayState() == DY::PlayState::Playing) {}
-
-        // turn the light corresponding to question green
-        leds[last_question_played] = CRGB::Green;
+        while (player.checkPlayState() == DY::PlayState::Playing) {
+          if (motor_value > 70) {
+            motor_value--;
+            analogWrite(MOTOR_PIN, motor_value);
+            delay(20);
+          }
+        }
       } else {
         Serial.print("Answer presented: ");
         Serial.println(rfid_data);
@@ -221,6 +237,7 @@ void loop() {
 
         // turn the light corresponding to question red
         leds[last_question_played] = CRGB::Red;
+        FastLED.show();
 
         // play recording
         int k = random(1, 6);  // Generate a random index from 1 to 5
@@ -229,9 +246,14 @@ void loop() {
         Serial.print("Playing ");
         Serial.println(path);
         player.playSpecifiedDevicePath(DY::Device::Sd, path);
-        while (player.checkPlayState() == DY::PlayState::Playing) {}
+        while (player.checkPlayState() == DY::PlayState::Playing) {
+          if (motor_value < 250) {
+            motor_value++;
+            analogWrite(MOTOR_PIN, motor_value);
+            delay(20);
+          }
+        }
       }
-      FastLED.show();
       last_question_played++;
       question_played = false;
     }
@@ -240,6 +262,7 @@ void loop() {
       Serial.println("Game finished");
       game_in_progress = false;
       rfid_uid = "";
+
       // play recording
       // give out coins
 
@@ -247,8 +270,13 @@ void loop() {
       while (last_question_played > 0) {
         leds[last_question_played - 1] = CRGB::Black;
         FastLED.show();
-        delay(1000);
+        delay(500);
         last_question_played--;
+      }
+
+      while(motor_value > 0) {
+        motor_value--;
+        analogWrite(MOTOR_PIN, motor_value);
       }
 
       shuffle_questions();
@@ -285,7 +313,7 @@ void readRFID() {
   }
 
   newRFIDcardtimer = 0;
-  
+
   // if (rfid.uid.uidByte[0] != nuidPICC[0] || rfid.uid.uidByte[1] != nuidPICC[1] || rfid.uid.uidByte[2] != nuidPICC[2] || rfid.uid.uidByte[3] != nuidPICC[3]) {
   //   Serial.println(F("A new card has been detected."));
 
