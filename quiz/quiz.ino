@@ -72,7 +72,7 @@ const String QUIZ_CARDS[GAME_COUNT][LANGUAGE_COUNT] = {
 const String FORCE_STOP_CARD = "048e8e1a237380";
 const String REPEAT_QUESTION_CARD = "047a8e1a237380";
 
-const byte QUESTION_COUNT = 20;
+const byte QUESTION_COUNT = 5;
 byte questions[QUESTION_COUNT];
 byte last_question_played = 0;
 
@@ -260,32 +260,12 @@ void loop() {
 
     if (last_question_played >= QUESTION_COUNT) {
       Serial.println("Game finished");
-      game_in_progress = false;
-      rfid_uid = "";
-
-      // play recording
-      // give out coins
-
-      // turn off all lights
-      while (last_question_played > 0) {
-        leds[last_question_played - 1] = CRGB::Black;
-        FastLED.show();
-        delay(500);
-        last_question_played--;
-      }
-
-      while(motor_value > 0) {
-        motor_value--;
-        analogWrite(MOTOR_PIN, motor_value);
-      }
-
-      shuffle_questions();
-      Serial.println("Questions shuffled");
+      end_game();
     }
 
     if ((rfid_uid == FORCE_STOP_CARD) && (rfid_uid != rfid_uid_prev)) {
-      game_in_progress = false;
       Serial.println("Game stopped");
+      end_game();
     } else if ((rfid_uid == REPEAT_QUESTION_CARD) && (rfid_uid != rfid_uid_prev)) {
       question_played = false;
       rfid_uid = "";
@@ -376,4 +356,32 @@ bool is_answer_card() {
     }
   }
   return true;
+}
+
+void end_game() {
+  game_in_progress = false;
+  rfid_uid = "";
+
+  // play recording
+  // give out coins
+
+  // turn off all lights
+  while (last_question_played > 0) {
+    leds[last_question_played] = CRGB::Black;
+    FastLED.show();
+    delay(500);
+    last_question_played--;
+  }
+
+  leds[0] = CRGB::Black;
+  FastLED.show();
+
+  while (motor_value > 0) {
+    motor_value--;
+    analogWrite(MOTOR_PIN, motor_value);
+    delay(20);
+  }
+
+  shuffle_questions();
+  Serial.println("Questions shuffled");
 }
