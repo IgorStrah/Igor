@@ -114,7 +114,7 @@ void setup() {
 
   // Initialize questions
   for (int i = 0; i < QUESTION_COUNT; i++) {
-    questions[i] = i;
+    questions[i] = i + 1;
   }
 
   // Init LED strip, blink ligths LED green one by one
