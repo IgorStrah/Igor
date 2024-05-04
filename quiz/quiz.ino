@@ -39,8 +39,6 @@
 #include <SoftwareSerial.h>
 #include "DYPlayerArduino.h"
 
-#define DATA_PIN 4
-
 #define SS_PIN 10
 #define RST_PIN 9
 
@@ -72,7 +70,7 @@ const String QUIZ_CARDS[GAME_COUNT][LANGUAGE_COUNT] = {
 const String FORCE_STOP_CARD = "048e8e1a237380";
 const String REPEAT_QUESTION_CARD = "047a8e1a237380";
 
-const byte QUESTION_COUNT = 5;
+const byte QUESTION_COUNT = 20;
 byte questions[QUESTION_COUNT];
 byte last_question_played = 0;
 
@@ -86,7 +84,20 @@ static uint32_t rebootTimer = millis();
 
 byte newRFIDcardtimer = 0;
 
-CRGB leds[QUESTION_COUNT];
+CRGB crystal_leds[QUESTION_COUNT];
+const byte BACKLIGHT_LED_COUNT = 5;
+CRGB backlight_leds[BACKLIGHT_LED_COUNT];
+CRGBPalette16 gPal;
+// COOLING: How much does the air cool as it rises?
+// Less cooling = taller flames.  More cooling = shorter flames.
+// Default 55, suggested range 20-100
+#define COOLING 20
+// SPARKING: What chance (out of 255) is there that a new spark will be lit?
+// Higher chance = more roaring fire.  Lower chance = more flickery fire.
+// Default 120, suggested range 50-200.
+#define SPARKING 120
+#define BRIGHTNESS 200
+#define FRAMES_PER_SECOND 10
 
 void setup() {
   Serial.begin(115200);
@@ -116,16 +127,27 @@ void setup() {
   for (int i = 0; i < QUESTION_COUNT; i++) {
     questions[i] = i + 1;
   }
+  shuffle_questions();
 
   // Init LED strip, blink ligths LED green one by one
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, QUESTION_COUNT);  // GRB ordering is assumed
+  FastLED.addLeds<NEOPIXEL, 4>(crystal_leds, QUESTION_COUNT);  // rgb ordering is assumed
   for (byte i = 0; i < QUESTION_COUNT; i++) {
-    leds[i] = CRGB::Green;
+    crystal_leds[i] = CRGB::Green;
     FastLED.show();
     delay(100);
-    leds[i] = CRGB::Black;
+    crystal_leds[i] = CRGB::Black;
     FastLED.show();
   }
+
+  FastLED.addLeds<NEOPIXEL, 7>(backlight_leds, BACKLIGHT_LED_COUNT);
+  for (byte i = 0; i < BACKLIGHT_LED_COUNT; i++) {
+    backlight_leds[i] = CRGB::Blue;
+    FastLED.show();
+    delay(100);
+    backlight_leds[i] = CRGB::Black;
+    FastLED.show();
+  }
+  gPal = CRGBPalette16(CRGB::Black, CRGB::Blue, CRGB::Aqua, CRGB::White);
 
   Serial.println("Initialization complete");
 }
@@ -139,6 +161,8 @@ void loop() {
     digitalWrite(RST_PIN, LOW);          // Отпускаем сброс
     rfid.PCD_Init();                     // Инициализируем заново
   }
+
+  random16_add_entropy(random());
 
   if (newRFIDcardtimer < 10) {
     newRFIDcardtimer++;
@@ -166,6 +190,10 @@ void loop() {
 
           shuffle_questions();
 
+          Fire2012WithPalette();  // run simulation frame, using palette colors
+          FastLED.show();         // display this frame
+          FastLED.delay(1000 / FRAMES_PER_SECOND);
+
           // reading rules
           Serial.println("Playing rules recording");
           char path[] = "";
@@ -179,6 +207,10 @@ void loop() {
               analogWrite(MOTOR_PIN, motor_value);
               delay(20);
             }
+
+            Fire2012WithPalette();  // run simulation frame, using palette colors
+            FastLED.show();         // display this frame
+            FastLED.delay(1000 / FRAMES_PER_SECOND);
           }
         }
       }
@@ -186,9 +218,13 @@ void loop() {
   }
 
   if (game_in_progress) {
+    Fire2012WithPalette();  // run simulation frame, using palette colors
+    FastLED.show();         // display this frame
+    FastLED.delay(1000 / FRAMES_PER_SECOND);
+
     if (!question_played) {
       // light up current question
-      leds[last_question_played] = CRGB::Purple;
+      crystal_leds[last_question_played] = CRGB::Purple;
       FastLED.show();
 
       // reading question
@@ -213,7 +249,7 @@ void loop() {
         Serial.println("Correct answer!");
 
         // turn the light corresponding to question green
-        leds[last_question_played] = CRGB::Green;
+        crystal_leds[last_question_played] = CRGB::Green;
         FastLED.show();
 
         // play recording
@@ -229,6 +265,10 @@ void loop() {
             analogWrite(MOTOR_PIN, motor_value);
             delay(20);
           }
+
+          Fire2012WithPalette();  // run simulation frame, using palette colors
+          FastLED.show();         // display this frame
+          FastLED.delay(1000 / FRAMES_PER_SECOND);
         }
       } else {
         Serial.print("Answer presented: ");
@@ -236,7 +276,7 @@ void loop() {
         Serial.println("Wrong answer!");
 
         // turn the light corresponding to question red
-        leds[last_question_played] = CRGB::Red;
+        crystal_leds[last_question_played] = CRGB::Red;
         FastLED.show();
 
         // play recording
@@ -252,6 +292,9 @@ void loop() {
             analogWrite(MOTOR_PIN, motor_value);
             delay(20);
           }
+          Fire2012WithPalette();  // run simulation frame, using palette colors
+          FastLED.show();         // display this frame
+          FastLED.delay(1000 / FRAMES_PER_SECOND);
         }
       }
       last_question_played++;
@@ -365,15 +408,19 @@ void end_game() {
   // play recording
   // give out coins
 
-  // turn off all lights
+  // turn off all backlights
+  for (byte i = 0; i < BACKLIGHT_LED_COUNT; i++) {
+    backlight_leds[i] = CRGB::Black;
+  }
+
   while (last_question_played > 0) {
-    leds[last_question_played] = CRGB::Black;
+    crystal_leds[last_question_played - 1] = CRGB::Black;
     FastLED.show();
     delay(500);
     last_question_played--;
   }
 
-  leds[0] = CRGB::Black;
+  crystal_leds[0] = CRGB::Black;
   FastLED.show();
 
   while (motor_value > 0) {
@@ -384,4 +431,36 @@ void end_game() {
 
   shuffle_questions();
   Serial.println("Questions shuffled");
+}
+
+void Fire2012WithPalette() {
+  // Array of temperature readings at each simulation cell
+  static uint8_t heat[BACKLIGHT_LED_COUNT];
+
+  // Step 1.  Cool down every cell a little
+  for (int i = 0; i < BACKLIGHT_LED_COUNT; i++) {
+    heat[i] = qsub8(heat[i], random8(0, ((COOLING * 10) / BACKLIGHT_LED_COUNT) + 2));
+  }
+
+  // Step 2.  Heat from each cell drifts 'up' and diffuses a little
+  for (int k = BACKLIGHT_LED_COUNT - 1; k >= 2; k--) {
+    heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2]) / 3;
+  }
+
+  // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
+  if (random8() < SPARKING) {
+    int y = random8(7);
+    heat[y] = qadd8(heat[y], random8(160, 255));
+  }
+
+  // Step 4.  Map from heat cells to LED colors
+  for (int j = 0; j < BACKLIGHT_LED_COUNT; j++) {
+    // Scale the heat value from 0-255 down to 0-240
+    // for best results with color palettes.
+    uint8_t colorindex = scale8(heat[j], 240);
+    CRGB color = ColorFromPalette(gPal, colorindex);
+    int pixelnumber;
+    pixelnumber = j;
+    backlight_leds[pixelnumber] = color;
+  }
 }
