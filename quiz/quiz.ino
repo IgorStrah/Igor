@@ -84,9 +84,9 @@ static uint32_t rebootTimer = millis();
 
 byte newRFIDcardtimer = 0;
 
-CRGB crystal_leds[QUESTION_COUNT];
-const byte BACKLIGHT_LED_COUNT = 5;
-CRGB backlight_leds[BACKLIGHT_LED_COUNT];
+
+const byte BACKLIGHT_LED_COUNT = 20;
+CRGB leds[QUESTION_COUNT + BACKLIGHT_LED_COUNT];
 CRGBPalette16 gPal;
 // COOLING: How much does the air cool as it rises?
 // Less cooling = taller flames.  More cooling = shorter flames.
@@ -96,8 +96,8 @@ CRGBPalette16 gPal;
 // Higher chance = more roaring fire.  Lower chance = more flickery fire.
 // Default 120, suggested range 50-200.
 #define SPARKING 120
-#define BRIGHTNESS 200
-#define FRAMES_PER_SECOND 10
+#define BRIGHTNESS 50
+#define FRAMES_PER_SECOND 50
 
 void setup() {
   Serial.begin(115200);
@@ -130,23 +130,18 @@ void setup() {
   shuffle_questions();
 
   // Init LED strip, blink ligths LED green one by one
-  FastLED.addLeds<NEOPIXEL, 4>(crystal_leds, QUESTION_COUNT);  // rgb ordering is assumed
-  for (byte i = 0; i < QUESTION_COUNT; i++) {
-    crystal_leds[i] = CRGB::Green;
+  FastLED.addLeds<NEOPIXEL, 4>(leds, QUESTION_COUNT + BACKLIGHT_LED_COUNT);  // rgb ordering is assumed
+  for (byte i = 0; i < QUESTION_COUNT + 1 + BACKLIGHT_LED_COUNT; i++) {
+    leds[i] = CRGB::Green;
     FastLED.show();
     delay(100);
-    crystal_leds[i] = CRGB::Black;
+    leds[i] = CRGB::Black;
     FastLED.show();
   }
 
-  FastLED.addLeds<NEOPIXEL, 7>(backlight_leds, BACKLIGHT_LED_COUNT);
-  for (byte i = 0; i < BACKLIGHT_LED_COUNT; i++) {
-    backlight_leds[i] = CRGB::Blue;
-    FastLED.show();
-    delay(100);
-    backlight_leds[i] = CRGB::Black;
-    FastLED.show();
-  }
+  FastLED.setBrightness(BRIGHTNESS);
+
+  // color palette to be used for backlight
   gPal = CRGBPalette16(CRGB::Black, CRGB::Blue, CRGB::Aqua, CRGB::White);
 
   Serial.println("Initialization complete");
@@ -202,7 +197,7 @@ void loop() {
           Serial.println(path);
           player.playSpecifiedDevicePath(DY::Device::Sd, path);
           while (player.checkPlayState() == DY::PlayState::Playing) {
-            if (motor_value < 125) {
+            if (motor_value < 75) {
               motor_value++;
               analogWrite(MOTOR_PIN, motor_value);
               delay(20);
@@ -223,8 +218,11 @@ void loop() {
     FastLED.delay(1000 / FRAMES_PER_SECOND);
 
     if (!question_played) {
+      // change backlight palette to blue
+      gPal = CRGBPalette16(CRGB::Black, CRGB::Blue, CRGB::Aqua, CRGB::White);
+
       // light up current question
-      crystal_leds[last_question_played] = CRGB::Purple;
+      leds[BACKLIGHT_LED_COUNT + last_question_played] = CRGB::Purple;
       FastLED.show();
 
       // reading question
@@ -248,8 +246,11 @@ void loop() {
         Serial.println(rfid_data);
         Serial.println("Correct answer!");
 
+        // Change backlight palette to green-yellow
+        gPal = CRGBPalette16(CRGB::Black, CRGB::Red, CRGB::Yellow, CRGB::White);
+
         // turn the light corresponding to question green
-        crystal_leds[last_question_played] = CRGB::Green;
+        leds[BACKLIGHT_LED_COUNT + last_question_played] = CRGB::Green;
         FastLED.show();
 
         // play recording
@@ -260,7 +261,7 @@ void loop() {
         Serial.println(path);
         player.playSpecifiedDevicePath(DY::Device::Sd, path);
         while (player.checkPlayState() == DY::PlayState::Playing) {
-          if (motor_value > 70) {
+          if (motor_value > 75) {
             motor_value--;
             analogWrite(MOTOR_PIN, motor_value);
             delay(20);
@@ -275,8 +276,11 @@ void loop() {
         Serial.println(rfid_data);
         Serial.println("Wrong answer!");
 
+        // Change backlight palette to red-yellow
+        gPal = CRGBPalette16(CRGB::Black, CRGB::Green, CRGB::Yellow, CRGB::White);
+
         // turn the light corresponding to question red
-        crystal_leds[last_question_played] = CRGB::Red;
+        leds[BACKLIGHT_LED_COUNT + last_question_played] = CRGB::Red;
         FastLED.show();
 
         // play recording
@@ -287,7 +291,7 @@ void loop() {
         Serial.println(path);
         player.playSpecifiedDevicePath(DY::Device::Sd, path);
         while (player.checkPlayState() == DY::PlayState::Playing) {
-          if (motor_value < 250) {
+          if (motor_value < 90) {
             motor_value++;
             analogWrite(MOTOR_PIN, motor_value);
             delay(20);
@@ -410,17 +414,17 @@ void end_game() {
 
   // turn off all backlights
   for (byte i = 0; i < BACKLIGHT_LED_COUNT; i++) {
-    backlight_leds[i] = CRGB::Black;
+    leds[i] = CRGB::Black;
   }
 
   while (last_question_played > 0) {
-    crystal_leds[last_question_played - 1] = CRGB::Black;
+    leds[BACKLIGHT_LED_COUNT + last_question_played - 1] = CRGB::Black;
     FastLED.show();
-    delay(500);
+    delay(100);
     last_question_played--;
   }
 
-  crystal_leds[0] = CRGB::Black;
+  leds[BACKLIGHT_LED_COUNT] = CRGB::Black;
   FastLED.show();
 
   while (motor_value > 0) {
@@ -461,6 +465,6 @@ void Fire2012WithPalette() {
     CRGB color = ColorFromPalette(gPal, colorindex);
     int pixelnumber;
     pixelnumber = j;
-    backlight_leds[pixelnumber] = color;
+    leds[pixelnumber] = color;
   }
 }
