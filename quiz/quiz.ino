@@ -39,6 +39,9 @@
 #include <SoftwareSerial.h>
 #include "DYPlayerArduino.h"
 
+#include <iarduino_IR_RX.h>
+iarduino_IR_RX IR(6);  // declaring IR object & its pin
+
 #define SS_PIN 10
 #define RST_PIN 9
 
@@ -123,6 +126,9 @@ void setup() {
 
   randomSeed(analogRead(0));
 
+  // Setting up IR receiver
+  IR.begin();
+
   // Initialize questions
   for (int i = 0; i < QUESTION_COUNT; i++) {
     questions[i] = i + 1;
@@ -165,6 +171,10 @@ void loop() {
   readRFID();
   if (newRFIDcardtimer >= 10) {
     rfid_uid = "";
+  }
+
+  if (IR.check()) {             // Если в буфере имеются данные, принятые с пульта (была нажата кнопка)
+    Serial.println(IR.data);    // Выводим код нажатой кнопки
   }
 
   if (!game_in_progress && (rfid_uid_prev != rfid_uid)) {
