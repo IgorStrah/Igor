@@ -65,10 +65,7 @@ byte rfid_data;
 // row is quiz selection, column is language selection (RU, LV, EN)
 const byte GAME_COUNT = 2;
 const byte LANGUAGE_COUNT = 3;
-const String QUIZ_CARDS[GAME_COUNT][LANGUAGE_COUNT] = {
-  { "040d8f1a237380", "04118f1a237380", "04198f1a237380" },
-  { "04868e1a237380", "04828e1a237380", "047e8e1a237380" }
-};
+const String QUIZ_CARDS[GAME_COUNT] = { "040d8f1a237380", "04868e1a237380" };
 
 const String FORCE_STOP_CARD = "048e8e1a237380";
 const String REPEAT_QUESTION_CARD = "047a8e1a237380";
@@ -79,7 +76,7 @@ byte last_question_played = 0;
 
 bool game_in_progress = false;
 byte selected_game;
-byte selected_language;
+byte selected_language = 0;
 
 bool question_played = false;
 
@@ -87,7 +84,7 @@ static uint32_t rebootTimer = millis();
 
 byte newRFIDcardtimer = 0;
 
-
+// LED strip constants and variables
 const byte BACKLIGHT_LED_COUNT = 20;
 CRGB leds[QUESTION_COUNT + BACKLIGHT_LED_COUNT];
 CRGBPalette16 gPal;
@@ -173,50 +170,67 @@ void loop() {
     rfid_uid = "";
   }
 
-  if (IR.check()) {             // Если в буфере имеются данные, принятые с пульта (была нажата кнопка)
+  if (IR.check()) {  // Если в буфере имеются данные, принятые с пульта (была нажата кнопка)
+    Serial.print("IR data received: ");
     Serial.println(IR.data);    // Выводим код нажатой кнопки
+    if (IR.data == 16748655) {  // vol+ button
+      if (selected_language + 1 == LANGUAGE_COUNT) {
+        selected_language = 0;
+      } else {
+        selected_language++;
+      }
+      question_played = false;
+      Serial.print("Selected language (0-RU, 1-LV, 2-EN): ");
+      Serial.println(selected_language);
+    } else if (IR.data == 16754775) {  // vol- button
+      if (selected_language == 0) {
+        selected_language = LANGUAGE_COUNT - 1;
+      } else {
+        selected_language--;
+      }
+      question_played = false;
+      Serial.print("Selected language (0-RU, 1-LV, 2-EN): ");
+      Serial.println(selected_language);
+    }
   }
 
   if (!game_in_progress && (rfid_uid_prev != rfid_uid)) {
     for (byte i = 0; i < GAME_COUNT; i++) {
-      for (byte j = 0; j < LANGUAGE_COUNT; j++) {
-        if (rfid_uid == QUIZ_CARDS[i][j]) {
-          Serial.print("RFID card UID: ");
-          Serial.println(rfid_uid);
-          selected_game = i;
-          selected_language = j;
-          game_in_progress = true;
-          Serial.println("Match found");
-          Serial.print("Starting game: ");
-          Serial.println(selected_game);
-          Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
-          Serial.println(selected_language);
-          Serial.println();
+      if (rfid_uid == QUIZ_CARDS[i]) {
+        Serial.print("RFID card UID: ");
+        Serial.println(rfid_uid);
+        selected_game = i;
+        game_in_progress = true;
+        Serial.println("Match found");
+        Serial.print("Starting game: ");
+        Serial.println(selected_game);
+        Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
+        Serial.println(selected_language);
+        Serial.println();
 
-          shuffle_questions();
+        shuffle_questions();
+
+        Fire2012WithPalette();  // run simulation frame, using palette colors
+        FastLED.show();         // display this frame
+        FastLED.delay(1000 / FRAMES_PER_SECOND);
+
+        // reading rules
+        Serial.println("Playing rules recording");
+        char path[] = "";
+        sprintf(path, "/00/00/%02d.mp3", selected_language);
+        Serial.print("Playing ");
+        Serial.println(path);
+        player.playSpecifiedDevicePath(DY::Device::Sd, path);
+        while (player.checkPlayState() == DY::PlayState::Playing) {
+          if (motor_value < 75) {
+            motor_value++;
+            analogWrite(MOTOR_PIN, motor_value);
+            delay(20);
+          }
 
           Fire2012WithPalette();  // run simulation frame, using palette colors
           FastLED.show();         // display this frame
           FastLED.delay(1000 / FRAMES_PER_SECOND);
-
-          // reading rules
-          Serial.println("Playing rules recording");
-          char path[] = "";
-          sprintf(path, "/00/00/%02d.mp3", selected_language);
-          Serial.print("Playing ");
-          Serial.println(path);
-          player.playSpecifiedDevicePath(DY::Device::Sd, path);
-          while (player.checkPlayState() == DY::PlayState::Playing) {
-            if (motor_value < 75) {
-              motor_value++;
-              analogWrite(MOTOR_PIN, motor_value);
-              delay(20);
-            }
-
-            Fire2012WithPalette();  // run simulation frame, using palette colors
-            FastLED.show();         // display this frame
-            FastLED.delay(1000 / FRAMES_PER_SECOND);
-          }
         }
       }
     }
