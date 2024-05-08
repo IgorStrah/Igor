@@ -65,7 +65,6 @@ byte rfid_data;
 // row is quiz selection, column is language selection (RU, LV, EN)
 const byte GAME_COUNT = 2;
 const byte LANGUAGE_COUNT = 3;
-const String START_GAME_CARD = {"040d8f1a237380"};
 
 const String FORCE_STOP_CARD = "048e8e1a237380";
 const String REPEAT_QUESTION_CARD = "047a8e1a237380";
@@ -130,7 +129,6 @@ void setup() {
   for (int i = 0; i < QUESTION_COUNT; i++) {
     questions[i] = i + 1;
   }
-  shuffle_questions();
 
   // Init LED strip, blink ligths LED green one by one
   FastLED.addLeds<NEOPIXEL, 4>(leds, QUESTION_COUNT + BACKLIGHT_LED_COUNT);  // rgb ordering is assumed
@@ -199,7 +197,7 @@ void loop() {
       }
       Serial.print("Selected game: ");
       Serial.println(selected_game);
-    } else if (IR.data == 16712445) { // backward button
+    } else if (IR.data == 16712445) {  // backward button
       if (selected_game == 0) {
         selected_game = GAME_COUNT - 1;
       } else {
@@ -207,13 +205,7 @@ void loop() {
       }
       Serial.print("Selected game: ");
       Serial.println(selected_game);
-    }
-  }
-
-  if (!game_in_progress && (rfid_uid_prev != rfid_uid)) {
-    if (rfid_uid == START_GAME_CARD) {
-      Serial.print("RFID card UID: ");
-      Serial.println(rfid_uid);
+    } else if (IR.data == 16716015) {  // button 4
       game_in_progress = true;
       Serial.print("Starting game: ");
       Serial.println(selected_game);
@@ -222,10 +214,6 @@ void loop() {
       Serial.println();
 
       shuffle_questions();
-
-      Fire2012WithPalette();  // run simulation frame, using palette colors
-      FastLED.show();         // display this frame
-      FastLED.delay(1000 / FRAMES_PER_SECOND);
 
       // reading rules
       Serial.println("Playing rules recording");
@@ -258,7 +246,7 @@ void loop() {
       gPal = CRGBPalette16(CRGB::Black, CRGB::Blue, CRGB::Aqua, CRGB::White);
 
       // light up current question
-      leds[BACKLIGHT_LED_COUNT + last_question_played] = CRGB::Purple;
+      leds[BACKLIGHT_LED_COUNT + last_question_played] = CRGB::Blue;
       FastLED.show();
 
       // reading question
@@ -283,7 +271,7 @@ void loop() {
         Serial.println("Correct answer!");
 
         // Change backlight palette to green-yellow
-        gPal = CRGBPalette16(CRGB::Black, CRGB::Red, CRGB::Yellow, CRGB::White);
+        gPal = CRGBPalette16(CRGB::Black, CRGB::GreenYellow, CRGB::Green, CRGB::DarkGreen);
 
         // turn the light corresponding to question green
         leds[BACKLIGHT_LED_COUNT + last_question_played] = CRGB::Green;
@@ -313,7 +301,7 @@ void loop() {
         Serial.println("Wrong answer!");
 
         // Change backlight palette to red-yellow
-        gPal = CRGBPalette16(CRGB::Black, CRGB::Green, CRGB::Yellow, CRGB::White);
+        gPal = CRGBPalette16(CRGB::Black, CRGB::Yellow, CRGB::Orange, CRGB::Red);
 
         // turn the light corresponding to question red
         leds[BACKLIGHT_LED_COUNT + last_question_played] = CRGB::Red;
@@ -432,7 +420,7 @@ void shuffle_questions() {
 
 // helper function to check whether last read RFID UID is answer card
 bool is_answer_card() {
-  if (rfid_uid == FORCE_STOP_CARD || rfid_uid == REPEAT_QUESTION_CARD || rfid_uid == START_GAME_CARD) return false;
+  if (rfid_uid == FORCE_STOP_CARD || rfid_uid == REPEAT_QUESTION_CARD) return false;
   return true;
 }
 
