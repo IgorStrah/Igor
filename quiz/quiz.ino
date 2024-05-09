@@ -127,11 +127,6 @@ void setup() {
   // Setting up IR receiver
   IR.begin();
 
-  // Initialize questions
-  for (int i = 0; i < QUESTION_COUNT; i++) {
-    questions[i] = i + 1;
-  }
-
   // Init LED strip, blink ligths LED green one by one
   FastLED.addLeds<NEOPIXEL, 4>(leds, QUESTION_COUNT + BACKLIGHT_LED_COUNT);  // rgb ordering is assumed
   for (byte i = 0; i < QUESTION_COUNT + 1 + BACKLIGHT_LED_COUNT; i++) {
@@ -223,7 +218,7 @@ void loop() {
       Serial.println(selected_language);
       Serial.println();
 
-      shuffle_questions();
+      init_and_shuffle_questions();
 
       // reading rules
       Serial.println("Playing rules recording");
@@ -233,7 +228,7 @@ void loop() {
       Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
       while (player.checkPlayState() == DY::PlayState::Playing) {
-        if (motor_value < 75) {
+        if (motor_value < 90) {
           motor_value++;
           analogWrite(MOTOR_PIN, motor_value);
           delay(20);
@@ -295,7 +290,7 @@ void loop() {
         Serial.println(path);
         player.playSpecifiedDevicePath(DY::Device::Sd, path);
         while (player.checkPlayState() == DY::PlayState::Playing) {
-          if (motor_value > 75) {
+          if (motor_value > 90) {
             motor_value--;
             analogWrite(MOTOR_PIN, motor_value);
             delay(20);
@@ -328,7 +323,7 @@ void loop() {
         Serial.println(path);
         player.playSpecifiedDevicePath(DY::Device::Sd, path);
         while (player.checkPlayState() == DY::PlayState::Playing) {
-          if (motor_value < 90) {
+          if (motor_value < 105) {
             motor_value++;
             analogWrite(MOTOR_PIN, motor_value);
             delay(20);
@@ -420,22 +415,33 @@ void readRFID() {
   rfid_uid = hexString;
 }
 
-void shuffle_questions() {
+void init_and_shuffle_questions() {
+  // Initialize questions
+  for (byte i = 0; i < QUESTION_COUNT; i++) {
+    questions[i] = i + 1;
+  } 
+
   // Shuffle questions using Fisher-Yates algorithm
-  for (int i = 0; i < QUESTION_COUNT; i++) {
-    int j = random(0, i + 1);  // Generate a random index from 0 to i
-    // Swap the elements at indices i and j
-    byte temp = questions[i];
+  for (int i = QUESTION_COUNT - 1; i > 0; i--) {
+    int j = random(i + 1);  // Generate a random index from 0 to i
+    int temp = questions[i];
     questions[i] = questions[j];
     questions[j] = temp;
+
+    for (byte i = 0; i < QUESTION_COUNT; i++) {
+      Serial.print(questions[i]);
+      Serial.print(" ");
+    }
+    Serial.println();
   }
 
-  // Uncomment below to print shuffled question array
-  // for (int i = 0; i < QUESTION_COUNT; i++) {
-  //   Serial.print(questions[i]);
-  //   Serial.print(" ");
+  //   // Uncomment below to print shuffled question array
+  //   for (byte i = 0; i < QUESTION_COUNT; i++) {
+  //     Serial.print(questions[i]);
+  //     Serial.print(" ");
+  //   }
+  //   Serial.println();
   // }
-  // Serial.println();
 }
 
 // helper function to check whether last read RFID UID is answer card
@@ -471,9 +477,6 @@ void end_game() {
     analogWrite(MOTOR_PIN, motor_value);
     delay(20);
   }
-
-  shuffle_questions();
-  Serial.println("Questions shuffled");
 }
 
 void Fire2012WithPalette() {
