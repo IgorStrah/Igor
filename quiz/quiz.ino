@@ -77,7 +77,6 @@ byte last_question_played = 0;
 bool game_in_progress = false;
 byte selected_game = 0;
 byte selected_language = 0;
-bool errors_allowed = true;
 byte game_mode = 2;  // 0 - one random question on start, 1 - quest, 2 - quiz
 
 bool question_played = false;
@@ -208,7 +207,7 @@ void loop() {
       }
       Serial.print("Selected game: ");
       Serial.println(selected_game);
-    } else if (IR.data == 16736925) {
+    } else if (IR.data == 16736925) {  // mode button
       if (game_mode == GAME_MODE_COUNT - 1) {
         game_mode = 0;
       } else {
@@ -306,6 +305,9 @@ void loop() {
           FastLED.show();         // display this frame
           FastLED.delay(1000 / FRAMES_PER_SECOND);
         }
+
+        last_question_played++;
+        question_played = false;
       } else {
         Serial.print("Answer presented: ");
         Serial.println(rfid_data);
@@ -335,9 +337,16 @@ void loop() {
           FastLED.show();         // display this frame
           FastLED.delay(1000 / FRAMES_PER_SECOND);
         }
+
+        if (game_mode == 2) {
+          last_question_played++;
+          question_played = false;
+        } else if (game_mode == 1) {
+          leds[BACKLIGHT_LED_COUNT + last_question_played] = CRGB::Blue;
+          FastLED.show();
+          gPal = CRGBPalette16(CRGB::Black, CRGB::Blue, CRGB::Aqua, CRGB::White);
+        }
       }
-      last_question_played++;
-      question_played = false;
     }
 
     if (last_question_played >= QUESTION_COUNT) {
