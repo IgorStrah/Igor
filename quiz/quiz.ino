@@ -277,7 +277,7 @@ void loop() {
       question_played = true;
     }
 
-    if (question_played && is_answer_card() && (rfid_uid != rfid_uid_prev) && (rfid_uid != "")) {
+    if (question_played && (rfid_uid != REPEAT_QUESTION_CARD) && (rfid_uid != rfid_uid_prev) && (rfid_uid != "")) {
       newRFIDcardtimer++;
       if (rfid_data == questions[last_question_played] + question_count * selected_game) {
         Serial.print("Answer presented: ");
@@ -443,12 +443,6 @@ void init_and_shuffle_questions() {
     Serial.print(questions[i]);
     Serial.print(" ");
   }
-}
-
-// helper function to check whether last read RFID UID is answer card
-bool is_answer_card() {
-  if (rfid_uid == REPEAT_QUESTION_CARD) return false;
-  return true;
 }
 
 void end_game() {
