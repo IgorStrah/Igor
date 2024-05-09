@@ -70,9 +70,10 @@ const byte GAME_MODE_COUNT = 3;
 const String FORCE_STOP_CARD = "048e8e1a237380";
 const String REPEAT_QUESTION_CARD = "047a8e1a237380";
 
-const byte QUESTION_COUNT = 20;
-byte questions[QUESTION_COUNT];
+const byte MAX_QUESTION_COUNT = 21;
+byte questions[MAX_QUESTION_COUNT];
 byte last_question_played = 0;
+byte question_count[GAME_COUNT] = {20, 14};
 
 bool game_in_progress = false;
 byte selected_game = 0;
@@ -87,7 +88,7 @@ byte newRFIDcardtimer = 0;
 
 // LED strip constants and variables
 const byte BACKLIGHT_LED_COUNT = 20;
-CRGB leds[QUESTION_COUNT + BACKLIGHT_LED_COUNT];
+CRGB leds[MAX_QUESTION_COUNT + BACKLIGHT_LED_COUNT];
 CRGBPalette16 gPal;
 // COOLING: How much does the air cool as it rises?
 // Less cooling = taller flames.  More cooling = shorter flames.
@@ -128,8 +129,8 @@ void setup() {
   IR.begin();
 
   // Init LED strip, blink ligths LED green one by one
-  FastLED.addLeds<NEOPIXEL, 4>(leds, QUESTION_COUNT + BACKLIGHT_LED_COUNT);  // rgb ordering is assumed
-  for (byte i = 0; i < QUESTION_COUNT + 1 + BACKLIGHT_LED_COUNT; i++) {
+  FastLED.addLeds<NEOPIXEL, 4>(leds, MAX_QUESTION_COUNT + BACKLIGHT_LED_COUNT);  // rgb ordering is assumed
+  for (byte i = 0; i < MAX_QUESTION_COUNT + BACKLIGHT_LED_COUNT; i++) {
     leds[i] = CRGB::Green;
     FastLED.show();
     delay(100);
@@ -270,7 +271,7 @@ void loop() {
 
     if (question_played && is_answer_card() && (rfid_uid != rfid_uid_prev) && (rfid_uid != "")) {
       newRFIDcardtimer++;
-      if (rfid_data == questions[last_question_played] + QUESTION_COUNT * selected_game) {
+      if (rfid_data == questions[last_question_played] + question_count[selected_game] * selected_game) {
         Serial.print("Answer presented: ");
         Serial.println(rfid_data);
         Serial.println("Correct answer!");
@@ -344,7 +345,7 @@ void loop() {
       }
     }
 
-    if (last_question_played >= QUESTION_COUNT) {
+    if (last_question_played >= question_count[selected_game]) {
       Serial.println("Game finished");
       end_game();
     }
@@ -417,31 +418,24 @@ void readRFID() {
 
 void init_and_shuffle_questions() {
   // Initialize questions
-  for (byte i = 0; i < QUESTION_COUNT; i++) {
+  for (byte i = 0; i < MAX_QUESTION_COUNT; i++) {
     questions[i] = i + 1;
   } 
 
   // Shuffle questions using Fisher-Yates algorithm
-  for (int i = QUESTION_COUNT - 1; i > 0; i--) {
+  for (int i = question_count[selected_game] - 1; i > 0; i--) {
     int j = random(i + 1);  // Generate a random index from 0 to i
     int temp = questions[i];
     questions[i] = questions[j];
     questions[j] = temp;
+  }
 
-    for (byte i = 0; i < QUESTION_COUNT; i++) {
+    // Uncomment below to print shuffled question array
+    for (byte i = 0; i < MAX_QUESTION_COUNT; i++) {
       Serial.print(questions[i]);
       Serial.print(" ");
     }
     Serial.println();
-  }
-
-  //   // Uncomment below to print shuffled question array
-  //   for (byte i = 0; i < QUESTION_COUNT; i++) {
-  //     Serial.print(questions[i]);
-  //     Serial.print(" ");
-  //   }
-  //   Serial.println();
-  // }
 }
 
 // helper function to check whether last read RFID UID is answer card
