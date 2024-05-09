@@ -65,6 +65,7 @@ byte rfid_data;
 // row is quiz selection, column is language selection (RU, LV, EN)
 const byte GAME_COUNT = 2;
 const byte LANGUAGE_COUNT = 3;
+const byte GAME_MODE_COUNT = 3;
 
 const String FORCE_STOP_CARD = "048e8e1a237380";
 const String REPEAT_QUESTION_CARD = "047a8e1a237380";
@@ -76,6 +77,8 @@ byte last_question_played = 0;
 bool game_in_progress = false;
 byte selected_game = 0;
 byte selected_language = 0;
+bool errors_allowed = true;
+byte game_mode = 2;  // 0 - one random question on start, 1 - quest, 2 - quiz
 
 bool question_played = false;
 
@@ -205,6 +208,14 @@ void loop() {
       }
       Serial.print("Selected game: ");
       Serial.println(selected_game);
+    } else if (IR.data == 16736925) {
+      if (game_mode == GAME_MODE_COUNT - 1) {
+        game_mode = 0;
+      } else {
+        game_mode++;
+      }
+      Serial.print("Game mode (0 - random, 1 - quest, 2 - quiz): ");
+      Serial.println(game_mode);
     } else if (IR.data == 16716015) {  // button 4
       game_in_progress = true;
       Serial.print("Starting game: ");
