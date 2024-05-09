@@ -67,13 +67,13 @@ const byte GAME_COUNT = 2;
 const byte LANGUAGE_COUNT = 3;
 const byte GAME_MODE_COUNT = 3;
 
-const String FORCE_STOP_CARD = "048e8e1a237380";
 const String REPEAT_QUESTION_CARD = "047a8e1a237380";
 
 const byte MAX_QUESTION_COUNT = 21;
 byte questions[MAX_QUESTION_COUNT];
 byte last_question_played = 0;
-byte question_count[GAME_COUNT] = {20, 14};
+byte question_count_in_game[GAME_COUNT] = { 20, 14 };
+byte question_count = 0;
 
 bool game_in_progress = false;
 byte selected_game = 0;
@@ -187,7 +187,7 @@ void loop() {
       question_played = false;
       Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
       Serial.println(selected_language);
-    } else if (IR.data == 16761405) {  // forward button
+    } else if ((IR.data == 16761405) && !game_in_progress) {  // forward button
       if (selected_game + 1 == GAME_COUNT) {
         selected_game = 0;
       } else {
@@ -195,7 +195,7 @@ void loop() {
       }
       Serial.print("Selected game: ");
       Serial.println(selected_game);
-    } else if (IR.data == 16712445) {  // backward button
+    } else if ((IR.data == 16712445) && !game_in_progress) {  // backward button
       if (selected_game == 0) {
         selected_game = GAME_COUNT - 1;
       } else {
@@ -203,7 +203,7 @@ void loop() {
       }
       Serial.print("Selected game: ");
       Serial.println(selected_game);
-    } else if (IR.data == 16736925) {  // mode button
+    } else if ((IR.data == 16736925) && !game_in_progress) {  // mode button
       if (game_mode == GAME_MODE_COUNT - 1) {
         game_mode = 0;
       } else {
@@ -211,7 +211,10 @@ void loop() {
       }
       Serial.print("Game mode (0 - random, 1 - quest, 2 - quiz): ");
       Serial.println(game_mode);
-    } else if (IR.data == 16716015) {  // button 4
+    } else if ((IR.data == 16720605) && game_in_progress) {  // play/pause button
+      Serial.println("Game stopped");
+      end_game();
+    } else if ((IR.data == 16716015) && !game_in_progress) {  // button 4
       game_in_progress = true;
       Serial.print("Starting game: ");
       Serial.println(selected_game);
@@ -219,6 +222,11 @@ void loop() {
       Serial.println(selected_language);
       Serial.println();
 
+      if (game_mode == 0) {
+        question_count = 1;
+      } else {
+        question_count = question_count_in_game[selected_game];
+      }
       init_and_shuffle_questions();
 
       // reading rules
@@ -271,7 +279,7 @@ void loop() {
 
     if (question_played && is_answer_card() && (rfid_uid != rfid_uid_prev) && (rfid_uid != "")) {
       newRFIDcardtimer++;
-      if (rfid_data == questions[last_question_played] + question_count[selected_game] * selected_game) {
+      if (rfid_data == questions[last_question_played] + question_count * selected_game) {
         Serial.print("Answer presented: ");
         Serial.println(rfid_data);
         Serial.println("Correct answer!");
@@ -345,15 +353,12 @@ void loop() {
       }
     }
 
-    if (last_question_played >= question_count[selected_game]) {
+    if (last_question_played >= question_count) {
       Serial.println("Game finished");
       end_game();
     }
 
-    if ((rfid_uid == FORCE_STOP_CARD) && (rfid_uid != rfid_uid_prev)) {
-      Serial.println("Game stopped");
-      end_game();
-    } else if ((rfid_uid == REPEAT_QUESTION_CARD) && (rfid_uid != rfid_uid_prev)) {
+    if ((rfid_uid == REPEAT_QUESTION_CARD) && (rfid_uid != rfid_uid_prev)) {
       question_played = false;
       rfid_uid = "";
     }
@@ -420,27 +425,29 @@ void init_and_shuffle_questions() {
   // Initialize questions
   for (byte i = 0; i < MAX_QUESTION_COUNT; i++) {
     questions[i] = i + 1;
-  } 
-
-  // Shuffle questions using Fisher-Yates algorithm
-  for (int i = question_count[selected_game] - 1; i > 0; i--) {
-    int j = random(i + 1);  // Generate a random index from 0 to i
-    int temp = questions[i];
-    questions[i] = questions[j];
-    questions[j] = temp;
   }
 
-    // Uncomment below to print shuffled question array
-    for (byte i = 0; i < MAX_QUESTION_COUNT; i++) {
-      Serial.print(questions[i]);
-      Serial.print(" ");
+  if (selected_game != 1) { // question order must be preserved for game nr. 1
+    // Shuffle questions using Fisher-Yates algorithm
+    for (int i = 0; i < MAX_QUESTION_COUNT - 1; i++) {
+      int j = random(i, MAX_QUESTION_COUNT);  // Generate a random index from i to n-1
+      // Swap arr[i] with the element at random index
+      int temp = questions[i];
+      questions[i] = questions[j];
+      questions[j] = temp;
     }
-    Serial.println();
+  }
+
+  // Uncomment below to print shuffled question array
+  for (byte i = 0; i < MAX_QUESTION_COUNT; i++) {
+    Serial.print(questions[i]);
+    Serial.print(" ");
+  }
 }
 
 // helper function to check whether last read RFID UID is answer card
 bool is_answer_card() {
-  if (rfid_uid == FORCE_STOP_CARD || rfid_uid == REPEAT_QUESTION_CARD) return false;
+  if (rfid_uid == REPEAT_QUESTION_CARD) return false;
   return true;
 }
 
