@@ -175,9 +175,16 @@ void loop() {
       } else {
         selected_language++;
       }
+      Serial.println("Playing rules recording");
+      char path[] = "";
+      sprintf(path, "/00/03/%02d.mp3", selected_language);
+      Serial.print("Playing ");
+      Serial.println(path);
+      player.playSpecifiedDevicePath(DY::Device::Sd, path);
       question_played = false;
       Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
       Serial.println(selected_language);
+
     } else if (IR.data == 16754775) {  // vol- button
       if (selected_language == 0) {
         selected_language = LANGUAGE_COUNT - 1;
@@ -187,6 +194,15 @@ void loop() {
       question_played = false;
       Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
       Serial.println(selected_language);
+      char path[] = "";
+      sprintf(path, "/00/03/%02d.mp3", selected_language);
+      Serial.print("Playing ");
+      Serial.println(path);
+      player.playSpecifiedDevicePath(DY::Device::Sd, path);
+      question_played = false;
+      Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
+      Serial.println(selected_language);
+
     } else if ((IR.data == 16761405) && !game_in_progress) {  // forward button
       if (selected_game + 1 == GAME_COUNT) {
         selected_game = 0;
@@ -195,6 +211,12 @@ void loop() {
       }
       Serial.print("Selected game: ");
       Serial.println(selected_game);
+      char path[] = "";
+      sprintf(path, "/%02d/00.mp3", selected_game + 1);
+      Serial.print("Playing ");
+      Serial.println(path);
+      player.playSpecifiedDevicePath(DY::Device::Sd, path);
+      
     } else if ((IR.data == 16712445) && !game_in_progress) {  // backward button
       if (selected_game == 0) {
         selected_game = GAME_COUNT - 1;
@@ -203,6 +225,7 @@ void loop() {
       }
       Serial.print("Selected game: ");
       Serial.println(selected_game);
+
     } else if ((IR.data == 16736925) && !game_in_progress) {  // mode button
       if (game_mode == GAME_MODE_COUNT - 1) {
         game_mode = 0;
@@ -211,9 +234,16 @@ void loop() {
       }
       Serial.print("Game mode (0 - random, 1 - quest, 2 - quiz): ");
       Serial.println(game_mode);
+      char path[] = "";
+      sprintf(path, "/00/02/%02d.mp3", game_mode);
+      Serial.print("Playing ");
+      Serial.println(path);
+      player.playSpecifiedDevicePath(DY::Device::Sd, path);
+      
     } else if ((IR.data == 16720605) && game_in_progress) {  // play/pause button
       Serial.println("Game stopped");
       end_game();
+
     } else if ((IR.data == 16716015) && !game_in_progress) {  // button 4
       game_in_progress = true;
       Serial.print("Starting game: ");
@@ -427,12 +457,11 @@ void init_and_shuffle_questions() {
     questions[i] = i + 1;
   }
 
-  if (selected_game != 1) { // question order must be preserved for game nr. 1
+  if (selected_game != 1) {  // question order must be preserved for game nr. 1
     // Shuffle questions using Fisher-Yates algorithm
-    for (int i = 0; i < MAX_QUESTION_COUNT - 1; i++) {
-      int j = random(i, MAX_QUESTION_COUNT);  // Generate a random index from i to n-1
-      // Swap arr[i] with the element at random index
-      int temp = questions[i];
+    for (byte i = 0; i < question_count_in_game[selected_game] - 1; i++) {
+      byte j = random(i, question_count_in_game[selected_game]);  
+      byte temp = questions[i];
       questions[i] = questions[j];
       questions[j] = temp;
     }
