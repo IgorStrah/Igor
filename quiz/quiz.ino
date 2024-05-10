@@ -216,7 +216,7 @@ void loop() {
       Serial.print("Playing ");
       Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
-      
+
     } else if ((IR.data == 16712445) && !game_in_progress) {  // backward button
       if (selected_game == 0) {
         selected_game = GAME_COUNT - 1;
@@ -239,7 +239,7 @@ void loop() {
       Serial.print("Playing ");
       Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
-      
+
     } else if ((IR.data == 16720605) && game_in_progress) {  // play/pause button
       Serial.println("Game stopped");
       end_game();
@@ -262,7 +262,11 @@ void loop() {
       // reading rules
       Serial.println("Playing rules recording");
       char path[] = "";
-      sprintf(path, "/00/00/%02d.mp3", selected_language);
+      if (selected_game == 1) {
+        sprintf(path, "/%02d/01.mp3", selected_game + 1);
+      } else {
+        sprintf(path, "/00/00/%02d.mp3", selected_language);
+      }
       Serial.print("Playing ");
       Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
@@ -309,7 +313,7 @@ void loop() {
 
     if (question_played && (rfid_uid != REPEAT_QUESTION_CARD) && (rfid_uid != rfid_uid_prev) && (rfid_uid != "")) {
       newRFIDcardtimer++;
-      if (rfid_data == questions[last_question_played] + question_count * selected_game) {
+      if (rfid_data == questions[last_question_played] + MAX_QUESTION_COUNT * selected_game) {
         Serial.print("Answer presented: ");
         Serial.println(rfid_data);
         Serial.println("Correct answer!");
@@ -460,7 +464,7 @@ void init_and_shuffle_questions() {
   if (selected_game != 1) {  // question order must be preserved for game nr. 1
     // Shuffle questions using Fisher-Yates algorithm
     for (byte i = 0; i < question_count_in_game[selected_game] - 1; i++) {
-      byte j = random(i, question_count_in_game[selected_game]);  
+      byte j = random(i, question_count_in_game[selected_game]);
       byte temp = questions[i];
       questions[i] = questions[j];
       questions[j] = temp;
