@@ -63,7 +63,7 @@ String rfid_uid = "", rfid_uid_prev = "";
 byte rfid_data;
 
 // row is quiz selection, column is language selection (RU, LV, EN)
-const byte GAME_COUNT = 2;
+const byte GAME_COUNT = 3;
 const byte LANGUAGE_COUNT = 3;
 const byte GAME_MODE_COUNT = 3;
 
@@ -72,7 +72,7 @@ const String REPEAT_QUESTION_CARD = "047a8e1a237380";
 const byte MAX_QUESTION_COUNT = 21;
 byte questions[MAX_QUESTION_COUNT];
 byte last_question_played = 0;
-byte question_count_in_game[GAME_COUNT] = { 20, 14 };
+byte question_count_in_game[GAME_COUNT] = { 20, 14, 21 };
 byte question_count = 0;
 
 bool game_in_progress = false;
@@ -225,6 +225,11 @@ void loop() {
       }
       Serial.print("Selected game: ");
       Serial.println(selected_game);
+      char path[] = "";
+      sprintf(path, "/%02d/00.mp3", selected_game + 1);
+      Serial.print("Playing ");
+      Serial.println(path);
+      player.playSpecifiedDevicePath(DY::Device::Sd, path);
 
     } else if ((IR.data == 16736925) && !game_in_progress) {  // mode button
       if (game_mode == GAME_MODE_COUNT - 1) {
@@ -244,7 +249,7 @@ void loop() {
       Serial.println("Game stopped");
       end_game();
 
-    } else if ((IR.data == 16716015) && !game_in_progress) {  // button 4
+    } else if ((IR.data == 16716015) || (IR.data == 1111000004) && !game_in_progress) {  // button 4
       game_in_progress = true;
       Serial.print("Starting game: ");
       Serial.println(selected_game);
@@ -264,7 +269,7 @@ void loop() {
       char path[] = "";
       if (selected_game == 1) {
         sprintf(path, "/%02d/01.mp3", selected_game + 1);
-      } else {
+      } else if (game_mode != 0) {
         sprintf(path, "/00/00/%02d.mp3", selected_language);
       }
       Serial.print("Playing ");
@@ -307,6 +312,11 @@ void loop() {
       Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
       // while (player.checkPlayState() == DY::PlayState::Playing) {}
+      while (motor_value < 90) {
+        motor_value++;
+        analogWrite(MOTOR_PIN, motor_value);
+        delay(20);
+      }
 
       question_played = true;
     }
@@ -376,10 +386,10 @@ void loop() {
           FastLED.delay(1000 / FRAMES_PER_SECOND);
         }
 
-        if (game_mode == 2) {
+        if (game_mode != 1) {
           last_question_played++;
           question_played = false;
-        } else if (game_mode == 1) {
+        } else {
           leds[BACKLIGHT_LED_COUNT + last_question_played] = CRGB::Blue;
           FastLED.show();
           gPal = CRGBPalette16(CRGB::Black, CRGB::Blue, CRGB::Aqua, CRGB::White);
