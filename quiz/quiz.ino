@@ -29,6 +29,12 @@
  *
  * More pin layouts for other boards can be found here: https://github.com/miguelbalboa/rfid#pin-layout
  */
+// for servo control
+#include <Wire.h>
+#define PCA9685_ADDR 0x40
+#define MODE1 0x00
+#define PRESCALE 0xFE
+#define LED0_ON_L 0x06
 
 #include <SPI.h>
 #include <MFRC522.h>
@@ -48,9 +54,7 @@ iarduino_IR_RX IR(6);  // declaring IR object & its pin
 const byte MOTOR_PIN = 5;
 byte motor_value = 0;
 
-// Initialise the player on software serial port.
-SoftwareSerial SoftSerial(2, 3);
-DY::Player player(&SoftSerial);
+DY::Player player;
 
 MFRC522 rfid(SS_PIN, RST_PIN);  // Instance of the class
 
@@ -102,7 +106,7 @@ CRGBPalette16 gPal;
 #define FRAMES_PER_SECOND 50
 
 void setup() {
-  Serial.begin(115200);
+  // Serial.begin(9600);
   SPI.begin();      // Init SPI bus
   rfid.PCD_Init();  // Init MFRC522
 
@@ -116,19 +120,33 @@ void setup() {
   player.setCycleMode(DY::PlayMode::OneOff);
   byte sd_card_status = (int16_t)player.getPlayingDevice();
   if (sd_card_status == 1) {
-    Serial.println("SD card read succesfully");
+    // Serial.println("SD card read succesfully");
   } else {
-    Serial.println("SD card read failed");
+    // Serial.println("SD card read failed");
   }
-  Serial.print("Number of sound records found: ");
-  Serial.println((int16_t)player.getSoundCount());
+  // Serial.print("Number of sound records found: ");
+  // Serial.println((int16_t)player.getSoundCount());
+
 
   randomSeed(analogRead(0));
 
+  // Serial.println("Setting up servos");
+  Wire.begin();
+  resetPCA9685();
+  setPWMFreq(50);
+  for (byte i = 0; i <= 1; i++) {
+    setServoAngle(i, 0);
+    delay(1000);
+    setServoAngle(i, 180);
+    delay(1000);
+  }
+
   // Setting up IR receiver
+  // Serial.println("Setting up IR receiver");
   IR.begin();
 
   // Init LED strip, blink ligths LED green one by one
+  // Serial.println("Setting up LED strip");
   FastLED.addLeds<NEOPIXEL, 4>(leds, MAX_QUESTION_COUNT + BACKLIGHT_LED_COUNT);  // rgb ordering is assumed
   for (byte i = 0; i < MAX_QUESTION_COUNT + BACKLIGHT_LED_COUNT; i++) {
     leds[i] = CRGB::Green;
@@ -143,7 +161,7 @@ void setup() {
   // color palette to be used for backlight
   gPal = CRGBPalette16(CRGB::Black, CRGB::Blue, CRGB::Aqua, CRGB::White);
 
-  Serial.println("Initialization complete");
+  // Serial.println("Initialization complete");
 }
 
 void loop() {
@@ -167,23 +185,23 @@ void loop() {
   }
 
   if (IR.check()) {  // Если в буфере имеются данные, принятые с пульта (была нажата кнопка)
-    Serial.print("IR data received: ");
-    Serial.println(IR.data);    // Выводим код нажатой кнопки
+    // Serial.print("IR data received: ");
+    // Serial.println(IR.data);    // Выводим код нажатой кнопки
     if (IR.data == 16748655) {  // vol+ button
       if (selected_language + 1 == LANGUAGE_COUNT) {
         selected_language = 0;
       } else {
         selected_language++;
       }
-      Serial.println("Playing rules recording");
+      // Serial.println("Playing rules recording");
       char path[] = "";
       sprintf(path, "/00/03/%02d.mp3", selected_language);
-      Serial.print("Playing ");
-      Serial.println(path);
+      // Serial.print("Playing ");
+      // Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
       question_played = false;
-      Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
-      Serial.println(selected_language);
+      // Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
+      // Serial.println(selected_language);
 
     } else if (IR.data == 16754775) {  // vol- button
       if (selected_language == 0) {
@@ -192,16 +210,16 @@ void loop() {
         selected_language--;
       }
       question_played = false;
-      Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
-      Serial.println(selected_language);
+      // Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
+      // Serial.println(selected_language);
       char path[] = "";
       sprintf(path, "/00/03/%02d.mp3", selected_language);
-      Serial.print("Playing ");
-      Serial.println(path);
+      // Serial.print("Playing ");
+      // Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
       question_played = false;
-      Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
-      Serial.println(selected_language);
+      // Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
+      // Serial.println(selected_language);
 
     } else if ((IR.data == 16761405) && !game_in_progress) {  // forward button
       if (selected_game + 1 == GAME_COUNT) {
@@ -209,12 +227,12 @@ void loop() {
       } else {
         selected_game++;
       }
-      Serial.print("Selected game: ");
-      Serial.println(selected_game);
+      // Serial.print("Selected game: ");
+      // Serial.println(selected_game);
       char path[] = "";
       sprintf(path, "/%02d/00.mp3", selected_game + 1);
-      Serial.print("Playing ");
-      Serial.println(path);
+      // Serial.print("Playing ");
+      // Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
 
     } else if ((IR.data == 16712445) && !game_in_progress) {  // backward button
@@ -223,12 +241,12 @@ void loop() {
       } else {
         selected_game--;
       }
-      Serial.print("Selected game: ");
-      Serial.println(selected_game);
+      // Serial.print("Selected game: ");
+      // Serial.println(selected_game);
       char path[] = "";
       sprintf(path, "/%02d/00.mp3", selected_game + 1);
-      Serial.print("Playing ");
-      Serial.println(path);
+      // Serial.print("Playing ");
+      // Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
 
     } else if ((IR.data == 16736925) && !game_in_progress) {  // mode button
@@ -237,25 +255,25 @@ void loop() {
       } else {
         game_mode++;
       }
-      Serial.print("Game mode (0 - random, 1 - quest, 2 - quiz): ");
-      Serial.println(game_mode);
+      // Serial.print("Game mode (0 - random, 1 - quest, 2 - quiz): ");
+      // Serial.println(game_mode);
       char path[] = "";
       sprintf(path, "/00/02/%02d.mp3", game_mode);
-      Serial.print("Playing ");
-      Serial.println(path);
+      // Serial.print("Playing ");
+      // Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
 
     } else if ((IR.data == 16720605) && game_in_progress) {  // play/pause button
-      Serial.println("Game stopped");
+      // Serial.println("Game stopped");
       end_game();
 
     } else if ((IR.data == 16716015) || (IR.data == 1111000004) && !game_in_progress) {  // button 4
       game_in_progress = true;
-      Serial.print("Starting game: ");
-      Serial.println(selected_game);
-      Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
-      Serial.println(selected_language);
-      Serial.println();
+      // Serial.print("Starting game: ");
+      // Serial.println(selected_game);
+      // Serial.print("Selected language (0 - RU, 1 - EN, 2 - LV): ");
+      // Serial.println(selected_language);
+      // Serial.println();
 
       if (game_mode == 0) {
         question_count = 1;
@@ -265,15 +283,15 @@ void loop() {
       init_and_shuffle_questions();
 
       // reading rules
-      Serial.println("Playing rules recording");
+      // Serial.println("Playing rules recording");
       char path[] = "";
       if (selected_game == 1) {
         sprintf(path, "/%02d/01.mp3", selected_game + 1);
       } else if (game_mode != 0) {
         sprintf(path, "/00/00/%02d.mp3", selected_language);
       }
-      Serial.print("Playing ");
-      Serial.println(path);
+      // Serial.print("Playing ");
+      // Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
       while (player.checkPlayState() == DY::PlayState::Playing) {
         if (motor_value < 90) {
@@ -303,13 +321,13 @@ void loop() {
       FastLED.show();
 
       // reading question
-      Serial.print("Playing question: ");
-      Serial.println(questions[last_question_played]);
+      // Serial.print("Playing question: ");
+      // Serial.println(questions[last_question_played]);
 
       char path[] = "";
       sprintf(path, "/%02d/%02d/%02d.mp3", selected_game + 1, selected_language, questions[last_question_played]);
-      Serial.print("Playing ");
-      Serial.println(path);
+      // Serial.print("Playing ");
+      // Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
       // while (player.checkPlayState() == DY::PlayState::Playing) {}
       while (motor_value < 90) {
@@ -324,9 +342,9 @@ void loop() {
     if (question_played && (rfid_uid != REPEAT_QUESTION_CARD) && (rfid_uid != rfid_uid_prev) && (rfid_uid != "")) {
       newRFIDcardtimer++;
       if (rfid_data == questions[last_question_played] + MAX_QUESTION_COUNT * selected_game) {
-        Serial.print("Answer presented: ");
-        Serial.println(rfid_data);
-        Serial.println("Correct answer!");
+        // Serial.print("Answer presented: ");
+        // Serial.println(rfid_data);
+        // Serial.println("Correct answer!");
 
         // Change backlight palette to green-yellow
         gPal = CRGBPalette16(CRGB::Black, CRGB::GreenYellow, CRGB::Green, CRGB::DarkGreen);
@@ -339,8 +357,8 @@ void loop() {
         int k = random(1, 6);  // Generate a random index from 1 to 5
         char path[] = "";
         sprintf(path, "/00/01/%02d/0/%01d.mp3", selected_language, k);
-        Serial.print("Playing ");
-        Serial.println(path);
+        // Serial.print("Playing ");
+        // Serial.println(path);
         player.playSpecifiedDevicePath(DY::Device::Sd, path);
         while (player.checkPlayState() == DY::PlayState::Playing) {
           if (motor_value > 90) {
@@ -357,9 +375,9 @@ void loop() {
         last_question_played++;
         question_played = false;
       } else {
-        Serial.print("Answer presented: ");
-        Serial.println(rfid_data);
-        Serial.println("Wrong answer!");
+        // Serial.print("Answer presented: ");
+        // Serial.println(rfid_data);
+        // Serial.println("Wrong answer!");
 
         // Change backlight palette to red-yellow
         gPal = CRGBPalette16(CRGB::Black, CRGB::Yellow, CRGB::Orange, CRGB::Red);
@@ -372,8 +390,8 @@ void loop() {
         int k = random(1, 6);  // Generate a random index from 1 to 5
         char path[] = "";
         sprintf(path, "/00/01/%02d/1/%01d.mp3", selected_language, k);
-        Serial.print("Playing ");
-        Serial.println(path);
+        // Serial.print("Playing ");
+        // Serial.println(path);
         player.playSpecifiedDevicePath(DY::Device::Sd, path);
         while (player.checkPlayState() == DY::PlayState::Playing) {
           if (motor_value < 105) {
@@ -398,7 +416,7 @@ void loop() {
     }
 
     if (last_question_played >= question_count) {
-      Serial.println("Game finished");
+      // Serial.println("Game finished");
       end_game();
     }
 
@@ -450,7 +468,7 @@ void readRFID() {
   // reading data from block 15
   status = rfid.MIFARE_Read(15, dataBlock, &size);  // Reading block 15 into buffer
   if (status != MFRC522::STATUS_OK) {
-    Serial.println("Read error");  // If error occurs, it will be printed
+    // Serial.println("Read error");  // If error occurs, it will be printed
     return;
   }
 
@@ -483,8 +501,8 @@ void init_and_shuffle_questions() {
 
   // Uncomment below to print shuffled question array
   for (byte i = 0; i < MAX_QUESTION_COUNT; i++) {
-    Serial.print(questions[i]);
-    Serial.print(" ");
+    // Serial.print(questions[i]);
+    // Serial.print(" ");
   }
 }
 
@@ -494,6 +512,10 @@ void end_game() {
 
   // play recording
   // give out coins
+  setServoAngle(0, 0);
+  delay(1000);
+  setServoAngle(0, 180);
+  delay(1000);
 
   // turn off all backlights
   for (byte i = 0; i < BACKLIGHT_LED_COUNT; i++) {
@@ -547,4 +569,52 @@ void Fire2012WithPalette() {
     pixelnumber = j;
     leds[pixelnumber] = color;
   }
+}
+
+void resetPCA9685() {
+  write8(PCA9685_ADDR, MODE1, 0x00);
+  delay(10);
+}
+
+void setPWMFreq(float freq) {
+  uint8_t prescaleval = 25000000;
+  prescaleval /= 4096;
+  prescaleval /= freq;
+  prescaleval -= 1;
+  uint8_t oldmode = read8(PCA9685_ADDR, MODE1);
+  uint8_t newmode = (oldmode & 0x7F) | 0x10;
+  write8(PCA9685_ADDR, MODE1, newmode);
+  write8(PCA9685_ADDR, PRESCALE, prescaleval);
+  delay(5);
+  write8(PCA9685_ADDR, MODE1, oldmode | 0xa1);
+}
+
+void setPWM(uint8_t num, uint16_t on, uint16_t off) {
+  Wire.beginTransmission(PCA9685_ADDR);
+  Wire.write(LED0_ON_L + 4 * num);
+  Wire.write(on);
+  Wire.write(on >> 8);
+  Wire.write(off);
+  Wire.write(off >> 8);
+  Wire.endTransmission();
+}
+
+void setServoAngle(uint8_t num, uint16_t angle) {
+  uint16_t pulse_wide = map(angle, 0, 180, 80, 240);
+  setPWM(num, 0, pulse_wide);
+}
+
+uint8_t read8(uint8_t addr, uint8_t reg) {
+  Wire.beginTransmission(addr);
+  Wire.write(reg);
+  Wire.endTransmission();
+  Wire.requestFrom(addr, (uint8_t)1);
+  return Wire.read();
+}
+
+void write8(uint8_t addr, uint8_t reg, uint8_t val) {
+  Wire.beginTransmission(addr);
+  Wire.write(reg);
+  Wire.write(val);
+  Wire.endTransmission();
 }
