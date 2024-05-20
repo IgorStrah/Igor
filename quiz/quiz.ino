@@ -1,34 +1,4 @@
-/*
- * --------------------------------------------------------------------------------------------------------------------
- * Example sketch/program showing how to read new NUID from a PICC to serial.
- * --------------------------------------------------------------------------------------------------------------------
- * This is a MFRC522 library example; for further details and other examples see: https://github.com/miguelbalboa/rfid
- * 
- * Example sketch/program showing how to the read data from a PICC (that is: a RFID Tag or Card) using a MFRC522 based RFID
- * Reader on the Arduino SPI interface.
- * 
- * When the Arduino and the MFRC522 module are connected (see the pin layout below), load this sketch into Arduino IDE
- * then verify/compile and upload it. To see the output: use Tools, Serial Monitor of the IDE (hit Ctrl+Shft+M). When
- * you present a PICC (that is: a RFID Tag or Card) at reading distance of the MFRC522 Reader/PCD, the serial output
- * will show the type, and the NUID if a new card has been detected. Note: you may see "Timeout in communication" messages
- * when removing the PICC from reading distance too early.
- * 
- * @license Released into the public domain.
- * 
- * Typical pin layout used:
- * -----------------------------------------------------------------------------------------
- *             MFRC522      Arduino       Arduino   Arduino    Arduino          Arduino
- *             Reader/PCD   Uno/101       Mega      Nano v3    Leonardo/Micro   Pro Micro
- * Signal      Pin          Pin           Pin       Pin        Pin              Pin
- * -----------------------------------------------------------------------------------------
- * RST/Reset   RST          9             5         D9         RESET/ICSP-5     RST
- * SPI SS      SDA(SS)      10            53        D10        10               10
- * SPI MOSI    MOSI         11 / ICSP-4   51        D11        ICSP-4           16
- * SPI MISO    MISO         12 / ICSP-1   50        D12        ICSP-1           14
- * SPI SCK     SCK          13 / ICSP-3   52        D13        ICSP-3           15
- *
- * More pin layouts for other boards can be found here: https://github.com/miguelbalboa/rfid#pin-layout
- */
+
 // for servo control
 #include <Wire.h>
 #define PCA9685_ADDR 0x40
@@ -42,7 +12,7 @@
 #include <FastLED.h>
 
 #include <Arduino.h>
-#include <SoftwareSerial.h>
+
 #include "DYPlayerArduino.h"
 
 #include <iarduino_IR_RX.h>
@@ -72,12 +42,15 @@ const byte LANGUAGE_COUNT = 3;
 const byte GAME_MODE_COUNT = 3;
 
 const String REPEAT_QUESTION_CARD = "047a8e1a237380";
+const String SKIP_QUESTION_CARD = "5372c2e4710001";
 
 const byte MAX_QUESTION_COUNT = 21;
 byte questions[MAX_QUESTION_COUNT];
 byte last_question_played = 0;
-byte question_count_in_game[GAME_COUNT] = { 20, 14, 21 };
+byte question_count_in_game[GAME_COUNT] = { 20, 14, 20 };
 byte question_count = 0;
+byte coin_count = 0;
+byte is_container_open = false;
 
 bool game_in_progress = false;
 byte selected_game = 0;
@@ -136,9 +109,9 @@ void setup() {
   setPWMFreq(50);
   for (byte i = 0; i <= 1; i++) {
     setServoAngle(i, 0);
-    delay(1000);
+    delay(500);
     setServoAngle(i, 180);
-    delay(1000);
+    delay(500);
   }
 
   // Setting up IR receiver
@@ -267,6 +240,18 @@ void loop() {
       // Serial.println("Game stopped");
       end_game();
 
+    } else if (IR.data == 16738455) {
+      if (is_container_open) {
+        setServoAngle(1, 180);
+      } else {
+        setServoAngle(1, 0);
+        delay(500);
+        setServoAngle(0, 0);
+        delay(500);
+        setServoAngle(0, 180);
+      }
+      delay(500);
+      is_container_open = !is_container_open;
     } else if ((IR.data == 16716015) || (IR.data == 1111000004) && !game_in_progress) {  // button 4
       game_in_progress = true;
       // Serial.print("Starting game: ");
@@ -286,7 +271,7 @@ void loop() {
       // Serial.println("Playing rules recording");
       char path[] = "";
       if (selected_game == 1) {
-        sprintf(path, "/%02d/01.mp3", selected_game + 1);
+        sprintf(path, "/%02d/%02d/00.mp3", selected_game + 1, selected_language);
       } else if (game_mode != 0) {
         sprintf(path, "/00/00/%02d.mp3", selected_language);
       }
@@ -341,7 +326,7 @@ void loop() {
 
     if (question_played && (rfid_uid != REPEAT_QUESTION_CARD) && (rfid_uid != rfid_uid_prev) && (rfid_uid != "")) {
       newRFIDcardtimer++;
-      if (rfid_data == questions[last_question_played] + MAX_QUESTION_COUNT * selected_game) {
+      if ((rfid_data == questions[last_question_played] + MAX_QUESTION_COUNT * selected_game) || (rfid_uid == SKIP_QUESTION_CARD)) {
         // Serial.print("Answer presented: ");
         // Serial.println(rfid_data);
         // Serial.println("Correct answer!");
@@ -373,6 +358,7 @@ void loop() {
         }
 
         last_question_played++;
+        coin_count++;
         question_played = false;
       } else {
         // Serial.print("Answer presented: ");
@@ -510,12 +496,24 @@ void end_game() {
   game_in_progress = false;
   rfid_uid = "";
 
-  // play recording
-  // give out coins
-  setServoAngle(0, 0);
-  delay(1000);
-  setServoAngle(0, 180);
-  delay(1000);
+  if (selected_game == 1) {
+    // give out recipe
+    setServoAngle(1, 0);
+    delay(500);
+    setServoAngle(1, 180);
+    delay(500);
+    coin_count--;
+  } else {  // give out coins
+    while (coin_count > 0) {
+      setServoAngle(0, 0);
+      delay(500);
+      setServoAngle(0, 180);
+      delay(500);
+      coin_count--;
+    }
+  }
+
+  coin_count = 0;
 
   // turn off all backlights
   for (byte i = 0; i < BACKLIGHT_LED_COUNT; i++) {
@@ -537,6 +535,9 @@ void end_game() {
     analogWrite(MOTOR_PIN, motor_value);
     delay(20);
   }
+
+  game_mode = 0;
+  selected_game = 2;
 }
 
 void Fire2012WithPalette() {
@@ -602,6 +603,8 @@ void setPWM(uint8_t num, uint16_t on, uint16_t off) {
 void setServoAngle(uint8_t num, uint16_t angle) {
   uint16_t pulse_wide = map(angle, 0, 180, 80, 240);
   setPWM(num, 0, pulse_wide);
+  delay(500);
+  setPWM(num, 0, 0);
 }
 
 uint8_t read8(uint8_t addr, uint8_t reg) {
