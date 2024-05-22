@@ -8,14 +8,17 @@
 
 GEM	KEYWORD1
 GEM_u8g2	KEYWORD1
+GEM_adafruit_gfx	KEYWORD1
 GEMItem	KEYWORD1
 GEMPage	KEYWORD1
 GEMSelect	KEYWORD1
 GEMCallbackData	KEYWORD1
+GEMAppearance	KEYWORD1
+GEMContext	KEYWORD1
+AppContext	KEYWORD1
 Splash	KEYWORD1
 FontSize	KEYWORD1
 FontFamilies	KEYWORD1
-AppContext	KEYWORD1
 SelectOptionInt	KEYWORD1
 SelectOptionByte	KEYWORD1
 SelectOptionChar	KEYWORD1
@@ -26,18 +29,26 @@ SelectOptionDouble	KEYWORD1
 # Methods and Functions (KEYWORD2)
 ####################################################
 
+setAppearance	KEYWORD2
+getCurrentAppearance	KEYWORD2
 setSplash	KEYWORD2
 setSplashDelay	KEYWORD2
 hideVersion	KEYWORD2
+setFontBig	KEYWORD2
+setFontSmall	KEYWORD2
 setForegroundColor	KEYWORD2
 setBackgroundColor	KEYWORD2
 invertKeysDuringEdit	KEYWORD2
 setTextSize	KEYWORD2
+enableUTF8	KEYWORD2
 enableCyrillic	KEYWORD2
 init	KEYWORD2
 reInit	KEYWORD2
 setMenuPageCurrent	KEYWORD2
+getCurrentMenuPage	KEYWORD2
 drawMenu	KEYWORD2
+setDrawMenuCallback	KEYWORD2
+removeDrawMenuCallback	KEYWORD2
 readyForKey	KEYWORD2
 registerKeyPress	KEYWORD2
 clearContext	KEYWORD2
@@ -45,12 +56,18 @@ setCallbackVal	KEYWORD2
 getCallbackData	KEYWORD2
 setTitle	KEYWORD2
 getTitle	KEYWORD2
+getMenuItem	KEYWORD2
+getCurrentMenuItem	KEYWORD2
+getCurrentMenuItemIndex	KEYWORD2
+getMenuItemNext	KEYWORD2
 setPrecision	KEYWORD2
+setAdjustedASCIIOrder	KEYWORD2
 setReadonly	KEYWORD2
 getReadonly	KEYWORD2
 hide	KEYWORD2
 show	KEYWORD2
 getHidden	KEYWORD2
+remove  KEYWORD2
 getLinkedVariablePointer	KEYWORD2
 addMenuItem	KEYWORD2
 setParentMenuPage	KEYWORD2
@@ -90,6 +107,7 @@ GEM_ITEMS_COUNT_AUTO	LITERAL1
 GEM_VAL_INTEGER	LITERAL1
 GEM_VAL_BYTE	LITERAL1
 GEM_VAL_CHAR	LITERAL1
+GEM_VAL_BOOL	LITERAL1
 GEM_VAL_BOOLEAN	LITERAL1
 GEM_VAL_SELECT	LITERAL1
 GEM_VAL_FLOAT	LITERAL1
@@ -110,3 +128,10 @@ GEM_ITEM_BUTTON	LITERAL1
 
 GEM_READONLY	LITERAL1
 GEM_HIDDEN	LITERAL1
+
+GEM_LAST_POS	LITERAL1
+GEM_ITEMS_TOTAL	LITERAL1
+GEM_ITEMS_VISIBLE	LITERAL1
+
+GEM_FONT_BIG	LITERAL1
+GEM_FONT_SMALL	LITERAL1

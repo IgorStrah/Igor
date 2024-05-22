@@ -1,8 +1,8 @@
 /*
   Basic menu example using GEM library. Cyrillic version.
 
-  Simple one page menu with one editable menu item associated with int variable, one with boolean variable,
-  and a button, pressing of which will result in int variable value printed to Serial monitor if boolean variable is set to true.
+  Simple one page menu with one editable menu item associated with int variable, one with bool variable,
+  and a button, pressing of which will result in int variable value printed to Serial monitor if bool variable is set to true.
 
   Note, there might be some problems with displaying Cyrillic characters in Serial monitor, in which case adjusting baud rate may help.
 
@@ -17,8 +17,8 @@
 
   Пример использования библиотеки GEM с поддержкой кириллицы в элементах интерфейса.
 
-  Простое одностраничное меню, состояющее из пунктов с int переменной, boolean переменной и кнопки, нажатие на которую приведёт
-  к печати значения int переменной в Serial monitor в случае, если значение boolean переменной установлено в true.
+  Простое одностраничное меню, состояющее из пунктов с int переменной, bool переменной и кнопки, нажатие на которую приведёт
+  к печати значения int переменной в Serial monitor в случае, если значение bool переменной установлено в true.
 
   Обратите внимание, что для стабильного отображения кириллицы в Serial monitor может потребоваться дополнительная настройка
   скорости передачи последовательного порта.
@@ -42,7 +42,7 @@ U8G2_KS0108_128X64_1 u8g2(U8G2_R0, 8, 9, 10, 11, 12, 13, 18, 19, /*enable=*/ A0,
 
 // Create variables that will be editable through the menu and assign them initial values
 int number = -512;
-boolean enablePrint = false;
+bool enablePrint = false;
 
 // Create two menu item objects of class GEMItem, linked to number and enablePrint variables 
 GEMItem menuItemInt("Число:", number);
@@ -59,7 +59,9 @@ GEMItem menuItemButton("Вывести на печать", printData);
 GEMPage menuPageMain("Главное меню");
 
 // Create menu object of class GEM_u8g2. Supply its constructor with reference to u8g2 object we created earlier
-GEM_u8g2 menu(u8g2);
+GEM_u8g2 menu(u8g2, GEM_POINTER_ROW, GEM_ITEMS_COUNT_AUTO);
+// Which is equivalent to the following call (you can adjust parameters to better fit your screen if necessary):
+// GEM_u8g2 menu(u8g2, /* menuPointerType= */ GEM_POINTER_ROW, /* menuItemsPerScreen= */ GEM_ITEMS_COUNT_AUTO, /* menuItemHeight= */ 10, /* menuPageScreenTopOffset= */ 10, /* menuValuesLeftOffset= */ 86);
 
 void setup() {
   // Serial communication setup

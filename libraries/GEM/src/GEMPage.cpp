@@ -2,7 +2,7 @@
   GEMPage - menu page (or level) for GEM library. Consists of a list of menu items.
 
   GEM (a.k.a. Good Enough Menu) - Arduino library for creation of graphic multi-level menu with
-  editable menu items, such as variables (supports int, byte, float, double, boolean, char[17] data types)
+  editable menu items, such as variables (supports int, byte, float, double, bool, char[17] data types)
   and option selects. User-defined callback function can be specified to invoke when menu item is saved.
   
   Supports buttons that can invoke user-defined actions and create action-specific
@@ -16,7 +16,7 @@
   For documentation visit:
   https://github.com/Spirik/GEM
 
-  Copyright (c) 2018-2022 Alexander 'Spirik' Spiridonov
+  Copyright (c) 2018-2023 Alexander 'Spirik' Spiridonov
 
   This file is part of GEM library.
 
@@ -37,56 +37,90 @@
 #include <Arduino.h>
 #include "GEMPage.h"
 
+GEMPage::GEMPage(const char* title_)
+  : title(title_)
+{ }
+
 GEMPage::GEMPage(const char* title_, void (*exitAction_)())
   : title(title_)
   , exitAction(exitAction_)
 { }
 
-void GEMPage::addMenuItem(GEMItem& menuItem) {
+GEMPage::GEMPage(const char* title_, GEMPage& parentMenuPage_)
+  : title(title_)
+{
+  setParentMenuPage(parentMenuPage_);
+}
+
+GEMPage& GEMPage::addMenuItem(GEMItem& menuItem, byte pos, bool total) {
   // Prevent adding menu item that was already added to another (or the same) page
   if (menuItem.parentPage == nullptr) {
-    if (itemsCountTotal == 0) {
-      // If menu page is empty, link supplied menu item from within page directly (this will be the first menu item in a page)
-      _menuItem = &menuItem;
+    byte itemsMax = total ? itemsCountTotal : itemsCount;
+    if (pos >= itemsMax) {
+      // Cap maximum pos at number of items
+      pos = itemsMax;
+    } else if (_menuItemBack.linkedPage != nullptr && pos == 0) {
+      // Prevent adding supplied menu item in place of Back button
+      pos = 1;
+    }
+    if (pos > 0) {
+      // If custom position is defined (and is within range), link supplied menu item from within preceding menu item
+      GEMItem* menuItemTmp = getMenuItem(pos-1, total);
+      menuItem.menuItemNext = menuItemTmp->menuItemNext;
+      menuItemTmp->menuItemNext = &menuItem;
     } else {
-      // If menu page is not empty, link supplied menu item from within the last menu item of the page
-      getMenuItem(itemsCountTotal-1, true)->menuItemNext = &menuItem;
+      // Link supplied menu item as a first menu item on a page
+      menuItem.menuItemNext = _menuItem;
+      _menuItem = &menuItem;
     }
     menuItem.parentPage = this;
+    itemsCountTotal++;
     if (!menuItem.hidden) {
       itemsCount++;
+      currentItemNum = (_menuItemBack.linkedPage != nullptr) ? 1 : 0;
     }
+  }
+  return *this;
+}
+
+GEMPage& GEMPage::setParentMenuPage(GEMPage& parentMenuPage) {
+  if (_menuItemBack.linkedPage == nullptr) {
+    _menuItemBack.type = GEM_ITEM_BACK;
+    // Back button menu item should be always inserted at first position in list
+    GEMItem* menuItemTmp = _menuItem;
+    _menuItem = &_menuItemBack;
+    if (menuItemTmp != nullptr) {
+      _menuItemBack.menuItemNext = menuItemTmp;
+    }
+    itemsCount++;
     itemsCountTotal++;
-    currentItemNum = (_menuItemBack.linkedPage != nullptr) ? 1 : 0;
+    currentItemNum = (itemsCount > 1) ? 1 : 0;
   }
-}
-
-void GEMPage::setParentMenuPage(GEMPage& parentMenuPage) {
-  _menuItemBack.type = GEM_ITEM_BACK;
   _menuItemBack.linkedPage = &parentMenuPage;
-  // Back button menu item should be always inserted at first position in list
-  GEMItem* menuItemTmp = _menuItem;
-  _menuItem = &_menuItemBack;
-  if (menuItemTmp != nullptr) {
-    _menuItemBack.menuItemNext = menuItemTmp;
-  }
-  itemsCount++;
-  itemsCountTotal++;
-  currentItemNum = (itemsCount > 1) ? 1 : 0;
+  return *this;
 }
 
-void GEMPage::setTitle(const char* title_) {
+GEMPage& GEMPage::setTitle(const char* title_) {
   title = title_;
+  return *this;
 }
 
 const char* GEMPage::getTitle() {
   return title;
 }
 
-GEMItem* GEMPage::getMenuItem(byte index, boolean total) {
+GEMPage& GEMPage::setAppearance(GEMAppearance* appearance) {
+  _appearance = appearance;
+  return *this;
+}
+
+GEMItem* GEMPage::getMenuItem(byte index, bool total) {
   GEMItem* menuItemTmp = (!total && _menuItem->hidden) ? _menuItem->getMenuItemNext() : _menuItem;
   for (byte i=0; i<index; i++) {
-    menuItemTmp = (total) ? menuItemTmp->menuItemNext : menuItemTmp->getMenuItemNext();
+    menuItemTmp = menuItemTmp->getMenuItemNext(total);
+    if (menuItemTmp == nullptr) {
+      return nullptr;
+    }
   }
   return menuItemTmp;
 }
@@ -95,13 +129,17 @@ GEMItem* GEMPage::getCurrentMenuItem() {
   return getMenuItem(currentItemNum);
 }
 
-int GEMPage::getMenuItemNum(GEMItem& menuItem) {
-  GEMItem* menuItemTmp = (_menuItem->hidden) ? _menuItem->getMenuItemNext() : _menuItem;
-  for (byte i=0; i<itemsCount; i++) {
+byte GEMPage::getCurrentMenuItemIndex() {
+  return currentItemNum;
+}
+
+int GEMPage::getMenuItemNum(GEMItem& menuItem, bool total) {
+  GEMItem* menuItemTmp = (!total && _menuItem->hidden) ? _menuItem->getMenuItemNext() : _menuItem;
+  for (byte i=0; i<(total ? itemsCountTotal : itemsCount); i++) {
     if (menuItemTmp == &menuItem) {
       return i;
     }
-    menuItemTmp = menuItemTmp->getMenuItemNext();
+    menuItemTmp = menuItemTmp->getMenuItemNext(total);
   }
   return -1;
 }
@@ -132,4 +170,28 @@ void GEMPage::showMenuItem(GEMItem& menuItem) {
   if (_menuItemBack.linkedPage != nullptr && itemsCount > 1) {
     currentItemNum = 1;
   }
+}
+
+void GEMPage::removeMenuItem(GEMItem& menuItem) {
+  int menuItemNum = getMenuItemNum(menuItem);
+  int menuItemNumTotal = getMenuItemNum(menuItem, true);
+  itemsCountTotal--;
+  if (!menuItem.hidden) {
+    itemsCount--;
+    if (menuItemNum <= currentItemNum) {
+      if (currentItemNum > 0) {
+        currentItemNum--;
+      }
+    }
+  }
+  if (_menuItemBack.linkedPage != nullptr && itemsCount == 1) {
+    currentItemNum = 0;
+  }
+  if (menuItemNumTotal > 0) {
+    getMenuItem(menuItemNumTotal-1, true)->menuItemNext = menuItem.menuItemNext;
+  } else {
+    _menuItem = menuItem.menuItemNext;
+  }
+  menuItem.parentPage = nullptr;
+  menuItem.menuItemNext = nullptr;
 }

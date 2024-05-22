@@ -3,7 +3,7 @@
   editable menu items with validation callbacks, setting readonly mode, creation of context with context.allowExit set to false
   in order to use push-buttons to control scene within context's loop routine.
 
-  Simple one page menu with one editable menu item associated with int variable, one with boolean variable, one option select,
+  Simple one page menu with one editable menu item associated with int variable, one with bool variable, one option select,
   and a button, pressing of which will launch an animation sequence drawn to the screen. Delay between frames
   is determined by value of int variable, setting of which to 0 will enable manual control of the frames through
   navigation push-buttons.
@@ -39,7 +39,7 @@ Key keys[] = {{GEM_KEY_UP, upPin}, {GEM_KEY_RIGHT, rightPin}, {GEM_KEY_DOWN, dow
 KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key));
 // To account for switch bounce effect of the buttons (if occur) you may want to specify debounceDelay
 // as the third argument to KeyDetector constructor:
-// KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key), 10);
+// KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key), /* debounceDelay= */ 10);
 
 // Constants for the pins SparkFun Graphic LCD Serial Backpack is connected to and SoftwareSerial object
 const byte rxPin = 8;
@@ -52,7 +52,7 @@ GLCD glcd(serialLCD);
 
 // Create variables that will be editable through the menu and assign them initial values
 int interval = 200;
-boolean strobe = false;
+bool strobe = false;
 
 // Create variable that will be editable through option select and create associated option select
 byte tempo = 0;
@@ -90,6 +90,8 @@ GEMPage menuPageMain("Party Hard");
 
 // Create menu object of class GEM. Supply its constructor with reference to glcd object we created earlier
 GEM menu(glcd);
+// Which is equivalent to the following call (you can adjust parameters to better fit your screen if necessary):
+// GEM menu(glcd, /* menuPointerType= */ GEM_POINTER_ROW, /* menuItemsPerScreen= */ 5, /* menuItemHeight= */ 10, /* menuPageScreenTopOffset= */ 10, /* menuValuesLeftOffset= */ 86);
 
 void setup() {
   // Push-buttons pin modes
@@ -183,7 +185,7 @@ void drawSprite(const uint8_t PROGMEM *_splash, byte _mode) {
 }
 
 // Draw frame based on direction of animation
-void drawFrame(boolean forward) {
+void drawFrame(bool forward) {
   if (forward) {
     // Next frame
     currentFrame = (currentFrame == framesCount ? 1 : currentFrame+1);

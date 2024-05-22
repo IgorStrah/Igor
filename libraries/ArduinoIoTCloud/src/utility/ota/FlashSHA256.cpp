@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 #include <AIoTC_Config.h>
-#if OTA_ENABLED && !defined(__AVR__)
+#if OTA_ENABLED
 
 #include "FlashSHA256.h"
 
@@ -81,7 +81,7 @@ String FlashSHA256::calc(uint32_t const start_addr, uint32_t const max_flash_siz
     }
 
     /* We've read a normal segment with the next segment not containing
-     * any erased elements, just update the SHA256 hash calcultion.
+     * any erased elements, just update the SHA256 hash calculation.
      */
     sha256.update(chunk, FLASH_READ_CHUNK_SIZE);
     bytes_read += FLASH_READ_CHUNK_SIZE;

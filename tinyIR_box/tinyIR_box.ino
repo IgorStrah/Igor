@@ -30,8 +30,8 @@ void setup() {
   wdt_enable(WDTO_8S);
   IrReceiver.begin(PB0, ENABLE_LED_FEEDBACK);
   delay(100);            // Delay for 1 second
-  pinMode(PB4, OUTPUT);  // кнопка на D12 и GND
-  digitalWrite(PB4, 0);
+  pinMode(PB3, OUTPUT);  // кнопка на D12 и GND
+  digitalWrite(PB3, 0);
 }
 
 void loop() {
@@ -51,10 +51,12 @@ void loop() {
     }
     Serial.println(newCode);
     if ((newCode == 1111000005) || (newCode == 16726215)) {
-      digitalWrite(PB4, 1);
-      delay(2000);
-      digitalWrite(PB4, 0);
+      digitalWrite(PB3, 1);
+      delay(1500);
+      digitalWrite(PB3, 0);
     }
+
+
     IrReceiver.resume();
     newCode = 0;
   }

@@ -95,7 +95,7 @@ void IRsend::begin(){
  */
 void IRsend::begin(bool aEnableLEDFeedback, uint_fast8_t aFeedbackLEDPin) {
 #if !defined(NO_LED_FEEDBACK_CODE)
-    bool tEnableLEDFeedback = DO_NOT_ENABLE_LED_FEEDBACK;
+    uint_fast8_t tEnableLEDFeedback = DO_NOT_ENABLE_LED_FEEDBACK;
     if(aEnableLEDFeedback) {
         tEnableLEDFeedback = LED_FEEDBACK_ENABLED_FOR_SEND;
     }
@@ -143,7 +143,7 @@ void IRsend::begin(uint_fast8_t aSendPin, bool aEnableLEDFeedback, uint_fast8_t 
 #endif
 
 #if !defined(NO_LED_FEEDBACK_CODE)
-    bool tEnableLEDFeedback = DO_NOT_ENABLE_LED_FEEDBACK;
+    uint_fast8_t tEnableLEDFeedback = DO_NOT_ENABLE_LED_FEEDBACK;
     if (aEnableLEDFeedback) {
         tEnableLEDFeedback = LED_FEEDBACK_ENABLED_FOR_SEND;
     }
@@ -220,7 +220,7 @@ size_t IRsend::write(IRData *aIRSendData, int_fast8_t aNumberOfRepeats) {
     } else if (tProtocol == SAMSUNG48) {
         sendSamsung48(tAddress, tCommand, aNumberOfRepeats);
 
-    } else if (tProtocol == SAMSUNG_LG) {
+    } else if (tProtocol == SAMSUNGLG) {
         sendSamsungLG(tAddress, tCommand, aNumberOfRepeats);
 
     } else if (tProtocol == SONY) {
@@ -341,7 +341,7 @@ size_t IRsend::write(decode_type_t aProtocol, uint16_t aAddress, uint16_t aComma
     } else if (aProtocol == SAMSUNG48) {
         sendSamsung48(aAddress, aCommand, aNumberOfRepeats);
 
-    } else if (aProtocol == SAMSUNG_LG) {
+    } else if (aProtocol == SAMSUNGLG) {
         sendSamsungLG(aAddress, aCommand, aNumberOfRepeats);
 
     } else if (aProtocol == SONY) {
@@ -466,15 +466,24 @@ void IRsend::sendRaw_P(const uint16_t aBufferWithMicroseconds[], uint_fast16_t a
         if (i & 1) {
             // Odd
             space(duration);
+#  if defined(LOCAL_DEBUG)
+            Serial.print(F("S="));
+#  endif
         } else {
             mark(duration);
+#  if defined(LOCAL_DEBUG)
+            Serial.print(F("M="));
+#  endif
         }
+#  if defined(LOCAL_DEBUG)
+        Serial.println(duration);
+#  endif
     }
 #endif
 }
 
 /**
- * New function using an 8 byte tick timing array in FLASH to save program memory
+ * New function using an 8 byte tick (50 us) timing array in FLASH to save program memory
  * Raw data starts with a Mark. No leading space as in received timing data!
  */
 void IRsend::sendRaw_P(const uint8_t aBufferWithTicks[], uint_fast16_t aLengthOfBuffer, uint_fast8_t aIRFrequencyKilohertz) {
@@ -484,16 +493,26 @@ void IRsend::sendRaw_P(const uint8_t aBufferWithTicks[], uint_fast16_t aLengthOf
 // Set IR carrier frequency
     enableIROut(aIRFrequencyKilohertz);
 
+    uint_fast16_t duration;
     for (uint_fast16_t i = 0; i < aLengthOfBuffer; i++) {
-        uint_fast16_t duration = pgm_read_byte(&aBufferWithTicks[i]) * (uint_fast16_t) MICROS_PER_TICK;
+        duration = pgm_read_byte(&aBufferWithTicks[i]) * (uint_fast16_t) MICROS_PER_TICK;
         if (i & 1) {
             // Odd
             space(duration);
+#  if defined(LOCAL_DEBUG)
+            Serial.print(F("S="));
+#  endif
         } else {
             mark(duration);
+#  if defined(LOCAL_DEBUG)
+            Serial.print(F("M="));
+#  endif
         }
     }
     IRLedOff();  // Always end with the LED off
+#  if defined(LOCAL_DEBUG)
+    Serial.println(duration);
+#  endif
 #endif
 }
 
@@ -693,10 +712,14 @@ void IRsend::sendPulseDistanceWidth(PulseDistanceWidthProtocolConstants *aProtoc
 
     if (aNumberOfRepeats < 0) {
         if (aProtocolConstants->SpecialSendRepeatFunction != NULL) {
+            /*
+             * Send only a special repeat and return
+             */
             aProtocolConstants->SpecialSendRepeatFunction();
             return;
         } else {
-            aNumberOfRepeats = 0; // send a plain frame as repeat
+            // Send only one plain frame (as repeat)
+            aNumberOfRepeats = 0;
         }
     }
 
@@ -708,7 +731,7 @@ void IRsend::sendPulseDistanceWidth(PulseDistanceWidthProtocolConstants *aProtoc
         unsigned long tStartOfFrameMillis = millis();
 
         if (tNumberOfCommands < ((uint_fast8_t) aNumberOfRepeats + 1) && aProtocolConstants->SpecialSendRepeatFunction != NULL) {
-            // send special repeat
+            // send special repeat, if specified and we are not in the first loop
             aProtocolConstants->SpecialSendRepeatFunction();
         } else {
             /*
@@ -722,12 +745,12 @@ void IRsend::sendPulseDistanceWidth(PulseDistanceWidthProtocolConstants *aProtoc
         tNumberOfCommands--;
         // skip last delay!
         if (tNumberOfCommands > 0) {
+            auto tCurrentFrameDurationMillis = millis() - tStartOfFrameMillis;
             /*
              * Check and fallback for wrong RepeatPeriodMillis parameter. I.e the repeat period must be greater than each frame duration.
              */
-            auto tFrameDurationMillis = millis() - tStartOfFrameMillis;
-            if (aProtocolConstants->RepeatPeriodMillis > tFrameDurationMillis) {
-                delay(aProtocolConstants->RepeatPeriodMillis - tFrameDurationMillis);
+            if (aProtocolConstants->RepeatPeriodMillis > tCurrentFrameDurationMillis) {
+                delay(aProtocolConstants->RepeatPeriodMillis - tCurrentFrameDurationMillis);
             }
         }
     }
@@ -935,6 +958,13 @@ void IRsend::sendBiphaseData(uint16_t aBiphaseTimeUnit, uint32_t aData, uint_fas
  * This function may affect the state of feedback LED.
  * Period time is 26 us for 38.46 kHz, 27 us for 37.04 kHz, 25 us for 40 kHz.
  * On time is 8 us for 30% duty cycle
+ *
+ * The mark() function relies on the correct implementation of:
+ * delayMicroseconds() for pulse time, and micros() for pause time.
+ * The delayMicroseconds() of pulse time is guarded on AVR CPU's with noInterrupts() / interrupts().
+ * At the start of pause time, interrupts are enabled once, the rest of the pause is also guarded on AVR CPU's with noInterrupts() / interrupts().
+ * The maximum length of an interrupt during sending should not exceed 26 us - 8 us = 18 us, otherwise timing is disturbed.
+ * This disturbance is no problem, if the exceedance is small and does not happen too often.
  */
 void IRsend::mark(uint16_t aMarkMicros) {
 
@@ -1002,7 +1032,7 @@ void IRsend::mark(uint16_t aMarkMicros) {
         // 4.3 us from do{ to pin setting if sendPin is no constant
         digitalWriteFast(sendPin, HIGH);
 #  endif
-        delayMicroseconds(periodOnTimeMicros); // On time is 8 us for 30% duty cycle. This is normally implemented by a blocking wait.
+        delayMicroseconds (periodOnTimeMicros); // On time is 8 us for 30% duty cycle. This is normally implemented by a blocking wait.
 
         /*
          * Output the PWM pause

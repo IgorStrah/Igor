@@ -34,7 +34,11 @@ void setup() {
   strip.begin();
   strip.show();   // Инициализация ленты
   strip.clear();  // Инициализация ленты
+<<<<<<< HEAD
 Serial.println("Start ");
+=======
+
+>>>>>>> 959c1c5c140a20c38fce2af7a0788d34919c05f4
 
 }
 
@@ -78,12 +82,19 @@ void handleReceivedTinyIRData(uint8_t aAddress, uint8_t aCommand, uint8_t aFlags
    
      if (aFlags != IRDATA_FLAGS_IS_REPEAT) {
         aCommandn=aCommand;
+<<<<<<< HEAD
         Serial.println(1);
         Serial.println(aCommandn);
        // newcod=1;
     }
 
     if (aCommand==12)
+=======
+       // newcod=1;
+    }
+
+    if (aCommand==22)
+>>>>>>> 959c1c5c140a20c38fce2af7a0788d34919c05f4
     {
       strip.setBrightness(255);
        Timer_Fire = 9000; 
@@ -91,7 +102,11 @@ aCommandn=aCommand;
     newcod=1;
     }
 
+<<<<<<< HEAD
         if (aCommand==24)
+=======
+        if (aCommand==25)
+>>>>>>> 959c1c5c140a20c38fce2af7a0788d34919c05f4
     {
       Timer_Fire=1;
 
@@ -116,4 +131,8 @@ void fireEffect() {
   strip.show();
   delay(random(20, 100));  // Задержка между итерациями эффекта
   Timer_Fire--;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 959c1c5c140a20c38fce2af7a0788d34919c05f4

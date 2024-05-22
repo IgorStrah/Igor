@@ -1,5 +1,5 @@
 /*
- * FreeRTOS Kernel V10.5.1+
+ * FreeRTOS Kernel V11.0.1
  * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * SPDX-License-Identifier: MIT
@@ -81,7 +81,7 @@
 #define configTIMER_QUEUE_LENGTH            ( 10 )
 #define configTIMER_TASK_STACK_DEPTH        ( 85 )
 
-/* Set the stack depth type to be uint16_t. */
+/* Set the stack depth type to be uint16_t, otherwise it defaults to StackType_t */
 #define configSTACK_DEPTH_TYPE              uint16_t
 
 /* Set the stack pointer type to be uint16_t, otherwise it defaults to unsigned long */

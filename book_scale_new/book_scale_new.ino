@@ -28,7 +28,9 @@ uint8_t servonum = 0;
 uint32_t cardid = 0;
 uint32_t cardid_prev = 0;
 
-int mass = 0, mass_prev = 0, mass_prev_prev = 0, state = 0, glass_mass, expected_mass;
+int mass = 0, mass_prev = 0, mass_prev_prev = 0, state = 0, state_prev = 0, glass_mass, expected_mass;
+int cycle_counter = 0;
+bool eye_is_up = false;
 
 // each row contains glass RFID UID as an unsigned 32-bit int, glass mass measured in tenths of gram, expected mass to be weight in this glass measured in tenths of grams
 uint32_t ingredient_list[1][3] = {
@@ -128,40 +130,64 @@ void loop() {
     cardid_prev = cardid;
   }
 
+  if (cardid == 0) {
+    state = 0;
+  }
+
   if (state == 1) {
     Serial.println("Glass with recognized RFID present");
     openeye();
+    eye_is_up = true;
     state = 2;
   }
 
   if (state == 2) {
     // if glass contains something and mass hasn't changed in the last 3 iterations
     if ((mass > glass_mass + 1) && (mass == mass_prev) && (mass_prev == mass_prev_prev)) {
-        int contents_mass = mass - glass_mass;
-        Serial.print("Contents mass: ");
-        Serial.println(contents_mass);
-        
-        if (contents_mass * 10 < expected_mass * 6) {
-          // less than 60% of the expected contents mass
-          Serial.println("Too little!");
-        } else if ((contents_mass * 10 >= expected_mass * 6) && (contents_mass * 10 < expected_mass * 9)) {
-          // between 60% and 90% of the expected contents mass
-          Serial.println("A little more!");
-        } else if ((contents_mass * 10 >= expected_mass * 9) && (contents_mass * 10 <= expected_mass * 11)) {
-          // between 90% and 110% of the expected contents mass
-          Serial.println("Just right!");
-        } else if ((contents_mass * 10 > expected_mass * 11) && contents_mass * 10 <= expected_mass * 16) {
-          // between 110% and 160% of the expected mass
-          Serial.println("A little less!");
-        } else {
-          // more than 160% of the expected mass
-          Serial.println("Too much!");
-        }
+      int contents_mass = mass - glass_mass;
+      Serial.print("Contents mass: ");
+      Serial.println(contents_mass);
+
+      int contents_vs_expected = contents_mass * 10 / expected_mass;
+
+      if (contents_vs_expected < 6) {
+        // less than 60% of the expected contents mass
+        Serial.println("Too little!");
+        seteyelidposition(1240);
+      } else if ((contents_vs_expected >= 6) && (contents_vs_expected < 9)) {
+        // between 60% and 90% of the expected contents mass
+        Serial.println("A little more!");
+        seteyelidposition(1300);
+      } else if ((contents_vs_expected >= 9) && (contents_vs_expected <= 11)) {
+        // between 90% and 110% of the expected contents mass
+        Serial.println("Just right!");
+        seteyelidposition(1370);
+      } else if ((contents_vs_expected > 11) && (contents_vs_expected <= 16)) {
+        // between 110% and 160% of the expected mass
+        Serial.println("A little less!");
+        seteyelidposition(1430);
+      } else {
+        // more than 160% of the expected mass
+        Serial.println("Too much!");
+        seteyelidposition(1490);
+      }
     }
+  }
+
+  if (state != state_prev) {
+    state_prev = state;
+    cycle_counter = 0;
+  }
+
+  if ((cycle_counter > 10)  && (state == 0) && (state_prev == 0) && eye_is_up) {
+    Serial.println("Inactive, going to sleep");
+    lowereye();
+    cycle_counter = 0;
   }
 
   mass_prev = mass;
   mass_prev_prev = mass_prev;
+  cycle_counter++;
 }
 
 uint32_t readRFID() {
@@ -192,6 +218,32 @@ uint32_t readRFID() {
   return cardid;
 }
 
+void seteyelidposition(int eyelid_lower_new) {
+  if (eyelid_lower_new > eyelid_lower) {
+    pwm.wakeup();
+    while (eyelid_lower < eyelid_lower_new) {
+      eyelid_lower += 3;
+      eyelid_upper -= 3;
+      pwm.writeMicroseconds(2, eyelid_lower);
+      pwm.writeMicroseconds(3, eyelid_upper);
+    }
+    eyelid_lower = eyelid_lower_new;
+    pwm.writeMicroseconds(2, eyelid_lower);
+    pwm.sleep();
+  } else if (eyelid_lower_new < eyelid_lower) {
+    pwm.wakeup();
+    while (eyelid_lower > eyelid_lower_new) {
+      eyelid_lower -= 3;
+      eyelid_upper += 3;
+      pwm.writeMicroseconds(2, eyelid_lower);
+      pwm.writeMicroseconds(3, eyelid_upper);
+    }
+    eyelid_lower = eyelid_lower_new;
+    pwm.writeMicroseconds(2, eyelid_lower);
+    pwm.sleep();
+  }
+}
+
 void openeye() {
   pwm.wakeup();
 
@@ -218,11 +270,11 @@ void openeye() {
     pwm.writeMicroseconds(2, eyelid_lower);
   }
 
-
   delay(222);
   for (uint16_t microsec = 1000; microsec < 1200; microsec++) {
     pwm.writeMicroseconds(1, microsec);
   }
+
   delay(222);
   for (uint16_t microsec = 1200; microsec > 1000; microsec--) {
     pwm.writeMicroseconds(1, microsec);
@@ -240,9 +292,6 @@ void openeye() {
     pwm.writeMicroseconds(3, eyelid_upper);
     pwm.writeMicroseconds(2, eyelid_lower);
   }
-
-
-
 
   delay(555);
   for (uint16_t microsec = 850; microsec < 1450; microsec++) {
@@ -272,9 +321,19 @@ void openeye() {
   pwm.sleep();
 }
 
+void lowereye() {
+  //down
+  pwm.wakeup();
+  for (uint16_t microsec = 1700; microsec > 1000; microsec--) {
+    pwm.writeMicroseconds(4, microsec);
+  }
+  pwm.sleep();
+  eye_is_up = false;
+}
+
 
 void mooo() {
-
+  pwm.wakeup();
   //open
   for (uint16_t microsec = 0; microsec < 5; microsec++) {
     eyelid_upper = eyelid_upper - 3;
@@ -282,6 +341,7 @@ void mooo() {
     pwm.writeMicroseconds(3, eyelid_upper);
     pwm.writeMicroseconds(2, eyelid_lower);
   }
+  pwm.sleep();
   delay(555);
 }
 

@@ -2,7 +2,7 @@
   GEMSelect - option select for GEM library.
 
   GEM (a.k.a. Good Enough Menu) - Arduino library for creation of graphic multi-level menu with
-  editable menu items, such as variables (supports int, byte, float, double, boolean, char[17] data types)
+  editable menu items, such as variables (supports int, byte, float, double, bool, char[17] data types)
   and option selects. User-defined callback function can be specified to invoke when menu item is saved.
   
   Supports buttons that can invoke user-defined actions and create action-specific
@@ -16,7 +16,7 @@
   For documentation visit:
   https://github.com/Spirik/GEM
 
-  Copyright (c) 2018-2021 Alexander 'Spirik' Spiridonov
+  Copyright (c) 2018-2023 Alexander 'Spirik' Spiridonov
 
   This file is part of GEM library.
 
@@ -36,6 +36,9 @@
 
 #ifndef HEADER_GEMSELECT
 #define HEADER_GEMSELECT
+
+#include "config.h"
+#include "constants.h"
 
 // Declaration of SelectOptionInt type
 struct SelectOptionInt {
@@ -82,16 +85,16 @@ class GEMSelect {
     GEMSelect(byte length_, SelectOptionChar* options_);
     GEMSelect(byte length_, SelectOptionFloat* options_);
     GEMSelect(byte length_, SelectOptionDouble* options_);
-  private:
+  protected:
     byte _type;
     byte _length;
     void* _options;
     byte getType();
     byte getLength();
-    int getSelectedOptionNum(void* variable);
-    const char* getSelectedOptionName(void* variable);
-    const char* getOptionNameByIndex(int index);
-    void setValue(void* variable, int index);  // Assign value of the selected option to supplied variable
+    GEM_VIRTUAL int getSelectedOptionNum(void* variable);
+    GEM_VIRTUAL const char* getSelectedOptionName(void* variable);
+    GEM_VIRTUAL const char* getOptionNameByIndex(int index);
+    GEM_VIRTUAL void setValue(void* variable, int index);  // Assign value of the selected option to supplied variable
 };
   
 #endif

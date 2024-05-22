@@ -1,8 +1,8 @@
 /*
   Basic menu example using GEM library.
 
-  Simple one page menu with one editable menu item associated with int variable, one with boolean variable,
-  and a button, pressing of which will result in int variable value printed to Serial monitor if boolean variable is set to true.
+  Simple one page menu with one editable menu item associated with int variable, one with bool variable,
+  and a button, pressing of which will result in int variable value printed to Serial monitor if bool variable is set to true.
 
   AltSerialGraphicLCD library is used to draw menu.
   KeyDetector library is used to detect push-buttons presses.
@@ -31,7 +31,7 @@ Key keys[] = {{GEM_KEY_UP, upPin}, {GEM_KEY_RIGHT, rightPin}, {GEM_KEY_DOWN, dow
 KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key));
 // To account for switch bounce effect of the buttons (if occur) you may want to specify debounceDelay
 // as the third argument to KeyDetector constructor:
-// KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key), 10);
+// KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key), /* debounceDelay= */ 10);
 
 // Constants for the pins SparkFun Graphic LCD Serial Backpack is connected to and SoftwareSerial object
 const byte rxPin = 8;
@@ -44,7 +44,7 @@ GLCD glcd(serialLCD);
 
 // Create variables that will be editable through the menu and assign them initial values
 int number = -512;
-boolean enablePrint = false;
+bool enablePrint = false;
 
 // Create two menu item objects of class GEMItem, linked to number and enablePrint variables 
 GEMItem menuItemInt("Number:", number);
@@ -62,6 +62,8 @@ GEMPage menuPageMain("Main Menu");
 
 // Create menu object of class GEM. Supply its constructor with reference to glcd object we created earlier
 GEM menu(glcd);
+// Which is equivalent to the following call (you can adjust parameters to better fit your screen if necessary):
+// GEM menu(glcd, /* menuPointerType= */ GEM_POINTER_ROW, /* menuItemsPerScreen= */ 5, /* menuItemHeight= */ 10, /* menuPageScreenTopOffset= */ 10, /* menuValuesLeftOffset= */ 86);
 
 void setup() {
   // Push-buttons pin modes

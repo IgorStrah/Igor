@@ -36,7 +36,7 @@ Key keys[] = {{GEM_KEY_UP, upPin}, {GEM_KEY_RIGHT, rightPin}, {GEM_KEY_DOWN, dow
 KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key));
 // To account for switch bounce effect of the buttons (if occur) you may want to specify debounceDelay
 // as the third argument to KeyDetector constructor:
-// KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key), 10);
+// KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key), /* debounceDelay= */ 10);
 
 // Constants for the pins SparkFun Graphic LCD Serial Backpack is connected to and SoftwareSerial object
 const byte rxPin = 8;
@@ -56,7 +56,7 @@ char label[GEM_STR_LEN] = "Blink!"; // Maximum length of the string should not e
 unsigned long previousMillis = 0;
 
 // Variable to hold current LED state
-boolean ledOn = false;
+bool ledOn = false;
 
 // Create two menu item objects of class GEMItem, linked to interval and label variables
 // with validateInterval() callback function attached to interval menu item,
@@ -86,6 +86,8 @@ GEMItem menuItemMainSettings("Settings", menuPageSettings);
 
 // Create menu object of class GEM. Supply its constructor with reference to glcd object we created earlier
 GEM menu(glcd);
+// Which is equivalent to the following call (you can adjust parameters to better fit your screen if necessary):
+// GEM menu(glcd, /* menuPointerType= */ GEM_POINTER_ROW, /* menuItemsPerScreen= */ 5, /* menuItemHeight= */ 10, /* menuPageScreenTopOffset= */ 10, /* menuValuesLeftOffset= */ 86);
 
 void setup() {
   // Push-buttons pin modes

@@ -34,11 +34,10 @@
 
 #ifdef ARDUINO_ARCH_MBED
 #  include <watchdog_api.h>
-#  define PORTENTA_H7_WATCHDOG_MAX_TIMEOUT_ms (32760)
-#  define NANO_RP2040_WATCHDOG_MAX_TIMEOUT_ms (8389)
+#  define PORTENTA_H7_WATCHDOG_MAX_TIMEOUT_ms  (32760)
+#  define NANO_RP2040_WATCHDOG_MAX_TIMEOUT_ms  (8389)
+#  define EDGE_CONTROL_WATCHDOG_MAX_TIMEOUT_ms (65536)
 #endif /* ARDUINO_ARCH_MBED */
-
-#include <Arduino_ConnectionHandler.h>
 
 /******************************************************************************
  * GLOBAL VARIABLES
@@ -65,24 +64,18 @@ static void samd_watchdog_reset()
   }
 }
 
-/* This function is called within the WiFiNINA library when invoking
- * the method 'connectBearSSL' in order to prevent a premature bite
- * of the watchdog (max timeout on SAMD is 16 s). wifi_nina_feed...
+/* This function is called within the GSMConnectionHandler. mkr_gsm_feed...
  * is defined a weak function there and overwritten by this "strong"
  * function here.
  */
-#ifndef WIFI_HAS_FEED_WATCHDOG_FUNC
-void wifi_nina_feed_watchdog()
-{
-  samd_watchdog_reset();
-}
-#endif
-
 void mkr_gsm_feed_watchdog()
 {
   samd_watchdog_reset();
 }
-
+/* This function is called within the GSMConnectionHandler. mkr_nb_feed...
+ * is defined a weak function there and overwritten by this "strong"
+ * function here.
+ */
 void mkr_nb_feed_watchdog()
 {
   samd_watchdog_reset();
@@ -97,6 +90,8 @@ static void mbed_watchdog_enable()
   cfg.timeout_ms = PORTENTA_H7_WATCHDOG_MAX_TIMEOUT_ms;
 #elif defined(ARDUINO_NANO_RP2040_CONNECT)
   cfg.timeout_ms = NANO_RP2040_WATCHDOG_MAX_TIMEOUT_ms;
+#elif defined(ARDUINO_EDGE_CONTROL)
+  cfg.timeout_ms = EDGE_CONTROL_WATCHDOG_MAX_TIMEOUT_ms;
 #else
 # error "You need to define the maximum possible timeout for this architecture."
 #endif
@@ -116,29 +111,31 @@ static void mbed_watchdog_reset()
   }
 }
 
-#if defined (ARDUINO_PORTENTA_H7_WIFI_HAS_FEED_WATCHDOG_FUNC)
-static void mbed_watchdog_enable_network_feed(const bool use_ethernet)
+static void mbed_watchdog_enable_network_feed(NetworkAdapter ni)
 {
+  if (ni == NetworkAdapter::ETHERNET) {
 #if defined(BOARD_HAS_ETHERNET)
-  if(use_ethernet) {
     Ethernet.setFeedWatchdogFunc(watchdog_reset);
-  } else
 #endif
-    WiFi.setFeedWatchdogFunc(watchdog_reset);
+  }
 
-}
+  if (ni == NetworkAdapter::WIFI) {
+#if defined(ARDUINO_PORTENTA_H7_WIFI_HAS_FEED_WATCHDOG_FUNC) && defined(BOARD_HAS_WIFI)
+    WiFi.setFeedWatchdogFunc(watchdog_reset);
 #endif
+  }
+
+  if (ni == NetworkAdapter::CATM1) {
+#if defined(BOARD_HAS_CATM1_NBIOT)
+    GSM.setFeedWatchdogFunc(watchdog_reset);
+#endif
+  }
+}
 
 void mbed_watchdog_trigger_reset()
 {
   watchdog_config_t cfg;
-#if defined(BOARD_STM32H7)
   cfg.timeout_ms = 1;
-#elif defined(ARDUINO_NANO_RP2040_CONNECT)
-  cfg.timeout_ms = 1;
-#else
-# error "You need to define the maximum possible timeout for this architecture."
-#endif
 
   if (hal_watchdog_init(&cfg) == WATCHDOG_STATUS_OK) {
     is_watchdog_enabled = true;
@@ -170,15 +167,17 @@ void watchdog_reset()
 #endif
 }
 
-void watchdog_enable_network_feed(const bool use_ethernet)
+void watchdog_enable_network_feed(NetworkAdapter ni)
 {
-#ifdef WIFI_HAS_FEED_WATCHDOG_FUNC
-  (void)use_ethernet;
+  /* Setup WiFi NINA watchdog feed callback function */
+#if defined(ARDUINO_ARCH_SAMD) && defined(WIFI_HAS_FEED_WATCHDOG_FUNC)
+  (void)ni;
   WiFi.setFeedWatchdogFunc(watchdog_reset);
 #endif
 
-#ifdef ARDUINO_PORTENTA_H7_WIFI_HAS_FEED_WATCHDOG_FUNC
-  mbed_watchdog_enable_network_feed(use_ethernet);
+  /* Setup mbed sockets watchdog feed callback function */
+#if defined(ARDUINO_ARCH_MBED)
+  mbed_watchdog_enable_network_feed(ni);
 #endif
 }
 #endif /* (ARDUINO_ARCH_SAMD) || (ARDUINO_ARCH_MBED) */

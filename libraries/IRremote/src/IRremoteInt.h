@@ -100,7 +100,7 @@ struct irparams_struct {
     volatile uint8_t *IRReceivePinPortInputRegister;
     uint8_t IRReceivePinMask;
 #endif
-    volatile uint_fast16_t TickCounterForISR; ///< Counts 50uS ticks. The value is copied into the rawbuf array on every transition.
+    volatile uint_fast16_t TickCounterForISR; ///< Counts 50uS ticks. The value is copied into the rawbuf array on every transition. Counting is independent of state or resume().
 #if !IR_REMOTE_DISABLE_RECEIVE_COMPLETE_CALLBACK
     void (*ReceiveCompleteCallbackFunction)(void); ///< The function to call if a protocol message has arrived, i.e. StateForISR changed to IR_REC_STATE_STOP
 #endif
@@ -124,6 +124,8 @@ typedef uint64_t IRRawDataType;
 
 /*
  * Debug directives
+ * Outputs with IR_DEBUG_PRINT can only be activated by defining DEBUG!
+ * If LOCAL_DEBUG is defined in one file, all outputs with IR_DEBUG_PRINT are still suppressed.
  */
 #if defined(DEBUG) || defined(TRACE)
 #  define IR_DEBUG_PRINT(...)    Serial.print(__VA_ARGS__)
@@ -162,7 +164,7 @@ struct decode_results {
     uint16_t magnitude;         // deprecated, moved to decodedIRData.extra ///< Used by MagiQuest [16-bits]
     bool isRepeat;              // deprecated, moved to decodedIRData.flags ///< True if repeat of value is detected
 
-// next 3 values are copies of irparams values - see IRremoteint.h
+// next 3 values are copies of irparams_struct values - see above
     uint16_t *rawbuf;       // deprecated, moved to decodedIRData.rawDataPtr->rawbuf ///< Raw intervals in 50uS ticks
     uint_fast8_t rawlen;        // deprecated, moved to decodedIRData.rawDataPtr->rawlen ///< Number of records in rawbuf
     bool overflow;              // deprecated, moved to decodedIRData.flags ///< true if IR raw code too long
@@ -184,10 +186,13 @@ public:
      */
     void begin(uint_fast8_t aReceivePin, bool aEnableLEDFeedback = false, uint_fast8_t aFeedbackLEDPin =
     USE_DEFAULT_FEEDBACK_LED_PIN);
+    void restartTimer();
     void start();
     void enableIRIn(); // alias for start
     void start(uint32_t aMicrosecondsToAddToGapCounter);
+    void restartTimer(uint32_t aMicrosecondsToAddToGapCounter);
     void startWithTicksToAdd(uint16_t aTicksToAddToGapCounter);
+    void restartTimerWithTicksToAdd(uint16_t aTicksToAddToGapCounter);
     void restartAfterSend();
 
     void addTicksToInternalTickCounter(uint16_t aTicksToAddToInternalTickCounter);
@@ -197,6 +202,7 @@ public:
     IRData* read(); // returns decoded data
     // write is a method of class IRsend below
     // size_t write(IRData *aIRSendData, int_fast8_t aNumberOfRepeats = NO_REPEATS);
+    void stopTimer();
     void stop();
     void disableIRIn(); // alias for stop
     void end(); // alias for stop
@@ -312,7 +318,7 @@ public:
     void checkForRepeatSpaceTicksAndSetFlag(uint16_t aMaximumRepeatSpaceTicks);
     bool checkForRecordGapsMicros(Print *aSerial);
 
-    IRData decodedIRData;       // New: decoded IR data for the application
+    IRData decodedIRData;       // Decoded IR data for the application
 
     // Last decoded IR data for repeat detection and parity for Denon autorepeat
     decode_type_t lastDecodedProtocol;
@@ -415,15 +421,22 @@ public:
     IRsend();
 
     /*
-     * IR_SEND_PIN is defined
+     * IR_SEND_PIN is defined or fixed by timer, value of IR_SEND_PIN is then "DeterminedByTimer"
      */
 #if defined(IR_SEND_PIN)
     void begin();
-    void begin(bool aEnableLEDFeedback, uint_fast8_t aFeedbackLEDPin = USE_DEFAULT_FEEDBACK_LED_PIN);
+    // The default parameter allowed to specify IrSender.begin(7); without errors, if IR_SEND_PIN was defined. But the semantics is not the one the user expect.
+    void begin(bool aEnableLEDFeedback, uint_fast8_t aFeedbackLEDPin); // 4.3.1 Removed default value USE_DEFAULT_FEEDBACK_LED_PIN for last parameter
+    // The next function is a dummy to avoid acceptance of pre 4.3 calls to begin(DISABLE_LED_FEEDBACK);
+    void begin(uint8_t aSendPin)
+#  if !defined (DOXYGEN)
+            __attribute__ ((deprecated ("Error: IR_SEND_PIN is still defined, therefore the function begin(aSendPin) is NOT available. You must disable '#define IR_SEND_PIN' to enable this function.")));
+#  endif
+
     // The next function is a dummy to avoid acceptance of pre 4.0 calls to begin(IR_SEND_PIN, DISABLE_LED_FEEDBACK);
     void begin(uint_fast8_t aSendPin, bool aEnableLEDFeedback)
 #  if !defined (DOXYGEN)
-            __attribute__ ((deprecated ("You must use begin(ENABLE_LED_FEEDBACK) or begin(DISABLE_LED_FEEDBACK) since version 4.0.")));
+            __attribute__ ((deprecated ("You must use begin() and enableLEDFeedback() or disableLEDFeedback() since version 4.3.")));
 #  endif
 #else
     IRsend(uint_fast8_t aSendPin);
@@ -533,6 +546,7 @@ public:
     void sendRC6(uint8_t aAddress, uint8_t aCommand, int_fast8_t aNumberOfRepeats, bool aEnableAutomaticToggle = true);
     void sendSamsungLGRepeat();
     void sendSamsung(uint16_t aAddress, uint16_t aCommand, int_fast8_t aNumberOfRepeats);
+    void sendSamsung16BitAddressAndCommand(uint16_t aAddress, uint16_t aCommand, int_fast8_t aNumberOfRepeats);
     void sendSamsung48(uint16_t aAddress, uint32_t aCommand, int_fast8_t aNumberOfRepeats);
     void sendSamsungLG(uint16_t aAddress, uint16_t aCommand, int_fast8_t aNumberOfRepeats);
     void sendSharp(uint8_t aAddress, uint8_t aCommand, int_fast8_t aNumberOfRepeats); // redirected to sendDenon

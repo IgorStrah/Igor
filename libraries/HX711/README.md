@@ -1,5 +1,4 @@
 
-
 [![Arduino CI](https://github.com/RobTillaart/HX711/workflows/Arduino%20CI/badge.svg)](https://github.com/marketplace/actions/arduino_ci)
 [![Arduino-lint](https://github.com/RobTillaart/HX711/actions/workflows/arduino-lint.yml/badge.svg)](https://github.com/RobTillaart/HX711/actions/workflows/arduino-lint.yml)
 [![JSON check](https://github.com/RobTillaart/HX711/actions/workflows/jsoncheck.yml/badge.svg)](https://github.com/RobTillaart/HX711/actions/workflows/jsoncheck.yml)
@@ -78,7 +77,9 @@ For now one can add an IOpin for this and use **digitalWrite()**.
 
 #### Related
 
+- https://github.com/bogde/HX711
 - https://github.com/RobTillaart/weight  (conversions kg <> stone etc.)
+- https://github.com/RobTillaart/HX711
 - https://github.com/RobTillaart/HX711_MP
 
 
@@ -110,7 +111,8 @@ Steps to take for calibration
 
 - **HX711()** constructor.
 - **~HX711()**
-- **void begin(uint8_t dataPin, uint8_t clockPin)** sets a fixed gain 128 for now.
+- **void begin(uint8_t dataPin, uint8_t clockPin, bool fastProcessor)** sets a fixed gain 128 for now.
+The fastProcessor option adds a 1 uS delay for each clock half-cycle to keep the time greater than 200 nS.
 - **void reset()** set internal state to start condition.
 Since 0.3.4 reset also does a power down / up cycle.
 - **bool is_ready()** checks if load cell is ready to read.
@@ -125,7 +127,7 @@ times = 3..15 - odd numbers preferred.
 times = 3..15 - odd numbers preferred.
 - **float read_runavg(uint8_t times = 7, float alpha = 0.5)** get running average over times measurements.
 The weight alpha can be set to any value between 0 and 1, times >= 1.
-- **uint32_t last_read()** returns timestamp in milliseconds.
+- **uint32_t last_read()** returns timestamp in milliseconds of last read.
 
 
 #### Gain + channel
@@ -157,7 +159,7 @@ next call to **read()** will return info from the selected channel/gain.
 According to the datasheet the gain/channel change may take up to 400ms (table page 3).
 
 Warning 1: if you use **set_gain()** in your program the HX711 can be in different states.
-If there is a expected or unexpected reboot of the MCU, this could lead 
+If there is an expected or unexpected reboot of the MCU, this could lead 
 to an unknown state at the reboot of the code. 
 So in such case it is strongly advised to call **set_gain()** explicitly in **setup()** 
 so the device is in a known state.
@@ -194,7 +196,7 @@ to keep memory footprint relative low.
 #### Get values
 
 Get values from the HX711 corrected for offset and scale.
-Note that in **HX711_RAW_MODE** times will be ignored => just call **read()** once.
+Note that in **HX711_RAW_MODE** the times parameter will be ignored => just call **read()** once.
 
 - **float get_value(uint8_t times = 1)** read value, corrected for offset.
 - **float get_units(uint8_t times = 1)** read value, converted to proper units.
@@ -296,14 +298,14 @@ Use calibrate to find your favourite values.
 
 Colour scheme wires of two devices.
 
-| HX711 Pin |  Colour dev 1  |  Colour dev 2  |
-|:---------:|:--------------:|:--------------:|
-|    E+     |  red           |  red           |
-|    E-     |  black         |  black         |
-|    A-     |  white         |  blue          |
-|    A+     |  green         |  white         |
-|    B-     |  not connected |  not connected |
-|    B+     |  not connected |  not connected |
+|  HX711 Pin  |  Colour dev 1   |  Colour dev 2   |
+|:-----------:|:---------------:|:---------------:|
+|      E+     |  red            |  red            |
+|      E-     |  black          |  black          |
+|      A-     |  white          |  blue           |
+|      A+     |  green          |  white          |
+|      B-     |  not connected  |  not connected  |
+|      B+     |  not connected  |  not connected  |
 
 
 #### Temperature
@@ -364,13 +366,13 @@ See https://github.com/RobTillaart/HX711/issues/40
 #### Must
 
 - update documentation HX711
-- test B channel explicitly.
-- test reset and reboot behaviours.
 - keep in sync with HX711_MP
 
 
 #### Should
 
+- test B channel explicitly.
+- test reset and reboot behaviours.
 - investigate read()
   - investigate the need of yield after interrupts
   - investigate blocking loop at begin => less yield() calls ?

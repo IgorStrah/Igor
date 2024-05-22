@@ -1,8 +1,8 @@
 /*
   Basic menu example using GEM library.
 
-  Simple one page menu with one editable menu item associated with int variable, one with boolean variable,
-  and a button, pressing of which will result in int variable value printed to Serial monitor if boolean variable is set to true.
+  Simple one page menu with one editable menu item associated with int variable, one with bool variable,
+  and a button, pressing of which will result in int variable value printed to Serial monitor if bool variable is set to true.
 
   Adafruit GFX library is used to draw menu.
   KeyDetector library is used to detect push-buttons presses.
@@ -35,7 +35,7 @@ Key keys[] = {{GEM_KEY_UP, upPin}, {GEM_KEY_RIGHT, rightPin}, {GEM_KEY_DOWN, dow
 KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key));
 // To account for switch bounce effect of the buttons (if occur) you may want to specify debounceDelay
 // as the third argument to KeyDetector constructor:
-// KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key), 10);
+// KeyDetector myKeyDetector(keys, sizeof(keys)/sizeof(Key), /* debounceDelay= */ 10);
 
 // Macro constants (aliases) for the pins TFT display is connected to. Please update the pin numbers according to your setup
 #define TFT_CS    A2
@@ -51,7 +51,7 @@ Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
 // Create variables that will be editable through the menu and assign them initial values
 int number = -512;
-boolean enablePrint = false;
+bool enablePrint = false;
 
 // Create two menu item objects of class GEMItem, linked to number and enablePrint variables 
 GEMItem menuItemInt("Number:", number);
@@ -69,6 +69,8 @@ GEMPage menuPageMain("Main Menu");
 
 // Create menu object of class GEM_adafruit_gfx. Supply its constructor with reference to tft object we created earlier
 GEM_adafruit_gfx menu(tft, GEM_POINTER_ROW, GEM_ITEMS_COUNT_AUTO);
+// Which is equivalent to the following call (you can adjust parameters to better fit your screen if necessary):
+// GEM_adafruit_gfx menu(tft, /* menuPointerType= */ GEM_POINTER_ROW, /* menuItemsPerScreen= */ GEM_ITEMS_COUNT_AUTO, /* menuItemHeight= */ 10, /* menuPageScreenTopOffset= */ 10, /* menuValuesLeftOffset= */ 86);
 
 void setup() {
   // Push-buttons pin modes

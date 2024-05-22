@@ -59,10 +59,9 @@ void loop(void) {
       delay(10);
     }
     Timer_Fire = 0;
-    fireEffectActive = false;
           delay(4000);
   }
-  if (fireEffectActive) {
+  if (Timer_Fire>0) {
     fireEffect();
   }
 

@@ -2,6 +2,27 @@
 The latest version may not be released!
 See also the commit log at github: https://github.com/Arduino-IRremote/Arduino-IRremote/commits/master
 
+# 4.3.0
+- Removed default value USE_DEFAULT_FEEDBACK_LED_PIN for last parameter of IRsend::begin(bool aEnableLEDFeedback, uint_fast8_t aFeedbackLEDPin).
+    Therefore IrSender.begin(DISABLE_LED_FEEDBACK) will not longer work!
+- Added convenience function isIRReceiverAttachedForTinyReceiver().
+- Added Extended NEC Protocol macro to TinyIR by Buzzerb.
+- Fixed sendSamsung() / sendSamsungLG() bug.
+- Added functions stopTimer(), restartTimer() and restartTimerWithTicksToAdd().
+- Added rawlen and initialGap to IRData.
+- Added ReceiveAndSendHobToHood example.
+- Changed RECORD_GAP_MICROS default value from 5000 to 8000.
+
+# 4.2.1
+- Fix wrong type of tEnableLEDFeedback in IRSend.hpp and IRReceive.hpp.
+- TinyReceiver 2.0
+  - New TinyIRReceiverData which is filled with address, command and flags.
+  - Removed parameters address, command and flags from callback handleReceivedTinyIRData() and printTinyReceiverResultMinimal().
+  - Callback function now only enabled if USE_CALLBACK_FOR_TINY_RECEIVER is activated.
+- Fix changing IR_SEND_PIN dynamically for ESP32.
+- Fix wrong type of tEnableLEDFeedback.
+- Support for ESP32-C3.
+
 # 4.2.0
 - The old decode function is renamed to decode_old(decode_results *aResults). decode (decode_results *aResults) is only available in IRremote.h and prints a message.
 - Added DECODE_ONKYO, to force 16 bit command and data decoding.

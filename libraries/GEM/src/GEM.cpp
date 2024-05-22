@@ -1,6 +1,6 @@
 /*
   GEM (a.k.a. Good Enough Menu) - Arduino library for creation of graphic multi-level menu with
-  editable menu items, such as variables (supports int, byte, float, double, boolean, char[17] data types)
+  editable menu items, such as variables (supports int, byte, float, double, bool, char[17] data types)
   and option selects. User-defined callback function can be specified to invoke when menu item is saved.
   
   Supports buttons that can invoke user-defined actions and create action-specific
@@ -60,6 +60,9 @@
 #define GEM_CHAR_CODE_UNDERSCORE 95
 #define GEM_CHAR_CODE_LINE 124
 #define GEM_CHAR_CODE_TILDA 126
+#define GEM_CHAR_CODE_BANG 33
+#define GEM_CHAR_CODE_a 97
+#define GEM_CHAR_CODE_ACCENT 96
 
 // Sprite of the default GEM _splash screen (GEM logo v1)
 /*
@@ -104,14 +107,13 @@ static const uint8_t selectArrows [] PROGMEM = {
 
 GEM::GEM(GLCD& glcd_, byte menuPointerType_, byte menuItemsPerScreen_, byte menuItemHeight_, byte menuPageScreenTopOffset_, byte menuValuesLeftOffset_)
   : _glcd(glcd_)
-  , _menuPointerType(menuPointerType_)
-  , _menuItemsPerScreen(menuItemsPerScreen_)
-  , _menuItemHeight(menuItemHeight_)
-  , _menuPageScreenTopOffset(menuPageScreenTopOffset_)
-  , _menuValuesLeftOffset(menuValuesLeftOffset_)
 {
-  _menuItemFontSize = _menuItemHeight >= 8 ? 0 : 1;
-  _menuItemInsetOffset = (_menuItemHeight - _menuItemFont[_menuItemFontSize].height) / 2;
+  _appearance.menuPointerType = menuPointerType_;
+  _appearance.menuItemsPerScreen = menuItemsPerScreen_;
+  _appearance.menuItemHeight = menuItemHeight_;
+  _appearance.menuPageScreenTopOffset = menuPageScreenTopOffset_;
+  _appearance.menuValuesLeftOffset = menuValuesLeftOffset_;
+  _appearanceCurrent = &_appearance;
   _splash = logo;
   clearContext();
   _editValueMode = false;
@@ -120,25 +122,69 @@ GEM::GEM(GLCD& glcd_, byte menuPointerType_, byte menuItemsPerScreen_, byte menu
   _valueSelectNum = -1;
 }
 
+GEM::GEM(GLCD& glcd_, GEMAppearance appearance_)
+  : _glcd(glcd_)
+  , _appearance(appearance_)
+{
+  _appearanceCurrent = &_appearance;
+  _splash = logo;
+  clearContext();
+  _editValueMode = false;
+  _editValueCursorPosition = 0;
+  memset(_valueString, '\0', GEM_STR_LEN - 1);
+  _valueSelectNum = -1;
+}
+
+//====================== APPEARANCE OPERATIONS
+
+GEM& GEM::setAppearance(GEMAppearance appearance) {
+  _appearance = appearance;
+  return *this;
+}
+
+GEMAppearance* GEM::getCurrentAppearance() {
+  return (_menuPageCurrent != nullptr && _menuPageCurrent->_appearance != nullptr) ? _menuPageCurrent->_appearance : &_appearance;
+}
+
+byte GEM::getMenuItemsPerScreen() {
+  return getCurrentAppearance()->menuItemsPerScreen == GEM_ITEMS_COUNT_AUTO ? (_glcd.ydim - getCurrentAppearance()->menuPageScreenTopOffset) / getCurrentAppearance()->menuItemHeight : getCurrentAppearance()->menuItemsPerScreen;
+}
+
+byte GEM::getMenuItemFontSize() {
+  return getCurrentAppearance()->menuItemHeight >= 8 ? 0 : 1;
+}
+
+byte GEM::getMenuItemTitleLength() {
+  return (getCurrentAppearance()->menuValuesLeftOffset - 5) / _menuItemFont[getMenuItemFontSize()].width;
+}
+
+byte GEM::getMenuItemValueLength() {
+  return (_glcd.xdim - getCurrentAppearance()->menuValuesLeftOffset - 6) / _menuItemFont[getMenuItemFontSize()].width;
+}
+
 //====================== INIT OPERATIONS
 
-void GEM::setSplash(const uint8_t *sprite) {
+GEM& GEM::setSplash(const uint8_t *sprite) {
   _splash = sprite;
+  return *this;
 }
 
-void GEM::setSplashDelay(uint16_t value) {
+GEM& GEM::setSplashDelay(uint16_t value) {
   _splashDelay = value;
+  return *this;
 }
 
-void GEM::hideVersion(boolean flag) {
+GEM& GEM::hideVersion(bool flag) {
   _enableVersion = !flag;
+  return *this;
 }
 
-void GEM::invertKeysDuringEdit(boolean invert) {
+GEM& GEM::invertKeysDuringEdit(bool invert) {
   _invertKeysDuringEdit = invert;
+  return *this;
 }
 
-void GEM::init() {
+GEM& GEM::init() {
   _glcd.loadSprite_P(GEM_SPR_ARROW_RIGHT, arrowRight);
   _glcd.loadSprite_P(GEM_SPR_ARROW_LEFT, arrowLeft);
   _glcd.loadSprite_P(GEM_SPR_ARROW_BTN, arrowBtn);
@@ -151,12 +197,6 @@ void GEM::init() {
   _glcd.set(GLCD_ID_CRLF, 0);
   _glcd.set(GLCD_ID_SCROLL, 0);
   _glcd.clearScreen();
-  
-  _menuItemTitleLength = (_menuValuesLeftOffset - 5) / _menuItemFont[_menuItemFontSize].width;
-  _menuItemValueLength = (_glcd.xdim - _menuValuesLeftOffset - 6) / _menuItemFont[_menuItemFontSize].width;
-  if (_menuItemsPerScreen == GEM_ITEMS_COUNT_AUTO) {
-    _menuItemsPerScreen = (_glcd.ydim - _menuPageScreenTopOffset) / _menuItemHeight;
-  }
   
   if (_splashDelay > 0) {
 
@@ -179,44 +219,67 @@ void GEM::init() {
     }
 
   }
+
+  return *this;
 }
 
-void GEM::reInit() {
+GEM& GEM::reInit() {
   _glcd.drawMode(GLCD_MODE_NORMAL);
   _glcd.fontMode(GLCD_MODE_NORMAL);
   _glcd.set(GLCD_ID_CRLF, 0);
   _glcd.set(GLCD_ID_SCROLL, 0);
   _glcd.clearScreen();
+  return *this;
 }
 
-void GEM::setMenuPageCurrent(GEMPage& menuPageCurrent) {
+GEM& GEM::setMenuPageCurrent(GEMPage& menuPageCurrent) {
   _menuPageCurrent = &menuPageCurrent;
+  return *this;
+}
+
+GEMPage* GEM::getCurrentMenuPage() {
+  return _menuPageCurrent;
 }
 
 //====================== CONTEXT OPERATIONS
 
-void GEM::clearContext() {
+GEM& GEM::clearContext() {
   context.loop = nullptr;
   context.enter = nullptr;
   context.exit = nullptr;
   context.allowExit = true;
+  return *this;
 }
 
 //====================== DRAW OPERATIONS
 
-void GEM::drawMenu() {
+GEM& GEM::drawMenu() {
   _glcd.clearScreen();
   drawTitleBar();
   printMenuItems();
   drawMenuPointer();
   drawScrollbar();
+  if (drawMenuCallback != nullptr) {
+    drawMenuCallback();
+  }
+  return *this;
+}
+
+GEM& GEM::setDrawMenuCallback(void (*drawMenuCallback_)()) {
+  drawMenuCallback = drawMenuCallback_;
+  return *this;
+}
+
+GEM& GEM::removeDrawMenuCallback() {
+  drawMenuCallback = nullptr;
+  return *this;
 }
 
 void GEM::drawTitleBar() {
   _glcd.fontFace(1);
   _glcd.setXY(5,1);
   _glcd.putstr((char*)_menuPageCurrent->title);
-  _glcd.fontFace(_menuItemFontSize);
+  _glcd.fontFace(getMenuItemFontSize());
 }
 
 void GEM::printMenuItemString(const char* str, byte num, byte startPos) {
@@ -228,83 +291,90 @@ void GEM::printMenuItemString(const char* str, byte num, byte startPos) {
 }
 
 void GEM::printMenuItemTitle(const char* str, int offset) {
-  printMenuItemString(str, _menuItemTitleLength + offset);
+  printMenuItemString(str, getMenuItemTitleLength() + offset);
 }
 
 void GEM::printMenuItemValue(const char* str, int offset, byte startPos) {
-  printMenuItemString(str, _menuItemValueLength + offset, startPos);
+  printMenuItemString(str, getMenuItemValueLength() + offset, startPos);
 }
 
 void GEM::printMenuItemFull(const char* str, int offset) {
-  printMenuItemString(str, _menuItemTitleLength + _menuItemValueLength + offset);
+  printMenuItemString(str, getMenuItemTitleLength() + getMenuItemValueLength() + offset);
 }
 
-byte GEM::getMenuItemInsetOffset(boolean forSprite) {
-  return _menuItemInsetOffset + (forSprite ? (_menuItemFontSize ? -1 : 0) : 0 ); // With additional offset for 6x8 sprites to compensate for smaller font size
+byte GEM::getMenuItemInsetOffset(bool forSprite) {
+  byte menuItemFontSize = getMenuItemFontSize();
+  byte menuItemInsetOffset = (getCurrentAppearance()->menuItemHeight - _menuItemFont[menuItemFontSize].height) / 2;
+  return menuItemInsetOffset + (forSprite ? (menuItemFontSize ? -1 : 0) : 0 ); // With additional offset for 6x8 sprites to compensate for smaller font size
 }
 
-byte GEM::getCurrentItemTopOffset(boolean withInsetOffset, boolean forSprite) {
-  return (_menuPageCurrent->currentItemNum % _menuItemsPerScreen) * _menuItemHeight + _menuPageScreenTopOffset + (withInsetOffset ? getMenuItemInsetOffset(forSprite) : 0);
+byte GEM::getCurrentItemTopOffset(bool withInsetOffset, bool forSprite) {
+  return (_menuPageCurrent->currentItemNum % getMenuItemsPerScreen()) * getCurrentAppearance()->menuItemHeight + getCurrentAppearance()->menuPageScreenTopOffset + (withInsetOffset ? getMenuItemInsetOffset(forSprite) : 0);
 }
 
 void GEM::printMenuItems() {
-  byte currentPageScreenNum = _menuPageCurrent->currentItemNum / _menuItemsPerScreen;
-  GEMItem* menuItemTmp = _menuPageCurrent->getMenuItem(currentPageScreenNum * _menuItemsPerScreen);
-  byte y = _menuPageScreenTopOffset;
+  byte menuItemsPerScreen = getMenuItemsPerScreen();
+  byte currentPageScreenNum = _menuPageCurrent->currentItemNum / menuItemsPerScreen;
+  GEMItem* menuItemTmp = _menuPageCurrent->getMenuItem(currentPageScreenNum * menuItemsPerScreen);
+  byte y = getCurrentAppearance()->menuPageScreenTopOffset;
   byte i = 0;
-  while (menuItemTmp != nullptr && i < _menuItemsPerScreen) {
+  while (menuItemTmp != nullptr && i < menuItemsPerScreen) {
     _glcd.setY(y + getMenuItemInsetOffset());
     byte yDraw = y + getMenuItemInsetOffset(true);
     switch (menuItemTmp->type) {
       case GEM_ITEM_VAL:
-        _glcd.setX(5);
-        if (menuItemTmp->readonly) {
-          printMenuItemTitle(menuItemTmp->title, -1);
-          _glcd.putstr((char*)"^");
-        } else {
-          printMenuItemTitle(menuItemTmp->title);
+        {
+          _glcd.setX(5);
+          if (menuItemTmp->readonly) {
+            printMenuItemTitle(menuItemTmp->title, -1);
+            _glcd.putstr((char*)"^");
+          } else {
+            printMenuItemTitle(menuItemTmp->title);
+          }
+
+          byte menuValuesLeftOffset = getCurrentAppearance()->menuValuesLeftOffset;
+          _glcd.setX(menuValuesLeftOffset);
+          switch (menuItemTmp->linkedType) {
+            case GEM_VAL_INTEGER:
+              itoa(*(int*)menuItemTmp->linkedVariable, _valueString, 10);
+              printMenuItemValue(_valueString);
+              break;
+            case GEM_VAL_BYTE:
+              itoa(*(byte*)menuItemTmp->linkedVariable, _valueString, 10);
+              printMenuItemValue(_valueString);
+              break;
+            case GEM_VAL_CHAR:
+              printMenuItemValue((char*)menuItemTmp->linkedVariable);
+              break;
+            case GEM_VAL_BOOL:
+              if (*(bool*)menuItemTmp->linkedVariable) {
+                _glcd.drawSprite(menuValuesLeftOffset, yDraw, GEM_SPR_CHECKBOX_CHECKED, GLCD_MODE_NORMAL);
+              } else {
+                _glcd.drawSprite(menuValuesLeftOffset, yDraw, GEM_SPR_CHECKBOX_UNCHECKED, GLCD_MODE_NORMAL);
+              }
+              break;
+            case GEM_VAL_SELECT:
+              {
+                GEMSelect* select = menuItemTmp->select;
+                printMenuItemValue(select->getSelectedOptionName(menuItemTmp->linkedVariable));
+                _glcd.drawSprite(_glcd.xdim-7, yDraw, GEM_SPR_SELECT_ARROWS, GLCD_MODE_NORMAL);
+              }
+              break;
+            #ifdef GEM_SUPPORT_FLOAT_EDIT
+            case GEM_VAL_FLOAT:
+              // sprintf(_valueString,"%.6f", *(float*)menuItemTmp->linkedVariable); // May work for non-AVR boards
+              dtostrf(*(float*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
+              printMenuItemValue(_valueString);
+              break;
+            case GEM_VAL_DOUBLE:
+              // sprintf(_valueString,"%.6f", *(double*)menuItemTmp->linkedVariable); // May work for non-AVR boards
+              dtostrf(*(double*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
+              printMenuItemValue(_valueString);
+              break;
+            #endif
+          }
+          break;
         }
-        _glcd.setX(_menuValuesLeftOffset);
-        switch (menuItemTmp->linkedType) {
-          case GEM_VAL_INTEGER:
-            itoa(*(int*)menuItemTmp->linkedVariable, _valueString, 10);
-            printMenuItemValue(_valueString);
-            break;
-          case GEM_VAL_BYTE:
-            itoa(*(byte*)menuItemTmp->linkedVariable, _valueString, 10);
-            printMenuItemValue(_valueString);
-            break;
-          case GEM_VAL_CHAR:
-            printMenuItemValue((char*)menuItemTmp->linkedVariable);
-            break;
-          case GEM_VAL_BOOLEAN:
-            if (*(boolean*)menuItemTmp->linkedVariable) {
-              _glcd.drawSprite(_menuValuesLeftOffset, yDraw, GEM_SPR_CHECKBOX_CHECKED, GLCD_MODE_NORMAL);
-            } else {
-              _glcd.drawSprite(_menuValuesLeftOffset, yDraw, GEM_SPR_CHECKBOX_UNCHECKED, GLCD_MODE_NORMAL);
-            }
-            break;
-          case GEM_VAL_SELECT:
-            {
-              GEMSelect* select = menuItemTmp->select;
-              printMenuItemValue(select->getSelectedOptionName(menuItemTmp->linkedVariable));
-              _glcd.drawSprite(_glcd.xdim-7, yDraw, GEM_SPR_SELECT_ARROWS, GLCD_MODE_NORMAL);
-            }
-            break;
-          #ifdef GEM_SUPPORT_FLOAT_EDIT
-          case GEM_VAL_FLOAT:
-            // sprintf(_valueString,"%.6f", *(float*)menuItemTmp->linkedVariable); // May work for non-AVR boards
-            dtostrf(*(float*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
-            printMenuItemValue(_valueString);
-            break;
-          case GEM_VAL_DOUBLE:
-            // sprintf(_valueString,"%.6f", *(double*)menuItemTmp->linkedVariable); // May work for non-AVR boards
-            dtostrf(*(double*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
-            printMenuItemValue(_valueString);
-            break;
-          #endif
-        }
-        break;
       case GEM_ITEM_LINK:
         _glcd.setX(5);
         if (menuItemTmp->readonly) {
@@ -331,7 +401,7 @@ void GEM::printMenuItems() {
         break;
     }
     menuItemTmp = menuItemTmp->getMenuItemNext();
-    y += _menuItemHeight;
+    y += getCurrentAppearance()->menuItemHeight;
     i++;
   }
   memset(_valueString, '\0', GEM_STR_LEN - 1);
@@ -341,22 +411,23 @@ void GEM::drawMenuPointer() {
   if (_menuPageCurrent->itemsCount > 0) {
     GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
     int pointerPosition = getCurrentItemTopOffset(false);
-    if (_menuPointerType == GEM_POINTER_DASH) {
-      _glcd.eraseBox(0, _menuPageScreenTopOffset, 1, _glcd.ydim-1);
+    byte menuItemHeight = getCurrentAppearance()->menuItemHeight;
+    if (getCurrentAppearance()->menuPointerType == GEM_POINTER_DASH) {
+      _glcd.eraseBox(0, getCurrentAppearance()->menuPageScreenTopOffset, 1, _glcd.ydim-1);
       if (menuItemTmp->readonly) {
-        for (byte i = 0; i < (_menuItemHeight - 1) / 2; i++) {
+        for (byte i = 0; i < (menuItemHeight - 1) / 2; i++) {
           _glcd.drawPixel(0, pointerPosition + i * 2, GLCD_MODE_NORMAL);
           _glcd.drawPixel(1, pointerPosition + i * 2 + 1, GLCD_MODE_NORMAL);
         }
       } else {
-        _glcd.drawBox(0, pointerPosition, 1, pointerPosition + _menuItemHeight - 2, GLCD_MODE_NORMAL);
+        _glcd.drawBox(0, pointerPosition, 1, pointerPosition + menuItemHeight - 2, GLCD_MODE_NORMAL);
       }
     } else {
       _glcd.drawMode(GLCD_MODE_XOR);
-      _glcd.fillBox(0, pointerPosition-1, _glcd.xdim-3, pointerPosition + _menuItemHeight - 1);
+      _glcd.fillBox(0, pointerPosition-1, _glcd.xdim-3, pointerPosition + menuItemHeight - 1);
       _glcd.drawMode(GLCD_MODE_NORMAL);
       if (menuItemTmp->readonly) {
-        for (byte i = 0; i < (_menuItemHeight + 2) / 2; i++) {
+        for (byte i = 0; i < (menuItemHeight + 2) / 2; i++) {
           _glcd.drawPixel(0, pointerPosition + i * 2, GLCD_MODE_REVERSE);
           _glcd.drawPixel(1, pointerPosition + i * 2 - 1, GLCD_MODE_REVERSE);
         }
@@ -366,11 +437,13 @@ void GEM::drawMenuPointer() {
 }
 
 void GEM::drawScrollbar() {
-  byte screensCount = (_menuPageCurrent->itemsCount % _menuItemsPerScreen == 0) ? _menuPageCurrent->itemsCount / _menuItemsPerScreen : _menuPageCurrent->itemsCount / _menuItemsPerScreen + 1;
+  byte menuItemsPerScreen = getMenuItemsPerScreen();
+  byte screensCount = (_menuPageCurrent->itemsCount % menuItemsPerScreen == 0) ? _menuPageCurrent->itemsCount / menuItemsPerScreen : _menuPageCurrent->itemsCount / menuItemsPerScreen + 1;
   if (screensCount > 1) {
-    byte currentScreenNum = _menuPageCurrent->currentItemNum / _menuItemsPerScreen;
-    byte scrollbarHeight = (_glcd.ydim - _menuPageScreenTopOffset + 1) / screensCount;
-    byte scrollbarPosition = currentScreenNum * scrollbarHeight + _menuPageScreenTopOffset - 1;
+    byte currentScreenNum = _menuPageCurrent->currentItemNum / menuItemsPerScreen;
+    byte menuPageScreenTopOffset = getCurrentAppearance()->menuPageScreenTopOffset;
+    byte scrollbarHeight = (_glcd.ydim - menuPageScreenTopOffset + 1) / screensCount;
+    byte scrollbarPosition = currentScreenNum * scrollbarHeight + menuPageScreenTopOffset - 1;
     _glcd.drawLine(_glcd.xdim - 1, scrollbarPosition, _glcd.xdim - 1, scrollbarPosition + scrollbarHeight, GLCD_MODE_NORMAL);
   }
 }
@@ -378,7 +451,7 @@ void GEM::drawScrollbar() {
 //====================== MENU ITEMS NAVIGATION
 
 void GEM::nextMenuItem() {
-  if (_menuPointerType != GEM_POINTER_DASH) {
+  if (getCurrentAppearance()->menuPointerType != GEM_POINTER_DASH) {
     drawMenuPointer();
   }
   if (_menuPageCurrent->currentItemNum == _menuPageCurrent->itemsCount-1) {
@@ -386,7 +459,8 @@ void GEM::nextMenuItem() {
   } else {
     _menuPageCurrent->currentItemNum++;
   }
-  boolean redrawMenu = (_menuPageCurrent->itemsCount > _menuItemsPerScreen && _menuPageCurrent->currentItemNum % _menuItemsPerScreen == 0);
+  byte menuItemsPerScreen = getMenuItemsPerScreen();
+  bool redrawMenu = (_menuPageCurrent->itemsCount > menuItemsPerScreen && _menuPageCurrent->currentItemNum % menuItemsPerScreen == 0);
   if (redrawMenu) {
     drawMenu();
   } else {
@@ -395,10 +469,11 @@ void GEM::nextMenuItem() {
 }
 
 void GEM::prevMenuItem() {
-  if (_menuPointerType != GEM_POINTER_DASH) {
+  if (getCurrentAppearance()->menuPointerType != GEM_POINTER_DASH) {
     drawMenuPointer();
   }
-  boolean redrawMenu = (_menuPageCurrent->itemsCount > _menuItemsPerScreen && _menuPageCurrent->currentItemNum % _menuItemsPerScreen == 0);
+  byte menuItemsPerScreen = getMenuItemsPerScreen();
+  bool redrawMenu = (_menuPageCurrent->itemsCount > menuItemsPerScreen && _menuPageCurrent->currentItemNum % menuItemsPerScreen == 0);
   if (_menuPageCurrent->currentItemNum == 0) {
     _menuPageCurrent->currentItemNum = _menuPageCurrent->itemsCount-1;
   } else {
@@ -448,7 +523,7 @@ void GEM::enterEditValueMode() {
   _editValueMode = true;
   
   GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
-  if (_menuPointerType != GEM_POINTER_DASH) {
+  if (getCurrentAppearance()->menuPointerType != GEM_POINTER_DASH) {
     drawMenuPointer();
   }
   _editValueType = menuItemTmp->linkedType;
@@ -468,7 +543,7 @@ void GEM::enterEditValueMode() {
       _editValueLength = GEM_STR_LEN - 1;
       initEditValueCursor();
       break;
-    case GEM_VAL_BOOLEAN:
+    case GEM_VAL_BOOL:
       checkboxToggle();
       break;
     case GEM_VAL_SELECT:
@@ -498,8 +573,8 @@ void GEM::enterEditValueMode() {
 void GEM::checkboxToggle() {
   GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
   int topOffset = getCurrentItemTopOffset(true, true);
-  boolean checkboxValue = *(boolean*)menuItemTmp->linkedVariable;
-  *(boolean*)menuItemTmp->linkedVariable = !checkboxValue;
+  bool checkboxValue = *(bool*)menuItemTmp->linkedVariable;
+  *(bool*)menuItemTmp->linkedVariable = !checkboxValue;
   if (menuItemTmp->callbackAction != nullptr) {
     if (menuItemTmp->callbackWithArgs) {
       menuItemTmp->callbackActionArg(menuItemTmp->callbackData);
@@ -509,11 +584,11 @@ void GEM::checkboxToggle() {
     exitEditValue();
   } else {
     if (!checkboxValue) {
-      _glcd.drawSprite(_menuValuesLeftOffset, topOffset, GEM_SPR_CHECKBOX_CHECKED, GLCD_MODE_NORMAL);
+      _glcd.drawSprite(getCurrentAppearance()->menuValuesLeftOffset, topOffset, GEM_SPR_CHECKBOX_CHECKED, GLCD_MODE_NORMAL);
     } else {
-      _glcd.drawSprite(_menuValuesLeftOffset, topOffset, GEM_SPR_CHECKBOX_UNCHECKED, GLCD_MODE_NORMAL);
+      _glcd.drawSprite(getCurrentAppearance()->menuValuesLeftOffset, topOffset, GEM_SPR_CHECKBOX_UNCHECKED, GLCD_MODE_NORMAL);
     }
-    if (_menuPointerType != GEM_POINTER_DASH) {
+    if (getCurrentAppearance()->menuPointerType != GEM_POINTER_DASH) {
       drawMenuPointer();
     }
     _editValueMode = false;
@@ -522,9 +597,9 @@ void GEM::checkboxToggle() {
 
 void GEM::clearValueVisibleRange() {
   int pointerPosition = getCurrentItemTopOffset(false);
-  byte cursorLeftOffset = _menuValuesLeftOffset;
-  _glcd.fillBox(cursorLeftOffset - 1, pointerPosition - 1, _glcd.xdim - 3, pointerPosition + _menuItemHeight - 1, 0x00);
-  _glcd.setX(_menuValuesLeftOffset);
+  byte menuValuesLeftOffset = getCurrentAppearance()->menuValuesLeftOffset;
+  _glcd.fillBox(menuValuesLeftOffset - 1, pointerPosition - 1, _glcd.xdim - 3, pointerPosition + getCurrentAppearance()->menuItemHeight - 1, 0x00);
+  _glcd.setX(menuValuesLeftOffset);
   _glcd.setY(getCurrentItemTopOffset());
 }
 
@@ -536,12 +611,13 @@ void GEM::initEditValueCursor() {
 
 void GEM::nextEditValueCursorPosition() {
   drawEditValueCursor();
-  if ((_editValueCursorPosition != _menuItemValueLength - 1) && (_editValueCursorPosition != _editValueLength - 1) && (_valueString[_editValueCursorPosition] != '\0')) {
+  byte menuItemValueLength = getMenuItemValueLength();
+  if ((_editValueCursorPosition != menuItemValueLength - 1) && (_editValueCursorPosition != _editValueLength - 1) && (_valueString[_editValueCursorPosition] != '\0')) {
     _editValueCursorPosition++;
   }
   if ((_editValueVirtualCursorPosition != _editValueLength - 1) && (_valueString[_editValueVirtualCursorPosition] != '\0')) {
     _editValueVirtualCursorPosition++;
-    if (_editValueCursorPosition == _menuItemValueLength - 1) {
+    if (_editValueCursorPosition == menuItemValueLength - 1) {
       clearValueVisibleRange();
       printMenuItemValue(_valueString, 0, _editValueVirtualCursorPosition - _editValueCursorPosition);
     }
@@ -566,33 +642,58 @@ void GEM::prevEditValueCursorPosition() {
 
 void GEM::drawEditValueCursor() {
   int pointerPosition = getCurrentItemTopOffset(false);
-  byte cursorLeftOffset = _menuValuesLeftOffset + _editValueCursorPosition * _menuItemFont[_menuItemFontSize].width;
+  byte menuItemFontSize = getMenuItemFontSize();
+  byte cursorLeftOffset = getCurrentAppearance()->menuValuesLeftOffset + _editValueCursorPosition * _menuItemFont[menuItemFontSize].width;
   _glcd.drawMode(GLCD_MODE_XOR);
   if (_editValueType == GEM_VAL_SELECT) {
-    _glcd.fillBox(cursorLeftOffset - 1, pointerPosition - 1, _glcd.xdim - 3, pointerPosition + _menuItemHeight - 1);
+    _glcd.fillBox(cursorLeftOffset - 1, pointerPosition - 1, _glcd.xdim - 3, pointerPosition + getCurrentAppearance()->menuItemHeight - 1);
   } else {
-    _glcd.fillBox(cursorLeftOffset - 1, pointerPosition - 1, cursorLeftOffset + _menuItemFont[_menuItemFontSize].width - 1, pointerPosition + _menuItemHeight - 1);
+    _glcd.fillBox(cursorLeftOffset - 1, pointerPosition - 1, cursorLeftOffset + _menuItemFont[menuItemFontSize].width - 1, pointerPosition + getCurrentAppearance()->menuItemHeight - 1);
   }
   _glcd.drawMode(GLCD_MODE_NORMAL);
 }
 
 void GEM::nextEditValueDigit() {
+  GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
   char chr = _valueString[_editValueVirtualCursorPosition];
   byte code = (byte)chr;
   if (_editValueType == GEM_VAL_CHAR) {
-    switch (code) {
-      case 0:
-        code = GEM_CHAR_CODE_SPACE;
-        break;
-      case GEM_CHAR_CODE_TILDA:
-        code = GEM_CHAR_CODE_SPACE;
-        break;
-      case GEM_CHAR_CODE_LINE - 1:
-        code = GEM_CHAR_CODE_LINE + 1;
-        break;
-      default:
-        code++;
-        break;
+    if (menuItemTmp->adjustedAsciiOrder) {
+      switch (code) {
+        case 0:
+          code = GEM_CHAR_CODE_a;
+          break;
+        case GEM_CHAR_CODE_SPACE:
+          code = GEM_CHAR_CODE_a;
+          break;
+        case GEM_CHAR_CODE_ACCENT:
+          code = GEM_CHAR_CODE_SPACE;
+          break;
+        case GEM_CHAR_CODE_TILDA:
+          code = GEM_CHAR_CODE_BANG;
+          break;
+        case GEM_CHAR_CODE_LINE - 1:
+          code = GEM_CHAR_CODE_LINE + 1;
+          break;
+        default:
+          code++;
+          break;
+      }
+    } else {
+      switch (code) {
+        case 0:
+          code = GEM_CHAR_CODE_SPACE;
+          break;
+        case GEM_CHAR_CODE_TILDA:
+          code = GEM_CHAR_CODE_SPACE;
+          break;
+        case GEM_CHAR_CODE_LINE - 1:
+          code = GEM_CHAR_CODE_LINE + 1;
+          break;
+        default:
+          code++;
+          break;
+      }
     }
   } else {
     switch (code) {
@@ -620,22 +721,46 @@ void GEM::nextEditValueDigit() {
 }
 
 void GEM::prevEditValueDigit() {
+  GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
   char chr = _valueString[_editValueVirtualCursorPosition];
   byte code = (byte)chr;
   if (_editValueType == GEM_VAL_CHAR) {
-    switch (code) {
-      case 0:
-        code = GEM_CHAR_CODE_TILDA;
-        break;
-      case GEM_CHAR_CODE_SPACE:
-        code = GEM_CHAR_CODE_TILDA;
-        break;
-      case GEM_CHAR_CODE_LINE + 1:
-        code = GEM_CHAR_CODE_LINE - 1;
-        break;
-      default:
-        code--;
-        break;
+    if (menuItemTmp->adjustedAsciiOrder) {
+      switch (code) {
+        case 0:
+          code = GEM_CHAR_CODE_ACCENT;
+          break;
+        case GEM_CHAR_CODE_BANG:
+          code = GEM_CHAR_CODE_TILDA;
+          break;
+        case GEM_CHAR_CODE_a:
+          code = GEM_CHAR_CODE_SPACE;
+          break;
+        case GEM_CHAR_CODE_SPACE:
+          code = GEM_CHAR_CODE_ACCENT;
+          break;
+        case GEM_CHAR_CODE_LINE + 1:
+          code = GEM_CHAR_CODE_LINE - 1;
+          break;
+        default:
+          code--;
+          break;
+      }
+    } else {
+      switch (code) {
+        case 0:
+          code = GEM_CHAR_CODE_TILDA;
+          break;
+        case GEM_CHAR_CODE_SPACE:
+          code = GEM_CHAR_CODE_TILDA;
+          break;
+        case GEM_CHAR_CODE_LINE + 1:
+          code = GEM_CHAR_CODE_LINE - 1;
+          break;
+        default:
+          code--;
+          break;
+      }
     }
   } else {
     switch (code) {
@@ -666,7 +791,7 @@ void GEM::drawEditValueDigit(byte code) {
   char chrNew = (char)code;
   _valueString[_editValueVirtualCursorPosition] = chrNew;
   drawEditValueCursor();
-  _glcd.setX(_menuValuesLeftOffset + _editValueCursorPosition * _menuItemFont[_menuItemFontSize].width);
+  _glcd.setX(getCurrentAppearance()->menuValuesLeftOffset + _editValueCursorPosition * _menuItemFont[getMenuItemFontSize()].width);
   int pointerPosition = getCurrentItemTopOffset();
   _glcd.setY(pointerPosition);
   _glcd.put(code);
@@ -770,7 +895,7 @@ char* GEM::trimString(char* str) {
 
 //====================== KEY DETECTION
 
-boolean GEM::readyForKey() {
+bool GEM::readyForKey() {
   if ( (context.loop == nullptr) ||
       ((context.loop != nullptr) && (context.allowExit)) ) {
     return true;
@@ -781,9 +906,10 @@ boolean GEM::readyForKey() {
 
 }
 
-void GEM::registerKeyPress(byte keyCode) {
+GEM& GEM::registerKeyPress(byte keyCode) {
   _currentKey = keyCode;
   dispatchKeyPress();
+  return *this;
 }
 
 void GEM::dispatchKeyPress() {

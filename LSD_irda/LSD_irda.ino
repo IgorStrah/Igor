@@ -11,12 +11,10 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #define BTN_SELECT 5
 #define BTN_NONE 10
 int RECV_PIN = 2;
-<<<<<<< HEAD
+
 IRrecv irrecv(RECV_PIN);
 decode_results results;
-=======
 
->>>>>>> 1ee6cf2a8d496dc6108698c1adff1bf967470a5a
 
 
 int detectButton() {
@@ -67,18 +65,26 @@ void setup() {
 void loop() {
 
 
-<<<<<<< HEAD
-  if (irrecv.decode(&results)) {
-    Serial.println(results.value);
-    
-=======
+  if (IrReceiver.decode()) {
+      unsigned long irValue = IrReceiver.decodedIRData.decodedRawData;  // Получение значения ИК сигнала
 
-    if (IrReceiver.decode()) {
+    // New LSB first 32-bit IR data code
+    uint32_t newCode = 0;
+
+    for (int i = 0; i < 32; i++) {
+      // Extract the ith bit from the old code
+      uint32_t bit = (irValue >> (31 - i)) & 1;
+
+      // Set the ith bit in the new code
+      newCode |= (bit << i);
+    }
+    Serial.println(newCode);
+
       newCode=0;
       code=0;
       code=IrReceiver.decodedIRData.decodedRawData;
  
->>>>>>> 1ee6cf2a8d496dc6108698c1adff1bf967470a5a
+
     lcd.setCursor(0, 0);
     lcd.print("IR code");
     lcd.setCursor(0, 1);
@@ -98,5 +104,5 @@ void loop() {
   }
   delay(100);
 
-
+  
 }
