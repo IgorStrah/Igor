@@ -1,7 +1,7 @@
 #define EXCLUDE_EXOTIC_PROTOCOLS  // saves around 240 bytes program memory if IrSender.write is used
-  #define NO_LED_FEEDBACK_CODE
-  #define DECODE_NEC  // Includes Apple and Onkyo
-  #define DECODE_SAMSUNG
+#define NO_LED_FEEDBACK_CODE
+#define DECODE_NEC  // Includes Apple and Onkyo
+#define DECODE_SAMSUNG
 #define STRIP_PIN 3  // пин ленты
 #define NUMLEDS 35   // кол-во светодиодов
 
@@ -9,7 +9,6 @@
 #include <Adafruit_PCF8574.h>
 #include <Wire.h>
 #include <Adafruit_PN532.h>
-#include <GyverStepper.h>
 #include <IRremote.hpp>
 #define COLOR_DEBTH 3
 #include <microLED.h>  // подключаем библу
@@ -19,10 +18,7 @@ microLED<NUMLEDS, STRIP_PIN, MLED_NO_CLOCK, LED_WS2813, ORDER_GRB, CLI_AVER> str
 #define NUMLEDS 8    // кол-во светодиодов
 #define PN532_IRQ (2)
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
-GStepper<STEPPER2WIRE> stepper(2048, 4, 5, 6);
-GStepper<STEPPER4WIRE> stepper2(2048, 10, 8, 9, 7);
-byte reader, comparisonuid, movestop;
-int step_rev, startstep, positionnow;
+byte reader, comparisonuid, startstep;
 int NB_NFC_READER = 7;
 unsigned long newCode;
 unsigned long code;
@@ -49,19 +45,19 @@ unsigned long Uidtable[8];
 uint32_t potions[][8] = {
   {
     //  0 Философский камень
-    902960384,   // 0 безоар
-    1498617088,  // 1 
-    269948160,   // 2 
-    666047744,   // 3 
-    3206550784,  // 4 
-    1940264192,  // 5 
-    2111444224,  // 6 
-    594771968,   // 7 пятиугольная карточка-рецепт 
+    269948160,   // 0 безоар
+    666047744,  // 1
+    594771968,   // 2 
+    1940264192,   // 3 
+    359601408,   // 4 
+    603395328,  // 5
+    202249472,  // 6
+    594771968,   // 7 пятиугольная карточка-рецепт
   },
 
   {
     //  1 Упокоение пикси
-    209392896,  // 0 бокал со змеями
+    209392896,   // 0 бокал со змеями
     1687819520,  // 2 флоббер-червь
     1771771136,  // 3 гнездо пикси
     1855526144,  // 6 медальон
@@ -118,7 +114,7 @@ uint32_t potions[][8] = {
 
 };
 
-
+int8_t selected_recipe = -1;
 
 
 void setup(void) {
@@ -165,17 +161,12 @@ void setup(void) {
     Serial.println("Couldn't find PCF8574");
     //  while (1);
   }
-  // for (uint8_t p = 0; p < 8; p++) {
-    pcf.pinMode(0, OUTPUT); 
-    pcf.pinMode(1, OUTPUT); // release from top
-    pcf.pinMode(2, OUTPUT); // bottom-rightmost door
-    pcf.pinMode(3, OUTPUT); // bottom mid-left door
-    pcf.pinMode(4, OUTPUT); // bottom mid-right door
-  // }
+  for (uint8_t p = 0; p < 5; p++) {
+    pcf.pinMode(p, OUTPUT);
+    delay(1000);
+  }
 
   startstep = 0;
-  Stepper_calibrated();
-  // Stepper_calibrated_revolver();
 }
 
 
@@ -191,16 +182,11 @@ void loop(void) {
     timing = millis();
     reader == 7 ? reader = 0 : reader++;
     Uidtable[reader] = ReadUid(reader);
-    Serial.print(" cardid : ");  //  "Сообщение: "
-    Serial.println(Uidtable[reader]);      //  "Сообщение: "
+    Serial.print(" cardid : ");        //  "Сообщение: "
+    Serial.println(Uidtable[reader]);  //  "Сообщение: "
     if (startstep >= 1) {
       lathent();
     }
-  }
-
-
-
-  while (stepper.tick()) {
   }
 
   if (IrReceiver.decode()) {
@@ -217,16 +203,16 @@ void loop(void) {
     IrReceiver.resume();
   }
 
-   if ((newCode == 1111000005) || (newCode == 16726215)) {
+  if ((newCode == 1111000005) || (newCode == 16726215)) {
     pcf.digitalWrite(4, HIGH);  // turn LED off by turning off sinking transistor
     delay(1000);
     pcf.digitalWrite(4, LOW);  // turn LED on by sinking current to ground
-    newCode=0;
-    Serial.print("Open 4");           
+    newCode = 0;
+    Serial.print("Open 4");
   }
 
   if (((newCode == 1111000004) || (newCode == 16716015)) && startstep != 2) {
-    startstep = 1;
+    startstep = 2;
     newCode = 0;
     Serial.print("startstep ");
     Serial.print(startstep);
@@ -234,100 +220,59 @@ void loop(void) {
     strip.show();
   }
 
-  if (startstep == 1) {
-    startstep = 2;
-    Serial.print("startstep ");
-    Serial.print(startstep);
-    positionnow = 1700;
-    stepper.setTarget(positionnow);
-    delay(100);
-    movestop = 0;
-  }
-
   if (startstep == 2) {
 
     for (size_t i = 0; i < sizeof(potions) / sizeof(potions[0]); i++) {
       if (Uidtable[7] == potions[i][7] && Uidtable[7] != 0) {
-        strip.fill(0, 7, mRGB(0, 0, 222));
+        strip.fill(0, 7, mRGB(0, 0, 222)); // blue
         pcf.digitalWrite(1, HIGH);  // turn LED on by sinking current to ground
-        
-      
-        movestop = 1;
-        comparisonuid = 0;
-        for (int t = 0; t < 8; t++) {
-          if (Uidtable[t] == potions[i][t]) {
-            strip.set(t, mRGB(111, 222, 222));
-            Serial.print("     potions[i][t]  ");
-            Serial.print(potions[i][t]);
 
-            Serial.print("     Uidtable(t)  ");
-            Serial.print(Uidtable[t]);
-
-            Serial.print("     [t]  ");
-            Serial.println(t);
-
-            comparisonuid++;
-          } else if (Uidtable[t] != 0) {
-            strip.set(t, mRGB(222, 0, 0));
-          }
-        }
-        if (comparisonuid == 8) {
-          strip.show();
-          delay(2000);
-          strip.fill(mRGB(0, 222, 222));
-          strip.show();
-
-          
-       
-          pcf.digitalWrite(i+2, HIGH);  // turn LED off by turning off sinking transistor
-          delay(1000);
-          pcf.digitalWrite(1, LOW);  // turn LED on by sinking current to ground
-          pcf.digitalWrite(i+2, LOW);  // turn LED on by sinking current to ground
-          delay(1000);
-
-          delay(5000);
-          Serial.print(" !!!!!! FINISH!!!!!!!!!!!!!!!!!!!!  ");
-          movestop = 0;
-          comparisonuid++;
-          startstep = 3;
-        }
+        selected_recipe = i;
+        startstep = 3;
       }
     }
 
     strip.show();
-    if (movestop == 0) {
+  }
 
-      positionnow = positionnow + 30;
-      if (positionnow > 2500) {
-      startstep=3;
+  // if recipe card found and recognized
+  if (startstep == 3) {
+    comparisonuid = 0;
+    for (byte t = 0; t < 7; t++) {
+      if (Uidtable[t] == potions[selected_recipe][t]) {
+        strip.set(t, mRGB(111, 222, 222)); // light blue
+        comparisonuid++;
+      } else if (Uidtable[t] != 0) {
+        strip.set(t, mRGB(222, 0, 0)); // red
+      } else {
+        strip.fill(t, 7, mRGB(0, 0, 222)); // blue
       }
-      stepper.setTarget(positionnow);
+    }
+    strip.show();
+
+    if (comparisonuid == 7) {
+      delay(2000);
+      strip.fill(mRGB(0, 222, 222)); // light blue
+      strip.show();
+
+      pcf.digitalWrite(selected_recipe + 2, HIGH);  // turn LED off by turning off sinking transistor
+      delay(1000);
+      pcf.digitalWrite(1, LOW);                    // turn LED on by sinking current to ground
+      pcf.digitalWrite(selected_recipe + 2, LOW);  // turn LED on by sinking current to ground
+      delay(1000);
+
+      delay(5000);
+      Serial.print(" !!!!!! FINISH!!!!!!!!!!!!!!!!!!!!  ");
+      selected_recipe = -1;
+      comparisonuid++;
+      startstep = 4;
     }
   }
 
-  if (startstep == 3) {
+  if (startstep == 4) {
     Serial.print("startstep ");
     Serial.println(startstep);
-    positionnow = 6500;
-    stepper.setTarget(positionnow);
-    //delay(100);
-      if (stepper.getCurrent() > 6000) {
-      startstep++;
-      }
-    
   }
-  
-  if (startstep == 4) {
-      Stepper_calibrated();
-      startstep = 0;
-      movestop = 1;
-      strip.clear();
-      strip.show();
-      startstep=0;
-  }
-
-
-
 }
 
 
@@ -358,7 +303,6 @@ unsigned long ReadUid(byte numReader) {
       }
     }
 
-
     //  Serial.print(" Reader : ");  //  "Сообщение: "
     //  Serial.print(numReader);     //  "Сообщение: "
     //  Serial.print(" cardid : ");  //  "Сообщение: "
@@ -367,63 +311,6 @@ unsigned long ReadUid(byte numReader) {
   }
   return (cardid);
 }
-
-void Stepper_calibrated() {
-  stepper.autoPower(true);
-  pinMode(12, INPUT_PULLUP);  // кнопка на D12 и GND
-  stepper.setRunMode(KEEP_SPEED);
-  stepper.setSpeedDeg(-60);  // медленно крутимся НАЗАД
-  while (digitalRead(12)) {
-    stepper.tick();
-  }
-
-  stepper.reset();
-  stepper.setSpeedDeg(-20);
-  while (stepper.getCurrent() != -390) {
-    stepper.tick();
-  }
-
-  stepper.reset();
-  stepper.setRunMode(FOLLOW_POS);
-  stepper.stop();
-}
-
-void Stepper_calibrated_revolver() {
-  stepper2.autoPower(true);
-  stepper2.setRunMode(KEEP_SPEED);
-  stepper2.setSpeedDeg(-70);  // медленно крутимся НАЗАД
-
-  // пока кнопка не нажата
-  while (digitalRead(11)) {
-    stepper2.tick();
-    // yield();	// для esp8266
-  }
-
-  stepper2.reset();
-  stepper2.setSpeedDeg(60);
-  while (stepper2.getCurrent() != 1550) {
-    stepper2.tick();
-  }
-
-  stepper2.reset();
-  stepper2.setSpeedDeg(-30);  // медленно крутимся НАЗАД
-
-  // пока кнопка не нажата
-  while (digitalRead(11)) {
-    stepper2.tick();
-  }
-
-  stepper2.reset();
-  stepper2.setSpeedDeg(33);
-  while (stepper2.getCurrent() != 1380) {
-    stepper2.tick();
-  }
-  stepper2.reset();
-  delay(3000);
-  stepper2.setSpeedDeg(60);
-  stepper2.setRunMode(FOLLOW_POS);
-}
-
 
 void tcaselect(uint8_t i2c_bus) {
   if (i2c_bus > 7) return;
