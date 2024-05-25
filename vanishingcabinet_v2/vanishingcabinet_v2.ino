@@ -93,8 +93,9 @@ void loop(void) {
     rfid_reader_timer = millis();
 
     for (byte reader = 0; reader < 8; reader++) {
-      read_rfid_data(reader, 15);
+      read_rfid_data(reader);
     }
+
     if (is_lantern_on) {
       latent();
     }
@@ -136,11 +137,11 @@ void loop(void) {
 
 
 
-void read_rfid_data(byte numReader, byte block_nr) {
+void read_rfid_data(byte numReader) {
   uint8_t success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
   uint8_t uidLength;
-  uint8_t data[32];
+  uint8_t data[4];
 
   tcaselect(numReader);
   delay(10);
@@ -152,20 +153,18 @@ void read_rfid_data(byte numReader, byte block_nr) {
   success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 50);
   if (success) {
     Serial.println("Card found");
-    success = nfc.ntag2xx_ReadPage(block_nr, data);
-    if (success) {
-      nfc.PrintHexChar(data, 4);
+    if (numReader == 7) {
+
     } else {
-      Serial.println("Unable to read the requested page!");
+      success = nfc.ntag2xx_ReadPage(12, data);
+      if (success) {
+        nfc.PrintHexChar(data, 4);
+      } else {
+        Serial.println("Unable to read the requested page!");
+      }
     }
   }
-
-  //  Serial.print(" Reader : ");  //  "Сообщение: "
-  //  Serial.print(numReader);     //  "Сообщение: "
-  //  Serial.print(" cardid : ");  //  "Сообщение: "
-  //  Serial.println(cardid);      //  "Сообщение: "
 }
-
 
 void tcaselect(uint8_t i2c_bus) {
   if (i2c_bus > 7) return;
