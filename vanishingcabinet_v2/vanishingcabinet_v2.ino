@@ -1,7 +1,3 @@
-#define EXCLUDE_EXOTIC_PROTOCOLS  // saves around 240 bytes program memory if IrSender.write is used
-#define NO_LED_FEEDBACK_CODE
-#define DECODE_NEC  // Includes Apple and Onkyo
-#define DECODE_SAMSUNG
 #define STRIP_PIN 3  // пин ленты
 #define NUMLEDS 35   // кол-во светодиодов
 
@@ -18,7 +14,7 @@ microLED<NUMLEDS, STRIP_PIN, MLED_NO_CLOCK, LED_WS2813, ORDER_GRB, CLI_AVER> str
 #define NUMLEDS 8    // кол-во светодиодов
 #define PN532_IRQ (2)
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
-byte reader, comparisonuid, startstep;
+byte reader;
 int NB_NFC_READER = 7;
 unsigned long newCode;
 unsigned long code;
@@ -33,89 +29,14 @@ DEFINE_GRADIENT_PALETTE(heatmap_gp){
 };
 CRGBPalette16 fire_p = heatmap_gp;
 
+bool is_lantern_on = false;
 
 Adafruit_PCF8574 pcf;
 
 Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
 byte RfidPins[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
-String uidDec, uidDecOld;  // для храниения номера метки в десятичном формате
 
 unsigned long Uidtable[8];
-
-uint32_t potions[][8] = {
-  {
-    //  0 Философский камень
-    269948160,   // 0 безоар
-    666047744,  // 1
-    594771968,   // 2 
-    1940264192,   // 3 
-    359601408,   // 4 
-    603395328,  // 5
-    202249472,  // 6
-    594771968,   // 7 пятиугольная карточка-рецепт
-  },
-
-  {
-    //  1 Упокоение пикси
-    209392896,   // 0 бокал со змеями
-    1687819520,  // 2 флоббер-червь
-    1771771136,  // 3 гнездо пикси
-    1855526144,  // 6 медальон
-    594772224,   // 4 бирюзовая шкатулка
-    554308864,   // 5 книга
-    1604719872,  // 1 лоскут одеяла
-    204150016,   // 7 пятиугольная карточка-рецепт
-  },
-  {
-    //  0 Зелье Плавунчика или Морское зелье +
-    0,           // 0 философский камень
-    338367744,   // 1 Вытяжка зародыше апаллала
-    1498617088,  // 2 Хребты Рыбы-Льва
-    666047744,   // 3 Сок мурлакомля
-    269948160,   // 4 Стандартный ингридиент Н
-    0,           // 5 Морские жёлуди
-    0,           // 6 Безумные Многоножки
-    0,           // 7 Лёд со дна серебристого озера
-  },
-  {
-    //  0 Зелье Плавунчика или Морское зелье +
-    0,           // 0 философский камень
-    338367744,   // 1 Вытяжка зародыше апаллала
-    1498617088,  // 2 Хребты Рыбы-Льва
-    666047744,   // 3 Сок мурлакомля
-    269948160,   // 4 Стандартный ингридиент Н
-    0,           // 5 Морские жёлуди
-    0,           // 6 Безумные Многоножки
-    0,           // 7 Лёд со дна серебристого озера
-  },
-  {
-    //  0 Зелье Плавунчика или Морское зелье +
-    0,           // 0 философский камень
-    338367744,   // 1 Вытяжка зародыше апаллала
-    1498617088,  // 2 Хребты Рыбы-Льва
-    666047744,   // 3 Сок мурлакомля
-    269948160,   // 4 Стандартный ингридиент Н
-    0,           // 5 Морские жёлуди
-    0,           // 6 Безумные Многоножки
-    0,           // 7 Лёд со дна серебристого озера
-  },
-  {
-    //  0 Зелье Плавунчика или Морское зелье +
-    0,           // 0 философский камень
-    338367744,   // 1 Вытяжка зародыше апаллала
-    1498617088,  // 2 Хребты Рыбы-Льва
-    666047744,   // 3 Сок мурлакомля
-    269948160,   // 4 Стандартный ингридиент Н
-    0,           // 5 Морские жёлуди
-    0,           // 6 Безумные Многоножки
-    0,           // 7 Лёд со дна серебристого озера
-  }
-
-
-};
-
-int8_t selected_recipe = -1;
-
 
 void setup(void) {
   Serial.begin(115200);
@@ -165,27 +86,19 @@ void setup(void) {
     pcf.pinMode(p, OUTPUT);
     delay(1000);
   }
-
-  startstep = 0;
 }
 
 
 void loop(void) {
-  uint8_t success;
-  uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
-  uint8_t uidLength;
-  uint32_t cardid;
-
-
   if (millis() - timing > 50) {
-
     timing = millis();
     reader == 7 ? reader = 0 : reader++;
     Uidtable[reader] = ReadUid(reader);
-    Serial.print(" cardid : ");        //  "Сообщение: "
-    Serial.println(Uidtable[reader]);  //  "Сообщение: "
-    if (startstep >= 1) {
-      lathent();
+    // Serial.print(" cardid : ");        //  "Сообщение: "
+    // Serial.println(Uidtable[reader]);  //  "Сообщение: "
+    if (is_lantern_on) {
+      Serial.println("Latent mode triggered");
+      latent();
     }
   }
 
@@ -203,76 +116,13 @@ void loop(void) {
     IrReceiver.resume();
   }
 
-  if ((newCode == 1111000005) || (newCode == 16726215)) {
-    pcf.digitalWrite(4, HIGH);  // turn LED off by turning off sinking transistor
-    delay(1000);
-    pcf.digitalWrite(4, LOW);  // turn LED on by sinking current to ground
+  if ((newCode == 1111000001) || (newCode == 16724175)) {
     newCode = 0;
-    Serial.print("Open 4");
+    Serial.println("Lantern triggered");
+    is_lantern_on = !is_lantern_on;
   }
 
-  if (((newCode == 1111000004) || (newCode == 16716015)) && startstep != 2) {
-    startstep = 2;
-    newCode = 0;
-    Serial.print("startstep ");
-    Serial.print(startstep);
-    strip.fill(mRGB(0, 222, 222));
-    strip.show();
-  }
-
-  if (startstep == 2) {
-
-    for (size_t i = 0; i < sizeof(potions) / sizeof(potions[0]); i++) {
-      if (Uidtable[7] == potions[i][7] && Uidtable[7] != 0) {
-        strip.fill(0, 7, mRGB(0, 0, 222)); // blue
-        pcf.digitalWrite(1, HIGH);  // turn LED on by sinking current to ground
-
-        selected_recipe = i;
-        startstep = 3;
-      }
-    }
-
-    strip.show();
-  }
-
-  // if recipe card found and recognized
-  if (startstep == 3) {
-    comparisonuid = 0;
-    for (byte t = 0; t < 7; t++) {
-      if (Uidtable[t] == potions[selected_recipe][t]) {
-        strip.set(t, mRGB(111, 222, 222)); // light blue
-        comparisonuid++;
-      } else if (Uidtable[t] != 0) {
-        strip.set(t, mRGB(222, 0, 0)); // red
-      } else {
-        strip.fill(t, 7, mRGB(0, 0, 222)); // blue
-      }
-    }
-    strip.show();
-
-    if (comparisonuid == 7) {
-      delay(2000);
-      strip.fill(mRGB(0, 222, 222)); // light blue
-      strip.show();
-
-      pcf.digitalWrite(selected_recipe + 2, HIGH);  // turn LED off by turning off sinking transistor
-      delay(1000);
-      pcf.digitalWrite(1, LOW);                    // turn LED on by sinking current to ground
-      pcf.digitalWrite(selected_recipe + 2, LOW);  // turn LED on by sinking current to ground
-      delay(1000);
-
-      delay(5000);
-      Serial.print(" !!!!!! FINISH!!!!!!!!!!!!!!!!!!!!  ");
-      selected_recipe = -1;
-      comparisonuid++;
-      startstep = 4;
-    }
-  }
-
-  if (startstep == 4) {
-    Serial.print("startstep ");
-    Serial.println(startstep);
-  }
+  
 }
 
 
@@ -320,12 +170,12 @@ void tcaselect(uint8_t i2c_bus) {
 }
 
 
-void lathent() {
+void latent() {
   static int count = 0;
-
 
   for (int i = 7; i < 34; i++) {
     count += 2;
     strip.set(i, CRGBtoData(ColorFromPalette(fire_p, inoise8(i * 25, count), 255, LINEARBLEND)));
   }
+  strip.show();
 }
