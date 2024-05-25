@@ -18,7 +18,7 @@ byte reader;
 int NB_NFC_READER = 7;
 unsigned long newCode;
 unsigned long code;
-unsigned long timing, timing2;
+unsigned long rfid_reader_timer, IR_timer;
 #include <FastLEDsupport.h>
 DEFINE_GRADIENT_PALETTE(heatmap_gp){
   // делаем палитру огня
@@ -36,9 +36,6 @@ const byte DOOR_COUNT = 4;
 Adafruit_PCF8574 pcf;
 
 Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
-byte RfidPins[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
-
-unsigned long Uidtable[8];
 
 void setup(void) {
   Serial.begin(115200);
@@ -92,12 +89,12 @@ void setup(void) {
 
 
 void loop(void) {
-  if (millis() - timing > 50) {
-    timing = millis();
-    reader == 7 ? reader = 0 : reader++;
-    Uidtable[reader] = ReadUid(reader);
-    // Serial.print(" cardid : ");        //  "Сообщение: "
-    // Serial.println(Uidtable[reader]);  //  "Сообщение: "
+  if (millis() - rfid_reader_timer > 50) {
+    rfid_reader_timer = millis();
+
+    for (byte reader = 0; reader < 8; reader++) {
+      read_rfid_data(reader, 15);
+    }
     if (is_lantern_on) {
       latent();
     }
@@ -115,8 +112,8 @@ void loop(void) {
     Serial.println(newCode);
     delay(100);
 
-    if (((newCode == 1111000001) || (newCode == 16724175)) && (millis() - timing2 > 1000)) {
-      timing2 = millis();
+    if (((newCode == 1111000001) || (newCode == 16724175)) && (millis() - IR_timer > 1000)) {
+      IR_timer = millis();
       Serial.println("Lantern triggered");
       is_lantern_on = !is_lantern_on;
 
@@ -128,11 +125,7 @@ void loop(void) {
     if (newCode == 16736925) {  // "mode" button
       Serial.println("Opening all doors");
       for (byte i = 0; i <= 8; i++) {
-        pcf.digitalWrite(i, HIGH);
-        delay(1000);
-        // pcf.digitalWrite(1, LOW);                    // turn LED on by sinking current to ground
-        pcf.digitalWrite(i, LOW);
-        delay(1000);
+        open_door(i);
       }
     }
 
@@ -143,40 +136,36 @@ void loop(void) {
 
 
 
-unsigned long ReadUid(byte numReader) {
+void read_rfid_data(byte numReader, byte block_nr) {
   uint8_t success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
   uint8_t uidLength;
-  uint32_t cardid = 0;
+  uint8_t data[32];
 
   tcaselect(numReader);
   delay(10);
   nfc.begin();
   delay(50);
 
+  Serial.print("Reader ");
+  Serial.println(numReader);
   success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 50);
   if (success) {
-    for (byte i2 = 0; i2 < uidLength; i2++) {
-
-      if (i2 == 0) {
-        cardid = uid[i2];
-        cardid <<= 8;
-      } else {
-        {
-          cardid |= uid[i2];
-          cardid <<= 8;
-        }
-      }
+    Serial.println("Card found");
+    success = nfc.ntag2xx_ReadPage(block_nr, data);
+    if (success) {
+      nfc.PrintHexChar(data, 4);
+    } else {
+      Serial.println("Unable to read the requested page!");
     }
-
-    //  Serial.print(" Reader : ");  //  "Сообщение: "
-    //  Serial.print(numReader);     //  "Сообщение: "
-    //  Serial.print(" cardid : ");  //  "Сообщение: "
-    //  Serial.println(cardid);      //  "Сообщение: "
-    return (cardid);
   }
-  return (cardid);
+
+  //  Serial.print(" Reader : ");  //  "Сообщение: "
+  //  Serial.print(numReader);     //  "Сообщение: "
+  //  Serial.print(" cardid : ");  //  "Сообщение: "
+  //  Serial.println(cardid);      //  "Сообщение: "
 }
+
 
 void tcaselect(uint8_t i2c_bus) {
   if (i2c_bus > 7) return;
@@ -200,4 +189,11 @@ void clear_strip(byte from, byte to) {
     strip.set(i, CRGB::Black);
   }
   strip.show();
+}
+
+void open_door(byte door_nr) {
+  pcf.digitalWrite(door_nr, HIGH);
+  delay(1000);
+  pcf.digitalWrite(door_nr, LOW);
+  delay(1000);
 }
