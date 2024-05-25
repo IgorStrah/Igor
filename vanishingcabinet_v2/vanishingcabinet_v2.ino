@@ -114,29 +114,30 @@ void loop(void) {
     }
     Serial.println(newCode);
     delay(100);
+
+    if (((newCode == 1111000001) || (newCode == 16724175)) && (millis() - timing2 > 1000)) {
+      timing2 = millis();
+      Serial.println("Lantern triggered");
+      is_lantern_on = !is_lantern_on;
+
+      if (!is_lantern_on) {
+        clear_strip(7, 34);
+      }
+    }
+
+    if (newCode == 16736925) {  // "mode" button
+      Serial.println("Opening all doors");
+      for (byte i = 0; i <= 8; i++) {
+        pcf.digitalWrite(i, HIGH);
+        delay(1000);
+        // pcf.digitalWrite(1, LOW);                    // turn LED on by sinking current to ground
+        pcf.digitalWrite(i, LOW);
+        delay(1000);
+      }
+    }
+
+    newCode = 0;
     IrReceiver.resume();
-  }
-
-  if ((newCode == 1111000001) || (newCode == 16724175)) {
-    newCode = 0;
-    Serial.println("Lantern triggered");
-    is_lantern_on = !is_lantern_on;
-
-    if (!is_lantern_on) {
-      clear_strip(7, 34);
-    }
-  }
-
-  if (newCode == 16736925) {  // "mode" button
-    newCode = 0;
-    Serial.println("Opening all doors");
-    for (byte i = 0; i <= 8; i++) {
-      pcf.digitalWrite(i, HIGH);
-      delay(1000);
-      // pcf.digitalWrite(1, LOW);                    // turn LED on by sinking current to ground
-      pcf.digitalWrite(i, LOW);
-      delay(1000);
-    }
   }
 }
 
