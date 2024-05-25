@@ -31,6 +31,8 @@ CRGBPalette16 fire_p = heatmap_gp;
 
 bool is_lantern_on = false;
 
+const byte DOOR_COUNT = 4;
+
 Adafruit_PCF8574 pcf;
 
 Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
@@ -97,7 +99,6 @@ void loop(void) {
     // Serial.print(" cardid : ");        //  "Сообщение: "
     // Serial.println(Uidtable[reader]);  //  "Сообщение: "
     if (is_lantern_on) {
-      Serial.println("Latent mode triggered");
       latent();
     }
   }
@@ -120,9 +121,23 @@ void loop(void) {
     newCode = 0;
     Serial.println("Lantern triggered");
     is_lantern_on = !is_lantern_on;
+
+    if (!is_lantern_on) {
+      clear_strip(7, 34);
+    }
   }
 
-  
+  if (newCode == 16736925) {  // "mode" button
+    newCode = 0;
+    Serial.println("Opening all doors");
+    for (byte i = 0; i <= 8; i++) {
+      pcf.digitalWrite(i, HIGH);
+      delay(1000);
+      // pcf.digitalWrite(1, LOW);                    // turn LED on by sinking current to ground
+      pcf.digitalWrite(i, LOW);
+      delay(1000);
+    }
+  }
 }
 
 
@@ -169,13 +184,19 @@ void tcaselect(uint8_t i2c_bus) {
   Wire.endTransmission();
 }
 
-
 void latent() {
   static int count = 0;
 
   for (int i = 7; i < 34; i++) {
     count += 2;
     strip.set(i, CRGBtoData(ColorFromPalette(fire_p, inoise8(i * 25, count), 255, LINEARBLEND)));
+  }
+  strip.show();
+}
+
+void clear_strip(byte from, byte to) {
+  for (byte i = from; i < to; i++) {
+    strip.set(i, CRGB::Black);
   }
   strip.show();
 }
