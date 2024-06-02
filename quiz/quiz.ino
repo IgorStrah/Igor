@@ -41,7 +41,7 @@ const byte GAME_COUNT = 3;
 const byte LANGUAGE_COUNT = 3;
 const byte GAME_MODE_COUNT = 3;
 
-const String REPEAT_QUESTION_CARD = "047a8e1a237380";
+const String REPEAT_QUESTION_CARD = "5300c8e4710001";
 const String SKIP_QUESTION_CARD = "5372c2e4710001";
 
 const byte MAX_QUESTION_COUNT = 21;
@@ -320,7 +320,7 @@ void loop() {
         analogWrite(MOTOR_PIN, motor_value);
         delay(20);
       }
-
+      
       question_played = true;
     }
 
@@ -406,7 +406,7 @@ void loop() {
       end_game();
     }
 
-    if ((rfid_uid == REPEAT_QUESTION_CARD) && (rfid_uid != rfid_uid_prev)) {
+    if ((rfid_uid == REPEAT_QUESTION_CARD) && question_played && (rfid_uid != rfid_uid_prev)) {
       question_played = false;
       rfid_uid = "";
     }
