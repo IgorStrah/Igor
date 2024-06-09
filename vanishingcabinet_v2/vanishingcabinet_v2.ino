@@ -1,17 +1,14 @@
-#define STRIP_PIN 3  // пин ленты
 #define NUMLEDS 35   // кол-во светодиодов
-
+#define STRIP_PIN 3  // пин ленты
 
 #include <Adafruit_PCF8574.h>
 #include <Wire.h>
 #include <Adafruit_PN532.h>
 #include <IRremote.hpp>
-#define COLOR_DEBTH 3
 #include <microLED.h>  // подключаем библу
 microLED<NUMLEDS, STRIP_PIN, MLED_NO_CLOCK, LED_WS2813, ORDER_GRB, CLI_AVER> strip;
 
-#define STRIP_PIN 3  // пин ленты
-#define NUMLEDS 8    // кол-во светодиодов
+#define NUMLEDS 8  // кол-во светодиодов
 #define PN532_IRQ (2)
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
 byte reader;
@@ -31,7 +28,8 @@ CRGBPalette16 fire_p = heatmap_gp;
 
 bool is_lantern_on = false;
 
-const byte DOOR_COUNT = 4;
+int8_t objects_present[8];
+int8_t objects_expected[8];
 
 Adafruit_PCF8574 pcf;
 
@@ -46,7 +44,9 @@ void setup(void) {
   Wire.beginTransmission(0x70);
   Wire.write(1 << 0);
   Wire.endTransmission();
+
   for (int i = 0; i < NB_NFC_READER; i++) {
+
     tcaselect(i);
     Serial.print(" read: ");
     Serial.print(i);
@@ -56,24 +56,11 @@ void setup(void) {
     strip.clear();
     strip.leds[i] = mRGB(0, 230, 60);
     strip.show();
-    uint32_t versiondata = nfc.getFirmwareVersion();
-    if (!versiondata) {
-      Serial.print("Didn't find PN53x board");
-      while (1)
-        ;  // halt
-    }
-    // Got ok data, print it out!
-    Serial.print(" Num reader: ");
-    Serial.print(i);
-
-    // Got ok data, print it out!
-    Serial.print(" Found chip PN5");
-    Serial.println((versiondata >> 24) & 0xFF, HEX);
-
     delay(100);
     strip.clear();
     strip.show();
   }
+
   IrReceiver.begin(2);
   pinMode(11, INPUT_PULLUP);
   pinMode(12, INPUT_PULLUP);
@@ -85,6 +72,10 @@ void setup(void) {
     pcf.pinMode(p, OUTPUT);
     delay(1000);
   }
+  Wire.beginTransmission(0x70);
+  Wire.write(1 << 0);
+  Wire.endTransmission();
+  nfc.begin();
 }
 
 
@@ -133,36 +124,75 @@ void loop(void) {
     newCode = 0;
     IrReceiver.resume();
   }
+
+  Serial.print("Objects present: ");
+  for (byte i = 0; i < 8; i++) {
+    Serial.print(objects_present[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
 }
-
-
 
 void read_rfid_data(byte numReader) {
   uint8_t success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
-  uint8_t uidLength;
-  uint8_t data[4];
-
+  uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
   tcaselect(numReader);
   delay(10);
   nfc.begin();
   delay(50);
-
-  Serial.print("Reader ");
+  
+  Serial.print("Reader: ");
   Serial.println(numReader);
+  // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
+  // 'uid' will be populated with the UID, and uidLength will indicate
+  // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
   success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 50);
+
   if (success) {
-    Serial.println("Card found");
+    // Display some basic information about the card
+    Serial.println("Found an ISO14443A card");
+    Serial.print("  UID Length: ");
+    Serial.print(uidLength, DEC);
+    Serial.println(" bytes");
+    Serial.print("  UID Value: ");
+    nfc.PrintHex(uid, uidLength);
+    Serial.println("");
+
     if (numReader == 7) {
 
     } else {
-      success = nfc.ntag2xx_ReadPage(12, data);
-      if (success) {
-        nfc.PrintHexChar(data, 4);
-      } else {
-        Serial.println("Unable to read the requested page!");
+      if (uidLength == 4) {
+        uint8_t keya[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+        success = nfc.mifareclassic_AuthenticateBlock(uid, uidLength, 13, 0, keya);
+        if (success) {
+          uint8_t data[16];
+          success = nfc.mifareclassic_ReadDataBlock(13, data);
+          if (success) {
+            objects_present[numReader] = data[0];
+          } else {
+            Serial.println("Ooops ... unable to read the requested block.  Try another key?");
+            objects_present[numReader] = 0;
+          }
+        } else {
+          Serial.println("Ooops ... authentication failed: Try another key?");
+          objects_present[numReader] = 0;
+        }
+      }
+
+      if (uidLength == 7) {
+        uint8_t data[32];
+        success = nfc.mifareultralight_ReadPage(13, data);
+        if (success) {
+          objects_present[numReader] = data[0];
+        } else {
+          Serial.println("Ooops ... unable to read the requested page!?");
+          objects_present[numReader] = 0;
+        }
       }
     }
+  } else {
+    objects_present[numReader] = 0;
   }
 }
 
