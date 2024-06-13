@@ -31,6 +31,10 @@ bool is_lantern_on = false;
 int8_t objects_present[8];
 int8_t objects_expected[8];
 
+uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
+uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
+byte data[4] = { 0 };
+
 Adafruit_PCF8574 pcf;
 
 Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
@@ -135,13 +139,12 @@ void loop(void) {
 
 void read_rfid_data(byte numReader) {
   uint8_t success;
-  uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
-  uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
+
   tcaselect(numReader);
   delay(10);
   nfc.begin();
   delay(50);
-  
+
   Serial.print("Reader: ");
   Serial.println(numReader);
   // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
@@ -162,37 +165,51 @@ void read_rfid_data(byte numReader) {
     if (numReader == 7) {
 
     } else {
-      if (uidLength == 4) {
-        uint8_t keya[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-        success = nfc.mifareclassic_AuthenticateBlock(uid, uidLength, 13, 0, keya);
-        if (success) {
-          uint8_t data[16];
-          success = nfc.mifareclassic_ReadDataBlock(13, data);
-          if (success) {
-            objects_present[numReader] = data[0];
-          } else {
-            Serial.println("Ooops ... unable to read the requested block.  Try another key?");
-            objects_present[numReader] = 0;
-          }
-        } else {
-          Serial.println("Ooops ... authentication failed: Try another key?");
-          objects_present[numReader] = 0;
-        }
-      }
-
-      if (uidLength == 7) {
-        uint8_t data[32];
-        success = nfc.mifareultralight_ReadPage(13, data);
-        if (success) {
-          objects_present[numReader] = data[0];
-        } else {
-          Serial.println("Ooops ... unable to read the requested page!?");
-          objects_present[numReader] = 0;
-        }
-      }
+      read_rfid_data_block(13);
+      objects_present[numReader] = data[0];
     }
   } else {
     objects_present[numReader] = 0;
+  }
+}
+
+void read_rfid_data_block(byte datablock) {
+  uint8_t keya[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+  uint8_t success;
+
+  if (uidLength == 4) {
+    success = nfc.mifareclassic_AuthenticateBlock(uid, uidLength, datablock, 0, keya);
+    if (success) {
+      uint8_t data_temp[16];
+      success = nfc.mifareclassic_ReadDataBlock(datablock, data_temp);
+      if (success) {
+        for (byte i = 0; i < 4; i++) {
+          data[i] = data_temp[i];
+        }
+      } else {
+        Serial.println("Ooops ... unable to read the requested block.  Try another key?");
+      }
+    } else {
+      Serial.println("Ooops ... authentication failed: Try another key?");
+    }
+  }
+
+  if (uidLength == 7) {
+    uint8_t data_temp[32];
+    success = nfc.mifareultralight_ReadPage(datablock, data_temp);
+    if (success) {
+      for (byte i = 0; i < 4; i++) {
+        data[i] == data_temp[i];
+      }
+    } else {
+      Serial.println("Ooops ... unable to read the requested page!?");
+    }
+  }
+
+  if (!success) {
+    for (byte i = 0; i < 4; i++) {
+      data[i] == 0;
+    }
   }
 }
 
