@@ -28,8 +28,11 @@ CRGBPalette16 fire_p = heatmap_gp;
 
 bool is_lantern_on = false;
 
-int8_t objects_present[8];
-int8_t objects_expected[8];
+int8_t objects_present[8] = { 0 };
+int8_t objects_expected[8] = { 0 };
+int8_t spells_expected[4] = { 0 };
+int8_t door_nr;
+int8_t inner_effect = 0;
 
 uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
 uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
@@ -135,6 +138,26 @@ void loop(void) {
     Serial.print(" ");
   }
   Serial.println();
+
+  Serial.print("Objects expected: ");
+  for (byte i = 0; i < 8; i++) {
+    Serial.print(objects_expected[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+
+  Serial.print("Spells expected: ");
+  for (byte i = 0; i < 4; i++) {
+    Serial.print(spells_expected[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+
+  Serial.print("Door number: ");
+  Serial.println(door_nr);
+
+  Serial.print("Inner effect: ");
+  Serial.println(inner_effect);
 }
 
 void read_rfid_data(byte numReader) {
@@ -163,13 +186,32 @@ void read_rfid_data(byte numReader) {
     Serial.println("");
 
     if (numReader == 7) {
-
+      read_rfid_data_block(8);
+      for (byte i = 0; i < 4; i++) {
+        objects_expected[i] = data[i];
+      }
+      read_rfid_data_block(9);
+      for (byte i = 0; i < 4; i++) {
+        objects_expected[i + 4] = data[i];
+      }
+      read_rfid_data_block(10);
+      for (byte i = 0; i < 4; i++) {
+        spells_expected[i] = data[i];
+      }
+      read_rfid_data_block(12);
+      door_nr = data[0];
+      inner_effect = data[1];
     } else {
       read_rfid_data_block(13);
       objects_present[numReader] = data[0];
     }
   } else {
-    objects_present[numReader] = 0;
+    if (numReader == 7) {
+      // what happens if recipe card fails to read
+      // zero everything?
+    } else {
+      objects_present[numReader] = 0;
+    }
   }
 }
 
@@ -199,7 +241,7 @@ void read_rfid_data_block(byte datablock) {
     success = nfc.mifareultralight_ReadPage(datablock, data_temp);
     if (success) {
       for (byte i = 0; i < 4; i++) {
-        data[i] == data_temp[i];
+        data[i] = data_temp[i];
       }
     } else {
       Serial.println("Ooops ... unable to read the requested page!?");
@@ -210,6 +252,14 @@ void read_rfid_data_block(byte datablock) {
     for (byte i = 0; i < 4; i++) {
       data[i] == 0;
     }
+  } else {
+    // Uncomment to print out read data
+    // Serial.print("Data: ");
+    // for (byte i = 0; i < 4; i++) {
+    //   Serial.print(data[i]);
+    //   Serial.print(" ");
+    // }
+    // Serial.println();
   }
 }
 
