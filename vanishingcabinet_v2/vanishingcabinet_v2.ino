@@ -28,17 +28,20 @@ CRGBPalette16 fire_p = heatmap_gp;
 
 bool is_lantern_on = false;
 
-int8_t objects_present[7] = { 0 };
-int8_t objects_expected[7] = { 0 };
+int8_t objects_present[8] = { 0 };
+int8_t objects_expected[8] = { 0 };
 int8_t spells_expected[4] = { 0 };
 int8_t door_nr;
 int8_t inner_effect = 0;
+int8_t objects_expected_count = 0;
+int8_t objects_present_count = 0;
+bool door_opened = false;
 
 uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
 uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
 byte data[4] = { 0 };
 
-bool game_in_progress = false;
+bool recipe_present = false;
 
 Adafruit_PCF8574 pcf;
 
@@ -134,22 +137,27 @@ void loop(void) {
     IrReceiver.resume();
   }
 
-  if (!game_in_progress && (objects_expected[0] != 0)) {
-    game_in_progress = true;
-  }
-
-  if (game_in_progress) {
+  if (recipe_present) {
     for (byte i = 0; i < 7; i++) {
       if (objects_present[i] != 0) {
         if (objects_expected[i] == objects_present[i]) {
-          strip.set(i, mRGB(0, 230, 60)); // green
+          strip.set(i, mRGB(0, 230, 60));  // green
+          objects_present_count++;
         } else {
-          strip.set(i, mRGB(222, 0, 0)); // red
+          strip.set(i, mRGB(222, 0, 0));  // red
         }
       } else {
-        strip.set(i, mRGB(0, 0, 222)); // blue
+        strip.set(i, mRGB(0, 0, 222));  // blue
       }
       strip.show();
+    }
+
+    if (objects_present_count == objects_expected_count) {
+      // expect spells (if any)
+      if (!door_opened) {
+        open_door(door_nr);
+        door_opened = true;
+      }
     }
   }
 
@@ -179,6 +187,14 @@ void loop(void) {
 
   Serial.print("Inner effect: ");
   Serial.println(inner_effect);
+
+  Serial.print("Expected object count: ");
+  Serial.println(objects_expected_count);
+
+  Serial.print("Present object count: ");
+  Serial.println(objects_present_count);
+
+  objects_present_count = 0;
 }
 
 void read_rfid_data(byte numReader) {
@@ -189,8 +205,8 @@ void read_rfid_data(byte numReader) {
   nfc.begin();
   delay(50);
 
-  Serial.print("Reader: ");
-  Serial.println(numReader);
+  // Serial.print("Reader: ");
+  // Serial.println(numReader);
   // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
   // 'uid' will be populated with the UID, and uidLength will indicate
   // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
@@ -198,41 +214,56 @@ void read_rfid_data(byte numReader) {
 
   if (success) {
     // Display some basic information about the card
-    Serial.println("Found an ISO14443A card");
-    Serial.print("  UID Length: ");
-    Serial.print(uidLength, DEC);
-    Serial.println(" bytes");
-    Serial.print("  UID Value: ");
-    nfc.PrintHex(uid, uidLength);
-    Serial.println("");
+    // Serial.println("Found an ISO14443A card");
+    // Serial.print("  UID Length: ");
+    // Serial.print(uidLength, DEC);
+    // Serial.println(" bytes");
+    // Serial.print("  UID Value: ");
+    // nfc.PrintHex(uid, uidLength);
+    // Serial.println("");
 
     if (numReader == 7) {
       read_rfid_data_block(8);
       for (byte i = 0; i < 4; i++) {
         objects_expected[i] = data[i];
       }
+
       read_rfid_data_block(9);
       for (byte i = 0; i < 4; i++) {
         objects_expected[i + 4] = data[i];
       }
+
       read_rfid_data_block(10);
       for (byte i = 0; i < 4; i++) {
         spells_expected[i] = data[i];
       }
+
       read_rfid_data_block(12);
       door_nr = data[0];
       inner_effect = data[1];
+
+      if (!recipe_present) {
+        recipe_present = true;
+        objects_expected_count = 0;
+        for (byte i = 0; i < 7; i++) {
+          if (objects_expected[i] > 0) {
+            objects_expected_count++;
+          }
+        }
+      }
     } else {
       read_rfid_data_block(13);
       objects_present[numReader] = data[0];
     }
   } else {
     if (numReader == 7) {
-      // what happens if recipe card fails to read
-      // zero everything?
+      clear_variables();
+      clear_strip(0, 7);
+      recipe_present = false;
     } else {
       objects_present[numReader] = 0;
     }
+    door_opened = false;
   }
 }
 
@@ -249,6 +280,7 @@ void read_rfid_data_block(byte datablock) {
         for (byte i = 0; i < 4; i++) {
           data[i] = data_temp[i];
         }
+
       } else {
         Serial.println("Ooops ... unable to read the requested block.  Try another key?");
       }
@@ -271,7 +303,7 @@ void read_rfid_data_block(byte datablock) {
 
   if (!success) {
     for (byte i = 0; i < 4; i++) {
-      data[i] == 0;
+      data[i] = 0;
     }
   } else {
     // Uncomment to print out read data
@@ -313,4 +345,17 @@ void open_door(byte door_nr) {
   delay(1000);
   pcf.digitalWrite(door_nr, LOW);
   delay(1000);
+}
+
+void clear_variables() {
+  // clearing variables
+  for (byte i = 0; i < 7; i++) {
+    objects_expected[i] = 0;
+  }
+  for (byte i = 0; i < 4; i++) {
+    spells_expected[i] = 0;
+  }
+  door_nr = 0;
+  inner_effect = 0;
+  objects_expected_count = 0;
 }
