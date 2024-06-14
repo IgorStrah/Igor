@@ -28,8 +28,8 @@ CRGBPalette16 fire_p = heatmap_gp;
 
 bool is_lantern_on = false;
 
-int8_t objects_present[8] = { 0 };
-int8_t objects_expected[8] = { 0 };
+int8_t objects_present[7] = { 0 };
+int8_t objects_expected[7] = { 0 };
 int8_t spells_expected[4] = { 0 };
 int8_t door_nr;
 int8_t inner_effect = 0;
@@ -37,6 +37,8 @@ int8_t inner_effect = 0;
 uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
 uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
 byte data[4] = { 0 };
+
+bool game_in_progress = false;
 
 Adafruit_PCF8574 pcf;
 
@@ -132,15 +134,34 @@ void loop(void) {
     IrReceiver.resume();
   }
 
+  if (!game_in_progress && (objects_expected[0] != 0)) {
+    game_in_progress = true;
+  }
+
+  if (game_in_progress) {
+    for (byte i = 0; i < 7; i++) {
+      if (objects_present[i] != 0) {
+        if (objects_expected[i] == objects_present[i]) {
+          strip.set(i, mRGB(0, 230, 60)); // green
+        } else {
+          strip.set(i, mRGB(222, 0, 0)); // red
+        }
+      } else {
+        strip.set(i, mRGB(0, 0, 222)); // blue
+      }
+      strip.show();
+    }
+  }
+
   Serial.print("Objects present: ");
-  for (byte i = 0; i < 8; i++) {
+  for (byte i = 0; i < 7; i++) {
     Serial.print(objects_present[i]);
     Serial.print(" ");
   }
   Serial.println();
 
   Serial.print("Objects expected: ");
-  for (byte i = 0; i < 8; i++) {
+  for (byte i = 0; i < 7; i++) {
     Serial.print(objects_expected[i]);
     Serial.print(" ");
   }
