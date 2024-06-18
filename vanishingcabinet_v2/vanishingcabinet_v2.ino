@@ -116,7 +116,7 @@ void loop(void) {
     Serial.println(newCode);
     delay(100);
 
-    if (((newCode == 1111000001) || (newCode == 16724175)) && (millis() - IR_timer > 1000)) {
+    if (((newCode == 1111000001) || (newCode == 16724175)) && (millis() - IR_timer > 1000) && !recipe_present) {
       IR_timer = millis();
       Serial.println("Lantern triggered");
       is_lantern_on = !is_lantern_on;
@@ -138,6 +138,7 @@ void loop(void) {
   }
 
   if (recipe_present) {
+    is_lantern_on = true;
     for (byte i = 0; i < 7; i++) {
       if (objects_present[i] != 0) {
         if (objects_expected[i] == objects_present[i]) {
