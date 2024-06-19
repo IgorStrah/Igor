@@ -8,7 +8,6 @@
 #include <microLED.h>  // подключаем библу
 microLED<NUMLEDS, STRIP_PIN, MLED_NO_CLOCK, LED_WS2813, ORDER_GRB, CLI_AVER> strip;
 
-#define NUMLEDS 8  // кол-во светодиодов
 #define PN532_IRQ (2)
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
 byte reader;
@@ -17,14 +16,6 @@ unsigned long newCode;
 unsigned long code;
 unsigned long rfid_reader_timer, IR_timer;
 #include <FastLEDsupport.h>
-DEFINE_GRADIENT_PALETTE(heatmap_gp){
-  // делаем палитру огня
-  0, 0, 0, 0,         // black
-  128, 255, 0, 0,     // red
-  224, 255, 255, 0,   // bright yellow
-  255, 255, 255, 255  // full white
-};
-CRGBPalette16 fire_p = heatmap_gp;
 
 bool is_lantern_on = false;
 
@@ -98,10 +89,6 @@ void loop(void) {
     for (byte reader = 0; reader < 8; reader++) {
       read_rfid_data(reader);
     }
-
-    if (is_lantern_on) {
-      latent();
-    }
   }
 
   if (IrReceiver.decode()) {
@@ -118,12 +105,19 @@ void loop(void) {
 
     if (((newCode == 1111000001) || (newCode == 16724175)) && (millis() - IR_timer > 1000) && !recipe_present) {
       IR_timer = millis();
-      Serial.println("Lantern triggered");
-      is_lantern_on = !is_lantern_on;
 
-      if (!is_lantern_on) {
+      if (is_lantern_on) {
         clear_strip(7, 34);
+      } else {
+        Serial.println("Turning lantern on");
+        for (byte i = 7; i < 34; i++) {
+          strip.set(i, mRGB(0, 0, 222));
+        }
+        strip.show();
+        delay(100);
       }
+
+      is_lantern_on = !is_lantern_on;
     }
 
     if (newCode == 16736925) {  // "mode" button
@@ -138,7 +132,14 @@ void loop(void) {
   }
 
   if (recipe_present) {
+    // turn on lantern
+    for (byte i = 7; i < 34; i++) {
+      strip.set(i, mRGB(0, 0, 222));  // blue
+    }
+    strip.show();
+    delay(100);
     is_lantern_on = true;
+
     for (byte i = 0; i < 7; i++) {
       if (objects_present[i] != 0) {
         if (objects_expected[i] == objects_present[i]) {
@@ -155,6 +156,14 @@ void loop(void) {
 
     if (objects_present_count == objects_expected_count) {
       // expect spells (if any)
+
+      // turn lantern on
+      for (byte i = 7; i < 34; i++) {
+        strip.set(i, mRGB(0, 230, 60));  // green
+      }
+      strip.show();
+      delay(100);
+
       if (!door_opened) {
         open_door(door_nr);
         door_opened = true;
@@ -251,6 +260,14 @@ void read_rfid_data(byte numReader) {
             objects_expected_count++;
           }
         }
+
+        // turn lantern on
+        Serial.println("Recipe found");
+        for (byte i = 7; i < 34; i++) {
+          strip.set(i, mRGB(0, 0, 222));  // blue
+        }
+        strip.show();
+        delay(100);
       }
     } else {
       read_rfid_data_block(13);
@@ -260,7 +277,6 @@ void read_rfid_data(byte numReader) {
     if (numReader == 7) {
       clear_variables();
       clear_strip(0, 7);
-      recipe_present = false;
     } else {
       objects_present[numReader] = 0;
     }
@@ -324,16 +340,6 @@ void tcaselect(uint8_t i2c_bus) {
   Wire.endTransmission();
 }
 
-void latent() {
-  static int count = 0;
-
-  for (int i = 7; i < 34; i++) {
-    count += 2;
-    strip.set(i, CRGBtoData(ColorFromPalette(fire_p, inoise8(i * 25, count), 255, LINEARBLEND)));
-  }
-  strip.show();
-}
-
 void clear_strip(byte from, byte to) {
   for (byte i = from; i < to; i++) {
     strip.set(i, CRGB::Black);
@@ -359,4 +365,5 @@ void clear_variables() {
   door_nr = 0;
   inner_effect = 0;
   objects_expected_count = 0;
+  recipe_present = false;
 }
