@@ -133,12 +133,13 @@ void loop(void) {
 
   if (recipe_present) {
     // turn on lantern
-    for (byte i = 7; i < 34; i++) {
-      strip.set(i, mRGB(0, 0, 222));  // blue
+    if (!is_lantern_on) {
+      for (byte i = 7; i < 34; i++) {
+        strip.set(i, mRGB(0, 0, 222));  // blue
+      }
+      delay(100);
+      is_lantern_on = true;
     }
-    strip.show();
-    delay(100);
-    is_lantern_on = true;
 
     for (byte i = 0; i < 7; i++) {
       if (objects_present[i] != 0) {
