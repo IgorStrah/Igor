@@ -26,6 +26,9 @@ int8_t door_nr;
 int8_t inner_effect = 0;
 int8_t objects_expected_count = 0;
 int8_t objects_present_count = 0;
+int8_t spells_expected_count = 0;
+int8_t spells_present_count = 0;
+int8_t current_spell_nr = 0;
 bool door_opened = false;
 
 uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
@@ -127,6 +130,37 @@ void loop(void) {
       }
     }
 
+    if ((objects_present_count == objects_expected_count) && (millis() - IR_timer > 1000)) {
+      if (((newCode == 16724175) || (newCode == 1111000001)) && (spells_expected[current_spell_nr] == 1)) {
+        current_spell_nr++;
+        spells_present_count++;
+      } else if (((newCode == 16718055) || (newCode == 1111000002)) && (spells_expected[current_spell_nr] == 2)) {
+        current_spell_nr++;
+        spells_present_count++;
+      } else if (((newCode == 16743045) || (newCode == 1111000003)) && (spells_expected[current_spell_nr] == 3)) {
+        current_spell_nr++;
+        spells_present_count++;
+      } else if (((newCode == 16716015) || (newCode == 1111000004)) && (spells_expected[current_spell_nr] == 4)) {
+        current_spell_nr++;
+        spells_present_count++;
+      } else if (((newCode == 16726215) || (newCode == 1111000005)) && (spells_expected[current_spell_nr] == 5)) {
+        current_spell_nr++;
+        spells_present_count++;
+      } else if (((newCode == 16734885) || (newCode == 1111000006)) && (spells_expected[current_spell_nr] == 6)) {
+        current_spell_nr++;
+        spells_present_count++;
+      } else if (((newCode == 16728765) || (newCode == 1111000007)) && (spells_expected[current_spell_nr] == 7)) {
+        current_spell_nr++;
+        spells_present_count++;
+      } else if (((newCode == 16730805) || (newCode == 1111000008)) && (spells_expected[current_spell_nr] == 8)) {
+        current_spell_nr++;
+        spells_present_count++;
+      } else if (((newCode == 16732845) || (newCode == 1111000009)) && (spells_expected[current_spell_nr] == 9)) {
+        current_spell_nr++;
+        spells_present_count++;
+      }
+    }
+
     newCode = 0;
     IrReceiver.resume();
   }
@@ -141,6 +175,7 @@ void loop(void) {
       is_lantern_on = true;
     }
 
+    objects_present_count = 0;
     for (byte i = 0; i < 7; i++) {
       if (objects_present[i] != 0) {
         if (objects_expected[i] == objects_present[i]) {
@@ -156,18 +191,19 @@ void loop(void) {
     }
 
     if (objects_present_count == objects_expected_count) {
-      // expect spells (if any)
 
       // turn lantern on
       for (byte i = 7; i < 34; i++) {
-        strip.set(i, mRGB(0, 230, 60));  // green
+        strip.set(i, mRGB(222, 0, 0));  // green
       }
       strip.show();
       delay(100);
 
-      if (!door_opened) {
-        open_door(door_nr);
-        door_opened = true;
+      if (spells_expected_count == spells_present_count) {
+        if (!door_opened) {
+          open_door(door_nr);
+          door_opened = true;
+        }
       }
     }
   }
@@ -193,6 +229,12 @@ void loop(void) {
   }
   Serial.println();
 
+  Serial.print("Expected spell count: ");
+  Serial.println(spells_expected_count);
+
+  Serial.print("Present spell count: ");
+  Serial.println(spells_present_count);
+
   Serial.print("Door number: ");
   Serial.println(door_nr);
 
@@ -204,8 +246,6 @@ void loop(void) {
 
   Serial.print("Present object count: ");
   Serial.println(objects_present_count);
-
-  objects_present_count = 0;
 }
 
 void read_rfid_data(byte numReader) {
@@ -262,6 +302,13 @@ void read_rfid_data(byte numReader) {
           }
         }
 
+        spells_expected_count = 0;
+        for (byte i = 0; i < 4; i++) {
+          if (spells_expected[i] > 0) {
+            spells_expected_count++;
+          }
+        }
+
         // turn lantern on
         Serial.println("Recipe found");
         for (byte i = 7; i < 34; i++) {
@@ -281,7 +328,6 @@ void read_rfid_data(byte numReader) {
     } else {
       objects_present[numReader] = 0;
     }
-    door_opened = false;
   }
 }
 
@@ -367,4 +413,7 @@ void clear_variables() {
   inner_effect = 0;
   objects_expected_count = 0;
   recipe_present = false;
+  spells_present_count = 0;
+  current_spell_nr = 0;
+  door_opened = false;
 }
