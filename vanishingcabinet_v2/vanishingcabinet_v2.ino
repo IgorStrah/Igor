@@ -37,6 +37,8 @@ byte data[4] = { 0 };
 
 bool recipe_present = false;
 
+long remote_signals[9] = { 16724175, 16718055, 16743045, 16716015, 16726215, 16734885, 16728765, 16730805, 16732845 };
+
 Adafruit_PCF8574 pcf;
 
 Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
@@ -131,33 +133,11 @@ void loop(void) {
     }
 
     if ((objects_present_count == objects_expected_count) && (millis() - IR_timer > 1000)) {
-      if (((newCode == 16724175) || (newCode == 1111000001)) && (spells_expected[current_spell_nr] == 1)) {
-        current_spell_nr++;
-        spells_present_count++;
-      } else if (((newCode == 16718055) || (newCode == 1111000002)) && (spells_expected[current_spell_nr] == 2)) {
-        current_spell_nr++;
-        spells_present_count++;
-      } else if (((newCode == 16743045) || (newCode == 1111000003)) && (spells_expected[current_spell_nr] == 3)) {
-        current_spell_nr++;
-        spells_present_count++;
-      } else if (((newCode == 16716015) || (newCode == 1111000004)) && (spells_expected[current_spell_nr] == 4)) {
-        current_spell_nr++;
-        spells_present_count++;
-      } else if (((newCode == 16726215) || (newCode == 1111000005)) && (spells_expected[current_spell_nr] == 5)) {
-        current_spell_nr++;
-        spells_present_count++;
-      } else if (((newCode == 16734885) || (newCode == 1111000006)) && (spells_expected[current_spell_nr] == 6)) {
-        current_spell_nr++;
-        spells_present_count++;
-      } else if (((newCode == 16728765) || (newCode == 1111000007)) && (spells_expected[current_spell_nr] == 7)) {
-        current_spell_nr++;
-        spells_present_count++;
-      } else if (((newCode == 16730805) || (newCode == 1111000008)) && (spells_expected[current_spell_nr] == 8)) {
-        current_spell_nr++;
-        spells_present_count++;
-      } else if (((newCode == 16732845) || (newCode == 1111000009)) && (spells_expected[current_spell_nr] == 9)) {
-        current_spell_nr++;
-        spells_present_count++;
+      for (byte i = 0; i < 9; i++) {
+        if (((newCode == remote_signals[i]) || (newCode == 1111000000 + i + 1)) && (spells_expected[current_spell_nr] == i + 1)) {
+          current_spell_nr++;
+          spells_present_count++;
+        }
       }
     }
 
