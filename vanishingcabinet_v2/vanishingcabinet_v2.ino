@@ -36,6 +36,7 @@ uint8_t uidLength;                        // Length of the UID (4 or 7 bytes dep
 byte data[4] = { 0 };
 
 bool recipe_present = false;
+bool waiting_for_spells = false;
 
 long remote_signals[9] = { 16724175, 16718055, 16743045, 16716015, 16726215, 16734885, 16728765, 16730805, 16732845 };
 
@@ -64,7 +65,6 @@ void setup(void) {
     strip.clear();
     strip.leds[i] = mRGB(0, 230, 60);
     strip.show();
-    delay(100);
     strip.clear();
     strip.show();
   }
@@ -116,10 +116,9 @@ void loop(void) {
       } else {
         Serial.println("Turning lantern on");
         for (byte i = 7; i < 34; i++) {
-          strip.set(i, mRGB(0, 0, 222));
+          strip.set(i, mRGB(0, 0, 222));  // blue
         }
         strip.show();
-        delay(100);
       }
 
       is_lantern_on = !is_lantern_on;
@@ -132,13 +131,20 @@ void loop(void) {
       }
     }
 
-    if ((objects_present_count == objects_expected_count) && (millis() - IR_timer > 1000)) {
+    if (waiting_for_spells && (millis() - IR_timer > 1000)) {
       for (byte i = 0; i < 9; i++) {
         if (((newCode == remote_signals[i]) || (newCode == 1111000000 + i + 1)) && (spells_expected[current_spell_nr] == i + 1)) {
+          strip.set(2 + current_spell_nr, mRGB(0, 230, 60));  // green
           current_spell_nr++;
           spells_present_count++;
+
+        } else {
+          if (current_spell_nr < spells_expected_count) {
+            strip.set(2 + current_spell_nr, mRGB(222, 0, 0));  // red
+          }
         }
       }
+      strip.show();
     }
 
     newCode = 0;
@@ -146,45 +152,64 @@ void loop(void) {
   }
 
   if (recipe_present) {
-    // turn on lantern
-    if (!is_lantern_on) {
-      for (byte i = 7; i < 34; i++) {
-        strip.set(i, mRGB(0, 0, 222));  // blue
-      }
-      delay(100);
-      is_lantern_on = true;
-    }
-
-    objects_present_count = 0;
-    for (byte i = 0; i < 7; i++) {
-      if (objects_present[i] != 0) {
-        if (objects_expected[i] == objects_present[i]) {
-          strip.set(i, mRGB(0, 230, 60));  // green
-          objects_present_count++;
-        } else {
-          strip.set(i, mRGB(222, 0, 0));  // red
-        }
-      } else {
-        strip.set(i, mRGB(0, 0, 222));  // blue
-      }
-      strip.show();
-    }
-
-    if (objects_present_count == objects_expected_count) {
-
-      // turn lantern on
-      for (byte i = 7; i < 34; i++) {
-        strip.set(i, mRGB(222, 0, 0));  // green
-      }
-      strip.show();
-      delay(100);
-
+    if (waiting_for_spells) {
       if (spells_expected_count == spells_present_count) {
         if (!door_opened) {
           open_door(door_nr);
           door_opened = true;
         }
       }
+    } else {
+      if (objects_present_count == objects_expected_count) {
+        waiting_for_spells = true;
+
+        strip.clear();
+        // turn lantern on
+        for (byte i = 7; i < 34; i++) {
+          strip.set(i, mRGB(0, 222, 222));  // purple
+        }
+        for (byte i = 2 + spells_present_count; i < 2 + spells_expected_count; i++) {
+          strip.set(i, mRGB(222, 0, 222));  // purple
+        }
+        strip.show();
+      } else {
+        // turn on lantern
+        if (!is_lantern_on) {
+          for (byte i = 7; i < 34; i++) {
+            strip.set(i, mRGB(0, 0, 222));  // blue
+          }
+          is_lantern_on = true;
+        }
+
+        objects_present_count = 0;
+        for (byte i = 0; i < 7; i++) {
+          if (objects_present[i] != 0) {
+            if (objects_expected[i] == objects_present[i]) {
+              strip.set(i, mRGB(0, 230, 60));  // green
+              objects_present_count++;
+            } else {
+              strip.set(i, mRGB(222, 0, 0));  // red
+            }
+          } else {
+            strip.set(i, mRGB(0, 0, 222));  // blue
+          }
+          strip.show();
+        }
+      }
+    }
+
+    if (objects_present_count == objects_expected_count) {
+      waiting_for_spells = true;
+
+      strip.clear();
+      // turn lantern on
+      for (byte i = 7; i < 34; i++) {
+        strip.set(i, mRGB(0, 222, 222));  // purple
+      }
+      for (byte i = 2; i < 2 + spells_expected_count; i++) {
+        strip.set(i, mRGB(222, 0, 222));  // purple
+      }
+      strip.show();
     }
   }
 
@@ -295,7 +320,6 @@ void read_rfid_data(byte numReader) {
           strip.set(i, mRGB(0, 0, 222));  // blue
         }
         strip.show();
-        delay(100);
       }
     } else {
       read_rfid_data_block(13);
@@ -396,4 +420,5 @@ void clear_variables() {
   spells_present_count = 0;
   current_spell_nr = 0;
   door_opened = false;
+  waiting_for_spells = false;
 }
