@@ -134,17 +134,21 @@ void loop(void) {
     if (waiting_for_spells && (millis() - IR_timer > 1000)) {
       for (byte i = 0; i < 9; i++) {
         if (((newCode == remote_signals[i]) || (newCode == 1111000000 + i + 1)) && (spells_expected[current_spell_nr] == i + 1)) {
-          strip.set(2 + current_spell_nr, mRGB(0, 230, 60));  // green
+          strip.set(2 + current_spell_nr, mRGB(0, 230, 60));
           current_spell_nr++;
           spells_present_count++;
-
         } else {
-          if (current_spell_nr < spells_expected_count) {
-            strip.set(2 + current_spell_nr, mRGB(222, 0, 0));  // red
+          if (current_spell_nr < 3) {
+            strip.set(2 + current_spell_nr, mRGB(222, 0, 0));
           }
         }
       }
       strip.show();
+      if (current_spell_nr < 3) {
+        delay(1000);
+        strip.set(2 + current_spell_nr, mRGB(222, 0, 222));
+        strip.show();
+      }
     }
 
     newCode = 0;
@@ -164,12 +168,11 @@ void loop(void) {
         waiting_for_spells = true;
 
         strip.clear();
-        // turn lantern on
         for (byte i = 7; i < 34; i++) {
-          strip.set(i, mRGB(0, 222, 222));  // purple
+          strip.set(i, mRGB(0, 222, 222));  // purple lantern
         }
-        for (byte i = 2 + spells_present_count; i < 2 + spells_expected_count; i++) {
-          strip.set(i, mRGB(222, 0, 222));  // purple
+        for (byte i = 2; i < 2 + spells_expected_count; i++) {
+          strip.set(i, mRGB(222, 0, 222));  // purple pentagrams
         }
         strip.show();
       } else {
@@ -196,20 +199,6 @@ void loop(void) {
           strip.show();
         }
       }
-    }
-
-    if (objects_present_count == objects_expected_count) {
-      waiting_for_spells = true;
-
-      strip.clear();
-      // turn lantern on
-      for (byte i = 7; i < 34; i++) {
-        strip.set(i, mRGB(0, 222, 222));  // purple
-      }
-      for (byte i = 2; i < 2 + spells_expected_count; i++) {
-        strip.set(i, mRGB(222, 0, 222));  // purple
-      }
-      strip.show();
     }
   }
 
@@ -418,7 +407,9 @@ void clear_variables() {
   objects_expected_count = 0;
   recipe_present = false;
   spells_present_count = 0;
+  spells_expected_count = 0;
   current_spell_nr = 0;
   door_opened = false;
   waiting_for_spells = false;
+  objects_present_count = 0;
 }
