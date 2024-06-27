@@ -1,5 +1,25 @@
 /*
-This code can be used to modify a block of data in a Mifare Ultralight or Ultralight C card.
+ * This code is designed to write data into the RFID card using the MFRC522 RFID reader
+ * 
+ * Typical pin layout used:
+ * -----------------------------------------------------------------------------------------
+ *             MFRC522      Arduino       Arduino   Arduino    Arduino          Arduino
+ *             Reader/PCD   Uno/101       Mega      Nano v3    Leonardo/Micro   Pro Micro
+ * Signal      Pin          Pin           Pin       Pin        Pin              Pin
+ * -----------------------------------------------------------------------------------------
+ * RST/Reset   RST          9             5         D9         RESET/ICSP-5     RST
+ * SPI SS      SDA(SS)      10            53        D10        10               10
+ * SPI MOSI    MOSI         11 / ICSP-4   51        D11        ICSP-4           16
+ * SPI MISO    MISO         12 / ICSP-1   50        D12        ICSP-1           14
+ * SPI SCK     SCK          13 / ICSP-3   52        D13        ICSP-3           15
+ * 
+ * When the program is loaded into the microcontroller, 
+ * it will expect input - a line, containing 3 integers separated by space: 
+ * first, sector number, second, block number, third, value to store
+ * Example input: 13 0 2 - this will put number 2 into block 0 of 13th sector.
+ * Warning! All other values in this same sector will be set to 0.
+ * If you want to set more than one value at once, modify the array secBlockDump
+ * and comment out line 112.
 */
 
 #include <SPI.h>
