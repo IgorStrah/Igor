@@ -1,3 +1,28 @@
+/*
+This code is be used to control the vanishing cabinet in the living room.
+To play with the vanishing cabinet, you will need to prepare several things in advance:
+1. Ingredients with RFID that contain a unique number from 0 to 255 in the sector 13, block 0.
+2. RFID built into the pentagonal recipe card has to be programmed to contain
+  1. sector 12, block 0 - number of the door (0-7) that will open upon completion of all conditions.
+  2. sector 8, block 0-3, continued in sector 9 block 0-2 (optional) - unique numbers of required ingredients (max 7 ingredients)
+  3. sector 10, block 0-2 (optional) - id numbers of spell(s) required to be cast after all ingredients collected (max 3 spells)
+For writing data into RFID cards you can use write_data_to_rfid_card script available in the GitHub repository.
+
+The logic of the cabinet works as follows:
+- Vanishing cabinet accepts signals both from a remote or a magic wand.
+- While no recipe card is present, one can turn the lantern on and off using spell 1 (Lumos)
+- Once the recipe card is put into the central reader, everything lights up blue and starts checking ingredients on all platforms.
+- If the ingredient present on platform correspond to what is expected by the recipe in a given space, it lights up green.
+- If present ingredient doesn't have and RFID, the color of the platform will remain blue.
+- If the ingredient is wrong or in the wrong place, the platform will light up red.
+- Once all present objects match what's written in the recipe card, the door mentioned in the recipe will open, unless spells are expected.
+- If the recipe card needs spells, several platforms will light up purple (corresponding to number of spells necessary)
+- If a spell is cast correctly (corresponds to what's written in the recipe), one of the purple platform will light up green.
+- If a spell is cast wrong, the platform will shortly light up red and then turn back to purple.
+- Once all expected spells are complete the defined door will open.
+- At any point a game can be restarted by taking the recipe out and putting it in again.
+*/
+
 #define NUMLEDS 35   // кол-во светодиодов
 #define STRIP_PIN 3  // пин ленты
 
