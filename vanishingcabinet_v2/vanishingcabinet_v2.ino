@@ -163,13 +163,13 @@ void loop(void) {
           current_spell_nr++;
           spells_present_count++;
         } else {
-          if (current_spell_nr < 3) {
+          if (current_spell_nr < spells_expected_count) {
             strip.set(2 + current_spell_nr, mRGB(222, 0, 0));
           }
         }
       }
       strip.show();
-      if (current_spell_nr < 3) {
+      if (current_spell_nr < spells_expected_count) {
         delay(1000);
         strip.set(2 + current_spell_nr, mRGB(222, 0, 222));
         strip.show();
@@ -192,10 +192,13 @@ void loop(void) {
       if (objects_present_count == objects_expected_count) {
         waiting_for_spells = true;
 
+        Serial.println("Objects present. Waiting for spells");
+
         strip.clear();
         for (byte i = 7; i < 34; i++) {
           strip.set(i, mRGB(0, 222, 222));  // purple lantern
         }
+        is_lantern_on = true;
         for (byte i = 2; i < 2 + spells_expected_count; i++) {
           strip.set(i, mRGB(222, 0, 222));  // purple pentagrams
         }
