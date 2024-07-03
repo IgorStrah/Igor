@@ -1,121 +1,73 @@
-#define EXCLUDE_EXOTIC_PROTOCOLS  // saves around 240 bytes program memory if IrSender.write is used
-#define NO_LED_FEEDBACK_CODE
-#define DECODE_NEC  // Includes Apple and Onkyo
-#define DECODE_SAMSUNG
-#define STRIP_PIN 3  // пин ленты
-#define NUMLEDS 35   // кол-во светодиодов
+/*
+This code is be used to control the vanishing cabinet in the living room.
+To play with the vanishing cabinet, you will need to prepare several things in advance:
+1. Ingredients with RFID that contain a unique number from 0 to 255 in the sector 13, block 0.
+2. RFID built into the pentagonal recipe card has to be programmed to contain
+  1. sector 12, block 0 - number of the door (0-7) that will open upon completion of all conditions.
+  2. sector 8, block 0-3, continued in sector 9 block 0-2 (optional) - unique numbers of required ingredients (max 7 ingredients)
+  3. sector 10, block 0-2 (optional) - id numbers of spell(s) required to be cast after all ingredients collected (max 3 spells)
+For writing data into RFID cards you can use write_data_to_rfid_card script available in the GitHub repository.
 
+The logic of the cabinet works as follows:
+- Vanishing cabinet accepts signals both from a remote or a magic wand.
+- While no recipe card is present, one can turn the lantern on and off using spell 1 (Lumos)
+- Once the recipe card is put into the central reader, everything lights up blue and starts checking ingredients on all platforms.
+- If the ingredient present on platform correspond to what is expected by the recipe in a given space, it lights up green.
+- If present ingredient doesn't have and RFID, the color of the platform will remain blue.
+- If the ingredient is wrong or in the wrong place, the platform will light up red.
+- Once all present objects match what's written in the recipe card, the door mentioned in the recipe will open, unless spells are expected.
+- If the recipe card needs spells, several platforms will light up purple (corresponding to number of spells necessary)
+- If a spell is cast correctly (corresponds to what's written in the recipe), one of the purple platform will light up green.
+- If a spell is cast wrong, the platform will shortly light up red and then turn back to purple.
+- Once all expected spells are complete the defined door will open.
+- At any point a game can be restarted by taking the recipe out and putting it in again.
+*/
+
+#define NUMLEDS 35   // кол-во светодиодов
+#define STRIP_PIN 3  // пин ленты
 
 #include <Adafruit_PCF8574.h>
 #include <Wire.h>
 #include <Adafruit_PN532.h>
 #include <IRremote.hpp>
-#define COLOR_DEBTH 3
 #include <microLED.h>  // подключаем библу
 microLED<NUMLEDS, STRIP_PIN, MLED_NO_CLOCK, LED_WS2813, ORDER_GRB, CLI_AVER> strip;
 
-#define STRIP_PIN 3  // пин ленты
-#define NUMLEDS 8    // кол-во светодиодов
 #define PN532_IRQ (2)
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
-byte reader, comparisonuid, startstep;
+byte reader;
 int NB_NFC_READER = 7;
 unsigned long newCode;
 unsigned long code;
-unsigned long timing, timing2;
+unsigned long rfid_reader_timer, IR_timer;
 #include <FastLEDsupport.h>
-DEFINE_GRADIENT_PALETTE(heatmap_gp){
-  // делаем палитру огня
-  0, 0, 0, 0,         // black
-  128, 255, 0, 0,     // red
-  224, 255, 255, 0,   // bright yellow
-  255, 255, 255, 255  // full white
-};
-CRGBPalette16 fire_p = heatmap_gp;
 
+bool is_lantern_on = false;
+
+int8_t objects_present[8] = { 0 };
+int8_t objects_expected[8] = { 0 };
+int8_t spells_expected[4] = { 0 };
+int8_t door_nr;
+int8_t inner_effect = 0;
+int8_t objects_expected_count = 0;
+int8_t objects_present_count = 0;
+int8_t spells_expected_count = 0;
+int8_t spells_present_count = 0;
+int8_t current_spell_nr = 0;
+bool door_opened = false;
+
+uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
+uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
+byte data[4] = { 0 };
+
+bool recipe_present = false;
+bool waiting_for_spells = false;
+
+long remote_signals[9] = { 16724175, 16718055, 16743045, 16716015, 16726215, 16734885, 16728765, 16730805, 16732845 };
 
 Adafruit_PCF8574 pcf;
 
 Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
-byte RfidPins[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
-String uidDec, uidDecOld;  // для храниения номера метки в десятичном формате
-
-unsigned long Uidtable[8];
-
-uint32_t potions[][8] = {
-  {
-    //  0 Философский камень
-    269948160,   // 0 безоар
-    666047744,  // 1
-    594771968,   // 2 
-    1940264192,   // 3 
-    359601408,   // 4 
-    603395328,  // 5
-    202249472,  // 6
-    594771968,   // 7 пятиугольная карточка-рецепт
-  },
-
-  {
-    //  1 Упокоение пикси
-    209392896,   // 0 бокал со змеями
-    1687819520,  // 2 флоббер-червь
-    1771771136,  // 3 гнездо пикси
-    1855526144,  // 6 медальон
-    594772224,   // 4 бирюзовая шкатулка
-    554308864,   // 5 книга
-    1604719872,  // 1 лоскут одеяла
-    204150016,   // 7 пятиугольная карточка-рецепт
-  },
-  {
-    //  0 Зелье Плавунчика или Морское зелье +
-    0,           // 0 философский камень
-    338367744,   // 1 Вытяжка зародыше апаллала
-    1498617088,  // 2 Хребты Рыбы-Льва
-    666047744,   // 3 Сок мурлакомля
-    269948160,   // 4 Стандартный ингридиент Н
-    0,           // 5 Морские жёлуди
-    0,           // 6 Безумные Многоножки
-    0,           // 7 Лёд со дна серебристого озера
-  },
-  {
-    //  0 Зелье Плавунчика или Морское зелье +
-    0,           // 0 философский камень
-    338367744,   // 1 Вытяжка зародыше апаллала
-    1498617088,  // 2 Хребты Рыбы-Льва
-    666047744,   // 3 Сок мурлакомля
-    269948160,   // 4 Стандартный ингридиент Н
-    0,           // 5 Морские жёлуди
-    0,           // 6 Безумные Многоножки
-    0,           // 7 Лёд со дна серебристого озера
-  },
-  {
-    //  0 Зелье Плавунчика или Морское зелье +
-    0,           // 0 философский камень
-    338367744,   // 1 Вытяжка зародыше апаллала
-    1498617088,  // 2 Хребты Рыбы-Льва
-    666047744,   // 3 Сок мурлакомля
-    269948160,   // 4 Стандартный ингридиент Н
-    0,           // 5 Морские жёлуди
-    0,           // 6 Безумные Многоножки
-    0,           // 7 Лёд со дна серебристого озера
-  },
-  {
-    //  0 Зелье Плавунчика или Морское зелье +
-    0,           // 0 философский камень
-    338367744,   // 1 Вытяжка зародыше апаллала
-    1498617088,  // 2 Хребты Рыбы-Льва
-    666047744,   // 3 Сок мурлакомля
-    269948160,   // 4 Стандартный ингридиент Н
-    0,           // 5 Морские жёлуди
-    0,           // 6 Безумные Многоножки
-    0,           // 7 Лёд со дна серебристого озера
-  }
-
-
-};
-
-int8_t selected_recipe = -1;
-
 
 void setup(void) {
   Serial.begin(115200);
@@ -126,7 +78,9 @@ void setup(void) {
   Wire.beginTransmission(0x70);
   Wire.write(1 << 0);
   Wire.endTransmission();
+
   for (int i = 0; i < NB_NFC_READER; i++) {
+
     tcaselect(i);
     Serial.print(" read: ");
     Serial.print(i);
@@ -136,24 +90,10 @@ void setup(void) {
     strip.clear();
     strip.leds[i] = mRGB(0, 230, 60);
     strip.show();
-    uint32_t versiondata = nfc.getFirmwareVersion();
-    if (!versiondata) {
-      Serial.print("Didn't find PN53x board");
-      while (1)
-        ;  // halt
-    }
-    // Got ok data, print it out!
-    Serial.print(" Num reader: ");
-    Serial.print(i);
-
-    // Got ok data, print it out!
-    Serial.print(" Found chip PN5");
-    Serial.println((versiondata >> 24) & 0xFF, HEX);
-
-    delay(100);
     strip.clear();
     strip.show();
   }
+
   IrReceiver.begin(2);
   pinMode(11, INPUT_PULLUP);
   pinMode(12, INPUT_PULLUP);
@@ -165,27 +105,19 @@ void setup(void) {
     pcf.pinMode(p, OUTPUT);
     delay(1000);
   }
-
-  startstep = 0;
+  Wire.beginTransmission(0x70);
+  Wire.write(1 << 0);
+  Wire.endTransmission();
+  nfc.begin();
 }
 
 
 void loop(void) {
-  uint8_t success;
-  uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
-  uint8_t uidLength;
-  uint32_t cardid;
+  if (millis() - rfid_reader_timer > 50) {
+    rfid_reader_timer = millis();
 
-
-  if (millis() - timing > 50) {
-
-    timing = millis();
-    reader == 7 ? reader = 0 : reader++;
-    Uidtable[reader] = ReadUid(reader);
-    Serial.print(" cardid : ");        //  "Сообщение: "
-    Serial.println(Uidtable[reader]);  //  "Сообщение: "
-    if (startstep >= 1) {
-      lathent();
+    for (byte reader = 0; reader < 8; reader++) {
+      read_rfid_data(reader);
     }
   }
 
@@ -200,116 +132,273 @@ void loop(void) {
     }
     Serial.println(newCode);
     delay(100);
+
+    if (((newCode == 1111000001) || (newCode == 16724175)) && (millis() - IR_timer > 1000) && !recipe_present) {
+      IR_timer = millis();
+
+      if (is_lantern_on) {
+        clear_strip(7, 34);
+      } else {
+        Serial.println("Turning lantern on");
+        for (byte i = 7; i < 34; i++) {
+          strip.set(i, mRGB(0, 0, 222));  // blue
+        }
+        strip.show();
+      }
+
+      is_lantern_on = !is_lantern_on;
+    }
+
+    if (newCode == 16736925) {  // "mode" button
+      Serial.println("Opening all doors");
+      for (byte i = 0; i <= 8; i++) {
+        open_door(i);
+      }
+    }
+
+    if (waiting_for_spells && (millis() - IR_timer > 1000)) {
+      for (byte i = 0; i < 9; i++) {
+        if (((newCode == remote_signals[i]) || (newCode == 1111000000 + i + 1)) && (spells_expected[current_spell_nr] == i + 1)) {
+          strip.set(2 + current_spell_nr, mRGB(0, 230, 60));
+          current_spell_nr++;
+          spells_present_count++;
+        } else {
+          if (current_spell_nr < spells_expected_count) {
+            strip.set(2 + current_spell_nr, mRGB(222, 0, 0));
+          }
+        }
+      }
+      strip.show();
+      if (current_spell_nr < spells_expected_count) {
+        delay(1000);
+        strip.set(2 + current_spell_nr, mRGB(222, 0, 222));
+        strip.show();
+      }
+    }
+
+    newCode = 0;
     IrReceiver.resume();
   }
 
-  if ((newCode == 1111000005) || (newCode == 16726215)) {
-    pcf.digitalWrite(4, HIGH);  // turn LED off by turning off sinking transistor
-    delay(1000);
-    pcf.digitalWrite(4, LOW);  // turn LED on by sinking current to ground
-    newCode = 0;
-    Serial.print("Open 4");
-  }
-
-  if (((newCode == 1111000004) || (newCode == 16716015)) && startstep != 2) {
-    startstep = 2;
-    newCode = 0;
-    Serial.print("startstep ");
-    Serial.print(startstep);
-    strip.fill(mRGB(0, 222, 222));
-    strip.show();
-  }
-
-  if (startstep == 2) {
-
-    for (size_t i = 0; i < sizeof(potions) / sizeof(potions[0]); i++) {
-      if (Uidtable[7] == potions[i][7] && Uidtable[7] != 0) {
-        strip.fill(0, 7, mRGB(0, 0, 222)); // blue
-        pcf.digitalWrite(1, HIGH);  // turn LED on by sinking current to ground
-
-        selected_recipe = i;
-        startstep = 3;
+  if (recipe_present) {
+    if (waiting_for_spells) {
+      if (spells_expected_count == spells_present_count) {
+        if (!door_opened) {
+          open_door(door_nr);
+          door_opened = true;
+        }
       }
-    }
+    } else {
+      if (objects_present_count == objects_expected_count) {
+        waiting_for_spells = true;
 
-    strip.show();
-  }
+        Serial.println("Objects present. Waiting for spells");
 
-  // if recipe card found and recognized
-  if (startstep == 3) {
-    comparisonuid = 0;
-    for (byte t = 0; t < 7; t++) {
-      if (Uidtable[t] == potions[selected_recipe][t]) {
-        strip.set(t, mRGB(111, 222, 222)); // light blue
-        comparisonuid++;
-      } else if (Uidtable[t] != 0) {
-        strip.set(t, mRGB(222, 0, 0)); // red
+        strip.clear();
+        for (byte i = 7; i < 34; i++) {
+          strip.set(i, mRGB(0, 222, 222));  // purple lantern
+        }
+        is_lantern_on = true;
+        for (byte i = 2; i < 2 + spells_expected_count; i++) {
+          strip.set(i, mRGB(222, 0, 222));  // purple pentagrams
+        }
+        strip.show();
       } else {
-        strip.fill(t, 7, mRGB(0, 0, 222)); // blue
+        // turn on lantern
+        if (!is_lantern_on) {
+          for (byte i = 7; i < 34; i++) {
+            strip.set(i, mRGB(0, 0, 222));  // blue
+          }
+          is_lantern_on = true;
+        }
+
+        objects_present_count = 0;
+        for (byte i = 0; i < 7; i++) {
+          if (objects_present[i] != 0) {
+            if (objects_expected[i] == objects_present[i]) {
+              strip.set(i, mRGB(0, 230, 60));  // green
+              objects_present_count++;
+            } else {
+              strip.set(i, mRGB(222, 0, 0));  // red
+            }
+          } else {
+            strip.set(i, mRGB(0, 0, 222));  // blue
+          }
+          strip.show();
+        }
       }
     }
-    strip.show();
-
-    if (comparisonuid == 7) {
-      delay(2000);
-      strip.fill(mRGB(0, 222, 222)); // light blue
-      strip.show();
-
-      pcf.digitalWrite(selected_recipe + 2, HIGH);  // turn LED off by turning off sinking transistor
-      delay(1000);
-      pcf.digitalWrite(1, LOW);                    // turn LED on by sinking current to ground
-      pcf.digitalWrite(selected_recipe + 2, LOW);  // turn LED on by sinking current to ground
-      delay(1000);
-
-      delay(5000);
-      Serial.print(" !!!!!! FINISH!!!!!!!!!!!!!!!!!!!!  ");
-      selected_recipe = -1;
-      comparisonuid++;
-      startstep = 4;
-    }
   }
 
-  if (startstep == 4) {
-    Serial.print("startstep ");
-    Serial.println(startstep);
+  Serial.print("Objects present: ");
+  for (byte i = 0; i < 7; i++) {
+    Serial.print(objects_present[i]);
+    Serial.print(" ");
   }
+  Serial.println();
+
+  Serial.print("Objects expected: ");
+  for (byte i = 0; i < 7; i++) {
+    Serial.print(objects_expected[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+
+  Serial.print("Spells expected: ");
+  for (byte i = 0; i < 4; i++) {
+    Serial.print(spells_expected[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+
+  Serial.print("Expected spell count: ");
+  Serial.println(spells_expected_count);
+
+  Serial.print("Present spell count: ");
+  Serial.println(spells_present_count);
+
+  Serial.print("Door number: ");
+  Serial.println(door_nr);
+
+  Serial.print("Inner effect: ");
+  Serial.println(inner_effect);
+
+  Serial.print("Expected object count: ");
+  Serial.println(objects_expected_count);
+
+  Serial.print("Present object count: ");
+  Serial.println(objects_present_count);
 }
 
-
-
-unsigned long ReadUid(byte numReader) {
+void read_rfid_data(byte numReader) {
   uint8_t success;
-  uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
-  uint8_t uidLength;
-  uint32_t cardid = 0;
 
   tcaselect(numReader);
   delay(10);
   nfc.begin();
   delay(50);
 
+  // Serial.print("Reader: ");
+  // Serial.println(numReader);
+  // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
+  // 'uid' will be populated with the UID, and uidLength will indicate
+  // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
   success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 50);
+
   if (success) {
-    for (byte i2 = 0; i2 < uidLength; i2++) {
+    // Display some basic information about the card
+    // Serial.println("Found an ISO14443A card");
+    // Serial.print("  UID Length: ");
+    // Serial.print(uidLength, DEC);
+    // Serial.println(" bytes");
+    // Serial.print("  UID Value: ");
+    // nfc.PrintHex(uid, uidLength);
+    // Serial.println("");
 
-      if (i2 == 0) {
-        cardid = uid[i2];
-        cardid <<= 8;
-      } else {
-        {
-          cardid |= uid[i2];
-          cardid <<= 8;
-        }
+    if (numReader == 7) {
+      read_rfid_data_block(8);
+      for (byte i = 0; i < 4; i++) {
+        objects_expected[i] = data[i];
       }
-    }
 
-    //  Serial.print(" Reader : ");  //  "Сообщение: "
-    //  Serial.print(numReader);     //  "Сообщение: "
-    //  Serial.print(" cardid : ");  //  "Сообщение: "
-    //  Serial.println(cardid);      //  "Сообщение: "
-    return (cardid);
+      read_rfid_data_block(9);
+      for (byte i = 0; i < 4; i++) {
+        objects_expected[i + 4] = data[i];
+      }
+
+      read_rfid_data_block(10);
+      for (byte i = 0; i < 4; i++) {
+        spells_expected[i] = data[i];
+      }
+
+      read_rfid_data_block(12);
+      door_nr = data[0];
+      inner_effect = data[1];
+
+      if (!recipe_present) {
+        recipe_present = true;
+        objects_expected_count = 0;
+        for (byte i = 0; i < 7; i++) {
+          if (objects_expected[i] > 0) {
+            objects_expected_count++;
+          }
+        }
+
+        spells_expected_count = 0;
+        for (byte i = 0; i < 4; i++) {
+          if (spells_expected[i] > 0) {
+            spells_expected_count++;
+          }
+        }
+
+        // turn lantern on
+        Serial.println("Recipe found");
+        for (byte i = 7; i < 34; i++) {
+          strip.set(i, mRGB(0, 0, 222));  // blue
+        }
+        strip.show();
+      }
+    } else {
+      read_rfid_data_block(13);
+      objects_present[numReader] = data[0];
+    }
+  } else {
+    if (numReader == 7) {
+      clear_variables();
+      clear_strip(0, 7);
+    } else {
+      objects_present[numReader] = 0;
+    }
   }
-  return (cardid);
+}
+
+void read_rfid_data_block(byte datablock) {
+  uint8_t keya[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+  uint8_t success;
+
+  if (uidLength == 4) {
+    success = nfc.mifareclassic_AuthenticateBlock(uid, uidLength, datablock, 0, keya);
+    if (success) {
+      uint8_t data_temp[16];
+      success = nfc.mifareclassic_ReadDataBlock(datablock, data_temp);
+      if (success) {
+        for (byte i = 0; i < 4; i++) {
+          data[i] = data_temp[i];
+        }
+
+      } else {
+        Serial.println("Ooops ... unable to read the requested block.  Try another key?");
+      }
+    } else {
+      Serial.println("Ooops ... authentication failed: Try another key?");
+    }
+  }
+
+  if (uidLength == 7) {
+    uint8_t data_temp[32];
+    success = nfc.mifareultralight_ReadPage(datablock, data_temp);
+    if (success) {
+      for (byte i = 0; i < 4; i++) {
+        data[i] = data_temp[i];
+      }
+    } else {
+      Serial.println("Ooops ... unable to read the requested page!?");
+    }
+  }
+
+  if (!success) {
+    for (byte i = 0; i < 4; i++) {
+      data[i] = 0;
+    }
+  } else {
+    // Uncomment to print out read data
+    // Serial.print("Data: ");
+    // for (byte i = 0; i < 4; i++) {
+    //   Serial.print(data[i]);
+    //   Serial.print(" ");
+    // }
+    // Serial.println();
+  }
 }
 
 void tcaselect(uint8_t i2c_bus) {
@@ -319,13 +408,36 @@ void tcaselect(uint8_t i2c_bus) {
   Wire.endTransmission();
 }
 
-
-void lathent() {
-  static int count = 0;
-
-
-  for (int i = 7; i < 34; i++) {
-    count += 2;
-    strip.set(i, CRGBtoData(ColorFromPalette(fire_p, inoise8(i * 25, count), 255, LINEARBLEND)));
+void clear_strip(byte from, byte to) {
+  for (byte i = from; i < to; i++) {
+    strip.set(i, CRGB::Black);
   }
+  strip.show();
+}
+
+void open_door(byte door_nr) {
+  pcf.digitalWrite(door_nr, HIGH);
+  delay(1000);
+  pcf.digitalWrite(door_nr, LOW);
+  delay(1000);
+}
+
+void clear_variables() {
+  // clearing variables
+  for (byte i = 0; i < 7; i++) {
+    objects_expected[i] = 0;
+  }
+  for (byte i = 0; i < 4; i++) {
+    spells_expected[i] = 0;
+  }
+  door_nr = 0;
+  inner_effect = 0;
+  objects_expected_count = 0;
+  recipe_present = false;
+  spells_present_count = 0;
+  spells_expected_count = 0;
+  current_spell_nr = 0;
+  door_opened = false;
+  waiting_for_spells = false;
+  objects_present_count = 0;
 }
