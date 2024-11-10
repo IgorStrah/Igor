@@ -101,7 +101,7 @@ else  if ((newCode == 1111000005)||(newCode == 16726215)) // атака пров
   else  if ((newCode == 1111000006)||(newCode == 16734885)) // атака проведена верно  - сворачиваемся.
   {
   stepper.setTargetDeg(36*6);
-  newCode=0;
+  newCode=0;Ь
   }
   else  if ((newCode == 1111000007)||(newCode == 16728765)) // атака проведена верно  - сворачиваемся.
   {
