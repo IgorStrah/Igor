@@ -36,11 +36,15 @@ set(TEST_SRCS
   src/test_CloudSchedule.cpp
   src/test_decode.cpp
   src/test_encode.cpp
+  src/test_command_decode.cpp
+  src/test_command_encode.cpp
   src/test_publishEvery.cpp
   src/test_publishOnChange.cpp
   src/test_publishOnChangeRateLimit.cpp
   src/test_readOnly.cpp
   src/test_writeOnly.cpp
+  src/test_writeOnDemand.cpp
+  src/test_writeOnChange.cpp
 )
 
 set(TEST_UTIL_SRCS
@@ -53,6 +57,9 @@ set(TEST_DUT_SRCS
   ../../src/property/PropertyContainer.cpp
   ../../src/cbor/CBORDecoder.cpp
   ../../src/cbor/CBOREncoder.cpp
+  ../../src/cbor/MessageDecoder.cpp
+  ../../src/cbor/MessageEncoder.cpp
+  ../../src/cbor/CBOR.cpp
   ../../src/cbor/lib/tinycbor/src/cborencoder.c
   ../../src/cbor/lib/tinycbor/src/cborencoder_close_container_checked.c
   ../../src/cbor/lib/tinycbor/src/cborerrorstrings.c

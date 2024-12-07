@@ -5,8 +5,8 @@ SoftwareSerial SoftSerial(2, 3);
 #include "DYPlayerArduino.h"
 DY::Player player(&SoftSerial);
 
-
-const int correctSequence[] = { 6, 4, 11, 7, 5, 10, 8, 9 };  // Правильная последовательность
+const int correctSequence[] = { 4, 5, 6, 7, 8, 9, 10, 11 };  // Правильная 
+//const int correctSequence[] = { 6, 4, 11, 7, 5, 10, 8, 9 };  // Правильная последовательность
 const int sequenceLength = sizeof(correctSequence) / sizeof(correctSequence[0]);
 int currentIndex = 0;              // Текущий индекс в последовательности
 bool pinActivated[9] = { false };  // Флаги активации для каждого пина

@@ -33,7 +33,8 @@ void setup() {
  pinMode(BUTTON_PIN, INPUT);
    pinMode(3, OUTPUT);
   digitalWrite(3, 0);
-
+   pinMode(A0, OUTPUT);
+  digitalWrite(A0, 1);
   delay(50);
   attachInterrupt(digitalPinToInterrupt(2), threshold, FALLING);
   
@@ -100,12 +101,11 @@ void knockWrite() {                                 // режим записи �
 void loop() {
 
 
-  if (millis()-sound_time > 60000)
+  if (millis()-sound_time > 45000)
 {
-  for (byte i = 0; i < knock+1; i++) {
-      delay(wait_time[i-1]);                          // ждать время шага одного хода
-      tone(buzzPin, 400, 50);                       // пыхнуть светодиодом
-    }
+digitalWrite(A0, 0);
+delay(5000);
+digitalWrite(A0, 1);
     sound_time=millis();
 }
 

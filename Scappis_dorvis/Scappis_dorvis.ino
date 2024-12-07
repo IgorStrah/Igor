@@ -29,28 +29,28 @@ void setup() {
 void loop() {
 
 
-  if (millis() - timing > 1000) {  // Вместо 10000 подставьте нужное вам значение паузы
-    timing = millis();
-if (door1==0&&aloomore>=5) 
-{
-  door1=1;
- digitalWrite(6, 1);
- delay(300);
- digitalWrite(6, 0);
- aloomore=0;
-}
-else if(door1==1&&door2==0&&aloomore>9) 
-{
- door2=1;
- digitalWrite(4, 1);
- delay(300);
- digitalWrite(4, 0);
- aloomore=0;
-}
-
-        aloomore = (aloomore >= 0) ? aloomore-1 : 0;
-
+    if (millis() - timing > 1000) {  // Вместо 10000 подставьте нужное вам значение паузы
+      timing = millis();
+  if (door1==0&&aloomore>=5) 
+  {
+    door1=1;
+  digitalWrite(6, 1);
+  delay(300);
+  digitalWrite(6, 0);
+  aloomore=0;
   }
+  else if(door1==1&&door2==0&&aloomore>9) 
+  {
+  door2=1;
+  digitalWrite(4, 1);
+  delay(300);
+  digitalWrite(4, 0);
+  aloomore=0;
+  }
+
+          aloomore = (aloomore >= 0) ? aloomore-1 : 0;
+
+    }
     //wdt_reset();
 
     if (IrReceiver.decode()) {

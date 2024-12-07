@@ -24,18 +24,18 @@ void initProperties() {
   ArduinoCloud.setSecretDeviceKey(SECRET_DEVICE_KEY);
 #endif
 #if defined(BOARD_HAS_WIFI) || defined(BOARD_HAS_GSM) || defined(BOARD_HAS_NB) || defined(BOARD_HAS_ETHERNET) || defined(BOARD_HAS_CATM1_NBIOT)
-  ArduinoCloud.addProperty(switchButton, WRITE, ON_CHANGE, onSwitchButtonChange);
-  ArduinoCloud.addProperty(location, READ, ON_CHANGE);
-  ArduinoCloud.addProperty(color, READWRITE, ON_CHANGE, onColorChange);
+  ArduinoCloud.addProperty(switchButton, Permission::Write).onUpdate(onSwitchButtonChange);
+  ArduinoCloud.addProperty(location, Permission::Read).publishOnChange(0.0f);
+  ArduinoCloud.addProperty(color, Permission::ReadWrite).onUpdate(onColorChange);
 #elif defined(BOARD_HAS_LORA)
-  ArduinoCloud.addProperty(switchButton, 1, WRITE, ON_CHANGE, onSwitchButtonChange);
-  ArduinoCloud.addProperty(location, 2, READ, ON_CHANGE);
-  ArduinoCloud.addProperty(color, 3, READWRITE, ON_CHANGE, onColorChange);
+  ArduinoCloud.addProperty(switchButton, 1, Permission::Write).onUpdate(onSwitchButtonChange);
+  ArduinoCloud.addProperty(location, 2, Permission::Read).publishOnChange(0.0f);
+  ArduinoCloud.addProperty(color, 3, Permission::ReadWrite).onUpdate(onColorChange);
 #endif
 }
 
 #if defined(BOARD_HAS_WIFI)
-  WiFiConnectionHandler ArduinoIoTPreferredConnection(SECRET_SSID, SECRET_PASS);
+  WiFiConnectionHandler ArduinoIoTPreferredConnection(SECRET_WIFI_SSID, SECRET_WIFI_PASS);
 #elif defined(BOARD_HAS_GSM)
   GSMConnectionHandler ArduinoIoTPreferredConnection(SECRET_PIN, SECRET_APN, SECRET_LOGIN, SECRET_PASS);
 #elif defined(BOARD_HAS_LORA)

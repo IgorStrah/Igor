@@ -18,6 +18,7 @@ byte echoCount = 4;
 byte step = 0;
 byte* echoPins = new byte[echoCount]{ 12, 11, 10, 9 };
 byte noundnom = 2;
+byte stepclock;
 const int buttonPin = A0;
 void setup() {
   pinMode(buttonPin, INPUT_PULLUP);
@@ -54,23 +55,18 @@ void loop() {
 
   if (step == 0) {
     // music
-
     if (digitalRead(7) == 1) {
-
       if (num_sound <= 10) {
         num_sound++;
       } else {
         num_sound = 2;
       }
-
       playsoundnom(num_sound);
       delay(5000);
       player.stop();
     }
 
-
     double* distances = HCSR04.measureDistanceCm();
-
     for (int i = 0; i < echoCount; i++) {
       Serial.print("sensor: ");
       Serial.print(i);
@@ -81,16 +77,11 @@ void loop() {
 
     if (distances[0] < 58 || distances[1] < 55 || distances[3] < 60) {
       alarm = 1;
+      stepclock=0;
       playsoundnom(1);
     }
 
-    if (digitalRead(buttonPin) == 0) {
-      alarm = 0;
-      Serial.println("");
-      Serial.print("alarm ------------------2 ");
-      Serial.println(alarm);
-      playsoundnom(2);
-    }
+
     Serial.println("");
     Serial.print("alarm ");
     Serial.println(alarm);
@@ -98,11 +89,24 @@ void loop() {
     Serial.println(digitalRead(buttonPin));
 
     if (alarm == 0 && distances[2] > 100 && digitalRead(A3) == 0) {
-
+      stepclock++;
+      if (stepclock==3)
+      {
       digitalWrite(A2, LOW);
       step = 1;
       playsoundnom(1);
+      }
     }
+    
+      if (digitalRead(buttonPin) == 0) {
+      alarm = 0;
+      stepclock=0;
+      Serial.println("");
+      Serial.print("alarm ------------------2 ");
+      Serial.println(alarm);
+      playsoundnom(2);
+    }
+    
     delay(250);
 
   }
@@ -125,8 +129,8 @@ void loop() {
       digitalWrite(A2, LOW);
     }
 
-  
-     
+
+
     if (digitalRead(A4) == 0)  // Сработал звук.
     {
       playsoundnom(num_sound);
@@ -134,12 +138,13 @@ void loop() {
       Serial.print("sound  ");
       delay(1000);
       while (digitalRead(5) == 1) {
+          playsoundnom(num_sound);
         digitalWrite(A1, LOW);
-                    if (digitalRead(7) == LOW) {
-                      digitalWrite(A2, HIGH);
-                    } else {
-                      digitalWrite(A2, LOW);
-                    }
+        if (digitalRead(7) == LOW) {
+          digitalWrite(A2, HIGH);
+        } else {
+          digitalWrite(A2, LOW);
+        }
       }
       playsoundnom(222);
       delay(1000);

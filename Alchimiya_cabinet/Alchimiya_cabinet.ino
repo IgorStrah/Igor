@@ -1,3 +1,6 @@
+#include <TVout.h>
+#include <video_gen.h>
+
 #include <avr/wdt.h>
 #define DECODE_DISTANCE_WIDTH  // Universal decoder for pulse distance width protocols
 //#define DECODE_HASH
@@ -5,8 +8,7 @@
 volatile boolean f_wdt = 1;
 const int ledPin = 5;  // Пин, к которому подключен светодиод
 unsigned long timing, timing2;
-byte caunt, natlamp = 0,brightness;
-
+byte caunt, natlamp = 0, brightness;
 
 
 void setup() {
@@ -25,8 +27,12 @@ void setup() {
   pinMode(4, OUTPUT);       // кнопка на D12 и GND
   pinMode(5, OUTPUT);       // кнопка на D12 и GND
   pinMode(7, OUTPUT);       // кнопка на D12 и GND
+  pinMode(A0, OUTPUT);      // кнопка на D12 и GND
+  pinMode(A1, OUTPUT);      // кнопка на D12 и GND
   digitalWrite(7, HIGH);
-   Serial.begin(115200);
+  digitalWrite(A0, HIGH);
+  digitalWrite(A1, HIGH);
+  Serial.begin(115200);
 }
 
 void loop() {
@@ -38,67 +44,66 @@ void loop() {
       digitalWrite(7, HIGH);  // turn LED on by sinking current to ground
     }
     caunt == 11 ? caunt = 0 : caunt++;
-if (caunt==10&natlamp==1)
-{
-    analogWrite(ledPin, (brightness <2 ? brightness = 0 : brightness--));  // Устанавливаем яркость
-}
-    timing = millis();
-  
-}
-
-if (IrReceiver.decode()) {
-  unsigned long irValue = IrReceiver.decodedIRData.decodedRawData;  // Получение значения ИК сигнала
-
-  // New LSB first 32-bit IR data code
-  uint32_t newCode = 0;
-
-  for (int i = 0; i < 32; i++) {
-    // Extract the ith bit from the old code
-    uint32_t bit = (irValue >> (31 - i)) & 1;
-
-    // Set the ith bit in the new code
-    newCode |= (bit << i);
-  }
-     Serial.println(newCode);
-  if ((newCode == 1111000001) || (newCode == 16724175)) {
-
-
-    for ( brightness = 0; brightness <= 254; brightness++) {
-      analogWrite(ledPin, brightness);  // Устанавливаем яркость
-      delay(10);                        // Задержка для плавного изменения яркости
+    if (caunt == 10 & natlamp == 1) {
+      analogWrite(ledPin, (brightness < 1 ? brightness = 0 : brightness--));  // Устанавливаем яркость
     }
+    timing = millis();
   }
-  if ((newCode == 1111000002) || (newCode == 16718055)) {
 
+  if (IrReceiver.decode()) {
+    unsigned long irValue = IrReceiver.decodedIRData.decodedRawData;  // Получение значения ИК сигнала
 
-    // Уменьшение яркости светодиода
-    // for (brightness = 255; brightness >= 0; brightness--) {
+    // New LSB first 32-bit IR data code
+    uint32_t newCode = 0;
+
+    for (int i = 0; i < 32; i++) {
+      // Extract the ith bit from the old code
+      uint32_t bit = (irValue >> (31 - i)) & 1;
+
+      // Set the ith bit in the new code
+      newCode |= (bit << i);
+    }
+    Serial.println(newCode);
+    if (((newCode == 1111000001) || (newCode == 16724175))&(natlamp==0)) {
+
+      digitalWrite(A0, HIGH);
+      digitalWrite(A1, LOW);
+      for (brightness = 0; brightness <= 254; brightness++) {
+        analogWrite(ledPin, brightness);  // Устанавливаем яркость
+        delay(10);                        // Задержка для плавного изменения яркости
+      }
+    }
+    if ((newCode == 1111000002) || (newCode == 16718055)) {
+      digitalWrite(A0, LOW);
+      digitalWrite(A1, HIGH);
+
+      // Уменьшение яркости светодиода
+      // for (brightness = 255; brightness >= 0; brightness--) {
       analogWrite(ledPin, 0);  // Устанавливаем яркость
-    //   delay(1000);                      // Задержка для плавного изменения яркости
-    // }
-  }
+      //   delay(1000);                      // Задержка для плавного изменения яркости
+      // }
+    }
 
 
-  if ((newCode == 1111000005) || (newCode == 16726215)) {
-    digitalWrite(4, HIGH);  // turn LED off by turning off sinking transistor
-    delay(200);
-    digitalWrite(4, LOW);  // turn LED on by sinking current to ground
-    newCode = 0;
-    natlamp = 1;
-    
-  }
+    if ((newCode == 1111000005) || (newCode == 16726215)) {
+      digitalWrite(4, HIGH);  // turn LED off by turning off sinking transistor
+      delay(200);
+      digitalWrite(4, LOW);  // turn LED on by sinking current to ground
+      newCode = 0;
+      natlamp = 1;
+    }
 
 
-    if (newCode == 16736925)  {
+    if (newCode == 16736925) {
 
-      for ( brightness = 0; brightness <= 254; brightness++) {
-      analogWrite(ledPin, brightness);  // Устанавливаем яркость
-      delay(600);                        // Задержка для плавного изменения яркости
+      for (brightness = 0; brightness <= 254; brightness++) {
+        analogWrite(ledPin, brightness);  // Устанавливаем яркость
+        delay(600);                       // Задержка для плавного изменения яркости
       }
       natlamp = 0;
+    }
+    radio.write(newCode, 1); // Передаём данные по радиоканалу
+    IrReceiver.resume();
+    newCode = 0;
   }
-
-  IrReceiver.resume();
-  newCode = 0;
-}
 }

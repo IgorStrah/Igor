@@ -49,8 +49,8 @@ void loop() {
     IrReceiver.resume();
   }
 
-  if ((newCode == 1111000004) || (newCode == 16716015)) {
-
+  if ((newCode == 1111000005) || (newCode == 16726215)) {
+                                            
     if (redy == 0) {
         redy = 1;
 

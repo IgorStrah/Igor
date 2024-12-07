@@ -8,13 +8,9 @@
 
 #include <SPI.h>
 #include <MFRC522.h>
-
 #include <FastLED.h>
-
 #include <Arduino.h>
-
 #include "DYPlayerArduino.h"
-
 #include <iarduino_IR_RX.h>
 iarduino_IR_RX IR(6);  // declaring IR object & its pin
 

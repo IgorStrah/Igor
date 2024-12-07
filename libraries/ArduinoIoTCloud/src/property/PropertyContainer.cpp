@@ -95,7 +95,7 @@ void requestUpdateForAllProperties(PropertyContainer & prop_cont)
 
 void updateTimestampOnLocallyChangedProperties(PropertyContainer & prop_cont)
 {
-  /* This function updates the timestamps on the primitive properties 
+  /* This function updates the timestamps on the primitive properties
    * that have been modified locally since last cloud synchronization
    */
   std::for_each(prop_cont.begin(),
@@ -121,7 +121,9 @@ void updateProperty(PropertyContainer & prop_cont, String propertyName, unsigned
     if (is_sync_message) {
       property->execCallbackOnSync();
     } else {
-      property->fromCloudToLocal();
+      if (property->isWritableOnChange()) {
+        property->fromCloudToLocal();
+      }
       property->execCallbackOnChange();
       property->provideEcho();
     }

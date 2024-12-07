@@ -15,6 +15,10 @@
   #define BOARD_ID "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 #endif
 
+#if defined(BOARD_HAS_LORA)
+  #define THING_ID "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+#endif
+
 /******************************************************************************
    GLOBAL CONSTANTS
  ******************************************************************************/
@@ -51,7 +55,7 @@ String str_property_7;
 String str_property_8;
 
 #if defined(BOARD_HAS_WIFI)
-  WiFiConnectionHandler ArduinoIoTPreferredConnection(SECRET_SSID, SECRET_PASS);
+  WiFiConnectionHandler ArduinoIoTPreferredConnection(SECRET_WIFI_SSID, SECRET_WIFI_PASS);
 #elif defined(BOARD_HAS_GSM)
   GSMConnectionHandler ArduinoIoTPreferredConnection(SECRET_PIN, SECRET_APN, SECRET_LOGIN, SECRET_PASS);
 #elif defined(BOARD_HAS_LORA)
@@ -114,6 +118,7 @@ void initProperties() {
 
 #elif defined(BOARD_HAS_LORA)
 void initProperties() {
+  ArduinoCloud.setThingId(THING_ID);
 
   ArduinoCloud.addProperty(bool_property_1,  1,   READWRITE, 1 * SECONDS);
   ArduinoCloud.addProperty(int_property_1,   2,   READ,      2 * MINUTES);

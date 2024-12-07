@@ -281,7 +281,7 @@ bool TimeServiceClass::connected()
   if(_con_hdl == nullptr) {
     return false;
   } else {
-    return _con_hdl->getStatus() == NetworkConnectionState::CONNECTED;
+    return _con_hdl->check() == NetworkConnectionState::CONNECTED;
   }
 }
 
@@ -292,9 +292,11 @@ unsigned long TimeServiceClass::getRemoteTime()
      * This is the most reliable time source and it will
      * ensure a correct behaviour of the library.
      */
-    unsigned long const ntp_time = NTPUtils::getTime(_con_hdl->getUDP());
-    if(isTimeValid(ntp_time)) {
-      return ntp_time;
+    if(_con_hdl->getInterface() != NetworkAdapter::CELL) {
+      unsigned long const ntp_time = NTPUtils::getTime(_con_hdl->getUDP());
+      if(isTimeValid(ntp_time)) {
+        return ntp_time;
+      }
     }
 
     /* As fallback if NTP request fails try to obtain the

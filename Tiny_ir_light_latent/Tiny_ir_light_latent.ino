@@ -24,10 +24,10 @@ void setup() {
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
   wdt_enable(WDTO_8S);
-  IrReceiver.begin(PB2, ENABLE_LED_FEEDBACK);
+  IrReceiver.begin(PB0, ENABLE_LED_FEEDBACK);
   delay(100);            // Delay for 1 second
-  pinMode(PB0, OUTPUT);  // кнопка на D12 и GND
-  digitalWrite(PB0, 0);
+  pinMode(PB3, OUTPUT);  // кнопка на D12 и GND
+  digitalWrite(PB3, 0);
 }
 
 void loop() {
@@ -37,8 +37,8 @@ void loop() {
     if (millis() - heartbeatMillis >= 300000) {
       //restart this TIMER
       heartbeatMillis = millis();
-      digitalWrite(PB0, 0);
-      //Toggle the heartbeatLED
+      digitalWrite(PB3, 0);
+  
     }
   }
 
@@ -58,7 +58,7 @@ void loop() {
     if (((newCode == 1111000001) || (newCode == 16724175)) && (millis()-heartbeatMillis>1000 && light == 0))  {
 
       heartbeatMillis = millis();
-      digitalWrite(PB0, 1);
+      digitalWrite(PB3, 1);
       light = 1;
     }
 
@@ -66,7 +66,7 @@ void loop() {
    {
       heartbeatMillis = millis();
       light = 0;
-      digitalWrite(PB0, 0);
+      digitalWrite(PB3, 0);
     }
     IrReceiver.resume();
     newCode = 0;

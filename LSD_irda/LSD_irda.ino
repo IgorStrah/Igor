@@ -10,7 +10,7 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #define BTN_RIGHT 4
 #define BTN_SELECT 5
 #define BTN_NONE 10
-int RECV_PIN = 2;
+int RECV_PIN = A3;
 
 IRrecv irrecv(RECV_PIN);
 decode_results results;
@@ -60,7 +60,7 @@ void setup() {
   lcd.print("                     ");
   lcd.setCursor(0, 0);
   lcd.print("Read IR");
-  IrReceiver.begin(2);
+  IrReceiver.begin(RECV_PIN);
 }
 void loop() {
 
@@ -83,7 +83,6 @@ void loop() {
       newCode=0;
       code=0;
       code=IrReceiver.decodedIRData.decodedRawData;
- 
 
     lcd.setCursor(0, 0);
     lcd.print("IR code");
@@ -103,6 +102,4 @@ void loop() {
 
   }
   delay(100);
-
-  
 }

@@ -96,23 +96,16 @@ class ArduinoIoTCloudClass
     inline void     setDeviceId(String const device_id) { _device_id = device_id; };
     inline String & getDeviceId()                       { return _device_id; };
 
-    inline void     setThingIdOutdatedFlag()            { _thing_id_outdated = true ; }
-    inline void     clrThingIdOutdatedFlag()            { _thing_id_outdated = false ; }
-    inline bool     getThingIdOutdatedFlag()            { return _thing_id_outdated; }
-
-    inline bool     deviceNotAttached()                 { return _thing_id == ""; }
-
     inline ConnectionHandler * getConnection()          { return _connection; }
 
     inline unsigned long getInternalTime()              { return _time_service.getTime(); }
     inline unsigned long getLocalTime()                 { return _time_service.getLocalTime(); }
-    inline void          updateInternalTimezoneInfo()   { _time_service.setTimeZoneData(_tz_offset, _tz_dst_until); }
 
     void addCallback(ArduinoIoTCloudEvent const event, OnCloudEventCallback callback);
 
 #define addProperty( v, ...) addPropertyReal(v, #v, __VA_ARGS__)
 
-    /* The following methods are used for non-LoRa boards which can use the 
+    /* The following methods are used for non-LoRa boards which can use the
      * name of the property to identify a given property within a CBOR message.
      */
 
@@ -153,12 +146,7 @@ class ArduinoIoTCloudClass
   protected:
 
     ConnectionHandler * _connection;
-    PropertyContainer _device_property_container;
-    PropertyContainer _thing_property_container;
-    unsigned int _last_checked_property_index;
     TimeServiceClass & _time_service;
-    int _tz_offset;
-    unsigned int _tz_dst_until;
     String _thing_id;
     String _lib_version;
 
@@ -166,11 +154,11 @@ class ArduinoIoTCloudClass
 
   private:
 
-    void addPropertyRealInternal(Property& property, String name, int tag, permissionType permission_type = READWRITE, long seconds = ON_CHANGE, void(*fn)(void) = NULL, float minDelta = 0.0f, void(*synFn)(Property & property) = CLOUD_WINS);
+    virtual PropertyContainer &getThingPropertyContainer() = 0;
 
+    void addPropertyRealInternal(Property& property, String name, int tag, permissionType permission_type = READWRITE, long seconds = ON_CHANGE, void(*fn)(void) = NULL, float minDelta = 0.0f, void(*synFn)(Property & property) = CLOUD_WINS);
     String _device_id;
     OnCloudEventCallback _cloud_event_callback[3];
-    bool _thing_id_outdated;
 };
 
 #ifdef HAS_TCP
