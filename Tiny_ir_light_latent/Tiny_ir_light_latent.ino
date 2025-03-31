@@ -24,24 +24,13 @@ void setup() {
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
   wdt_enable(WDTO_8S);
-  IrReceiver.begin(PB0, ENABLE_LED_FEEDBACK);
+  IrReceiver.begin(PB4);
   delay(100);            // Delay for 1 second
   pinMode(PB3, OUTPUT);  // кнопка на D12 и GND
   digitalWrite(PB3, 0);
 }
 
 void loop() {
-  wdt_reset();
-
-  if (light == 1) {
-    if (millis() - heartbeatMillis >= 300000) {
-      //restart this TIMER
-      heartbeatMillis = millis();
-      digitalWrite(PB3, 0);
-  
-    }
-  }
-
   if (IrReceiver.decode()) {
     unsigned long irValue = IrReceiver.decodedIRData.decodedRawData;  // Получение значения ИК сигнала
 
@@ -55,18 +44,25 @@ void loop() {
       // Set the ith bit in the new code
       newCode |= (bit << i);
     }
-    if (((newCode == 1111000001) || (newCode == 16724175)) && (millis()-heartbeatMillis>1000 && light == 0))  {
+    if (((newCode == 1111000001) || (newCode == 16724175))) //&& (millis() - heartbeatMillis > 1000 && light == 0)) {
+    {
+    strip.sendRGB(250,250,0);
+      //heartbeatMillis = millis();
+      //strip.fill(strip.Color(0, 0, 222));  // Все светодиоды становятся зелеными
+      //strip.show();
 
-      heartbeatMillis = millis();
-      digitalWrite(PB3, 1);
-      light = 1;
+      delay(200);
+      //light = 1;
     }
 
-      else if(((newCode == 1111000001) || (newCode == 16724175)) && (millis()-heartbeatMillis>1000 && light == 1))
-   {
-      heartbeatMillis = millis();
-      light = 0;
-      digitalWrite(PB3, 0);
+    else if (((newCode == 1111000001) ))//|| (newCode == 16724175)) && (millis() - heartbeatMillis > 1000 && light == 1)) {
+     // heartbeatMillis = millis();
+   //   light = 0;
+    {
+    strip.clear(1);
+     // strip.fill(strip.Color(0, 0, 0));  // Все светодиоды становятся зелеными
+     // strip.show();
+      delay(200);
     }
     IrReceiver.resume();
     newCode = 0;

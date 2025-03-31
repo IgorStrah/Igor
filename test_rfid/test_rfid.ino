@@ -27,10 +27,10 @@
   //byte buffer[8];  //data transfer buffer (16+2 bytes data+CRC)
  
   byte buffer[22]   = {
-        0x1A, 0x00, 0x00, 0x00, //  1,  2,   3,  4,
+        0x03, 0x00, 0x00, 0x00, //  1,  2,   3,  4,
     };
  byte size = sizeof(buffer);
-  uint8_t pageAddr = 0x0F;  //In this example we will write/read 16 bytes (page 6,7,8 and 9).
+  uint8_t pageAddr = 0x0D;  //In this example we will write/read 16 bytes (page 6,7,8 and 9).
                             //Ultraligth mem = 16 pages. 4 bytes per page.  
                             //Pages 0 to 4 are for special functions.           
   

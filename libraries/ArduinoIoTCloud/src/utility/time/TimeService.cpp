@@ -19,26 +19,21 @@
  * INCLUDE
  **************************************************************************************/
 
-#include <AIoTC_Config.h>
 
 #include <time.h>
-#include "TimeService.h"
-#include "NTPUtils.h"
+
+#include "AIoTC_Config.h"
 #include "AIoTC_Const.h"
+#include "NTPUtils.h"
+#include "TimeService.h"
 
-#ifdef ARDUINO_ARCH_SAMD
-  #include <RTCZero.h>
-#endif
-
-#ifdef ARDUINO_ARCH_MBED
-  #include <mbed_rtc_time.h>
-#endif
-
-#ifdef ARDUINO_ARCH_ESP8266
+#if defined(HAS_NOTECARD) || defined(ARDUINO_ARCH_ESP8266)
   #include "RTCMillis.h"
-#endif
-
-#ifdef ARDUINO_ARCH_RENESAS
+#elif defined(ARDUINO_ARCH_SAMD)
+  #include <RTCZero.h>
+#elif defined(ARDUINO_ARCH_MBED)
+  #include <mbed_rtc_time.h>
+#elif defined(ARDUINO_ARCH_RENESAS)
   #include "RTC.h"
 #endif
 
@@ -46,12 +41,10 @@
  * GLOBAL VARIABLES
  **************************************************************************************/
 
-#ifdef ARDUINO_ARCH_SAMD
-RTCZero rtc;
-#endif
-
-#ifdef ARDUINO_ARCH_ESP8266
+#if defined(HAS_NOTECARD) || defined(ARDUINO_ARCH_ESP8266)
 RTCMillis rtc;
+#elif defined(ARDUINO_ARCH_SAMD)
+RTCZero rtc;
 #endif
 
 /**************************************************************************************
@@ -59,6 +52,12 @@ RTCMillis rtc;
  **************************************************************************************/
 
 time_t cvt_time(char const * time);
+
+#if defined(HAS_NOTECARD)
+void notecard_initRTC();
+void notecard_setRTC(unsigned long time);
+unsigned long notecard_getRTC();
+#else
 
 #ifdef ARDUINO_ARCH_SAMD
 void samd_initRTC();
@@ -89,6 +88,8 @@ void renesas_initRTC();
 void renesas_setRTC(unsigned long time);
 unsigned long renesas_getRTC();
 #endif
+
+#endif /* HAS_NOTECARD */
 
 /**************************************************************************************
  * DEFINES
@@ -140,12 +141,21 @@ unsigned long TimeServiceClass::getTime()
   unsigned long const current_tick = millis();
   bool const is_ntp_sync_timeout = (current_tick - _last_sync_tick) > _sync_interval_ms;
   if(!_is_rtc_configured || is_ntp_sync_timeout) {
+    /* Try to sync time from NTP or connection handler */
     sync();
   }
 
-  /* Read time from RTC */
-  unsigned long utc = getRTC();
-  return isTimeValid(utc) ? utc : EPOCH_AT_COMPILE_TIME;
+  /* Use RTC time if has been configured at least once */
+  if(_last_sync_tick) {
+    return getRTC();
+  }
+
+  /* Return the epoch timestamp at compile time as a last line of defense
+   * trying to connect to the server. Otherwise the certificate expiration
+   * date is wrong and we'll be unable to establish a connection. Schedulers
+   * won't work correctly using this value.
+   */
+  return EPOCH_AT_COMPILE_TIME;
 }
 
 void TimeServiceClass::setTime(unsigned long time)
@@ -157,21 +167,20 @@ bool TimeServiceClass::sync()
 {
   _is_rtc_configured = false;
 
-  unsigned long utc = EPOCH_AT_COMPILE_TIME;
+  unsigned long utc = EPOCH;
   if(_sync_func) {
     utc = _sync_func();
   } else {
-#ifdef HAS_TCP
+#if defined(HAS_NOTECARD) || defined(HAS_TCP)
     utc = getRemoteTime();
-#endif
-#ifdef HAS_LORA
-    /* Just keep incrementing stored RTC value*/
+#elif defined(HAS_LORA)
+    /* Just keep incrementing stored RTC value starting from EPOCH_AT_COMPILE_TIME */
     utc = getRTC();
 #endif
   }
 
   if(isTimeValid(utc)) {
-    DEBUG_DEBUG("TimeServiceClass::%s  Drift: %d RTC value: %u", __FUNCTION__, getRTC() - utc, utc);
+    DEBUG_DEBUG("TimeServiceClass::%s done. Drift: %d RTC value: %u", __FUNCTION__, getRTC() - utc, utc);
     setRTC(utc);
     _last_sync_tick = millis();
     _is_rtc_configured = true;
@@ -275,7 +284,7 @@ unsigned long TimeServiceClass::getTimeFromString(const String& input)
  * PRIVATE MEMBER FUNCTIONS
  **************************************************************************************/
 
-#ifdef HAS_TCP
+#if defined(HAS_NOTECARD) || defined(HAS_TCP)
 bool TimeServiceClass::connected()
 {
   if(_con_hdl == nullptr) {
@@ -288,6 +297,7 @@ bool TimeServiceClass::connected()
 unsigned long TimeServiceClass::getRemoteTime()
 {
   if(connected()) {
+#ifdef HAS_TCP
     /* At first try to obtain a valid time via NTP.
      * This is the most reliable time source and it will
      * ensure a correct behaviour of the library.
@@ -298,6 +308,8 @@ unsigned long TimeServiceClass::getRemoteTime()
         return ntp_time;
       }
     }
+    DEBUG_WARNING("TimeServiceClass::%s cannot get time from NTP, fallback on connection handler", __FUNCTION__);
+#endif  /* HAS_TCP */
 
     /* As fallback if NTP request fails try to obtain the
      * network time using the connection handler.
@@ -306,21 +318,21 @@ unsigned long TimeServiceClass::getRemoteTime()
     if(isTimeValid(connection_time)) {
       return connection_time;
     }
+    DEBUG_WARNING("TimeServiceClass::%s cannot get time from connection handler", __FUNCTION__);
   }
 
-  /* Return the epoch timestamp at compile time as a last
-   * line of defense. Otherwise the certificate expiration
-   * date is wrong and we'll be unable to establish a connection
-   * to the server.
-   */
-  return EPOCH_AT_COMPILE_TIME;
+  /* Return known invalid value because we are not connected */
+  return EPOCH;
 }
 
-#endif  /* HAS_TCP */
+#endif  /* HAS_NOTECARD || HAS_TCP */
 
 bool TimeServiceClass::isTimeValid(unsigned long const time)
 {
-  return (time > EPOCH_AT_COMPILE_TIME);
+  /* EPOCH_AT_COMPILE_TIME is in local time, so we need to subtract the maximum
+   * possible timezone offset UTC+14 to make sure we are less then UTC time
+   */
+  return (time > (EPOCH_AT_COMPILE_TIME - (14 * 60 * 60)));
 }
 
 bool TimeServiceClass::isTimeZoneOffsetValid(long const offset)
@@ -331,7 +343,9 @@ bool TimeServiceClass::isTimeZoneOffsetValid(long const offset)
 
 void TimeServiceClass::initRTC()
 {
-#if defined (ARDUINO_ARCH_SAMD)
+#if defined (HAS_NOTECARD)
+  notecard_initRTC();
+#elif defined (ARDUINO_ARCH_SAMD)
   samd_initRTC();
 #elif defined (ARDUINO_ARCH_MBED)
   mbed_initRTC();
@@ -348,7 +362,9 @@ void TimeServiceClass::initRTC()
 
 void TimeServiceClass::setRTC(unsigned long time)
 {
-#if defined (ARDUINO_ARCH_SAMD)
+#if defined (HAS_NOTECARD)
+  notecard_setRTC(time);
+#elif defined (ARDUINO_ARCH_SAMD)
   samd_setRTC(time);
 #elif defined (ARDUINO_ARCH_MBED)
   mbed_setRTC(time);
@@ -365,7 +381,9 @@ void TimeServiceClass::setRTC(unsigned long time)
 
 unsigned long TimeServiceClass::getRTC()
 {
-#if defined (ARDUINO_ARCH_SAMD)
+#if defined (HAS_NOTECARD)
+  return notecard_getRTC();
+#elif defined (ARDUINO_ARCH_SAMD)
   return samd_getRTC();
 #elif defined (ARDUINO_ARCH_MBED)
   return mbed_getRTC();
@@ -419,6 +437,23 @@ time_t cvt_time(char const * time)
 
   return build_time;
 }
+
+#ifdef HAS_NOTECARD
+void notecard_initRTC()
+{
+  rtc.begin();
+}
+
+void notecard_setRTC(unsigned long time)
+{
+  rtc.set(time);
+}
+
+unsigned long notecard_getRTC()
+{
+  return rtc.get();
+}
+#else
 
 #ifdef ARDUINO_ARCH_SAMD
 void samd_initRTC()
@@ -508,6 +543,8 @@ unsigned long renesas_getRTC()
   return t.getUnixTime();
 }
 #endif
+
+#endif /* HAS_NOTECARD */
 
 /******************************************************************************
  * EXTERN DEFINITION

@@ -1,6 +1,6 @@
 /*
- * FreeRTOS Kernel V11.0.1
- * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ * FreeRTOS Kernel V11.1.0
+ * Copyright (C) 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -34,13 +34,13 @@
     #error "include Arduino_FreeRTOS.h" must appear in source files before "include queue.h"
 #endif
 
+#include "task.h"
+
 /* *INDENT-OFF* */
 #ifdef __cplusplus
     extern "C" {
 #endif
 /* *INDENT-ON* */
-
-#include "task.h"
 
 /**
  * Type by which queues are referenced.  For example, a call to xQueueCreate()
@@ -302,7 +302,7 @@ typedef struct QueueDef_t * QueueSetMemberHandle_t;
  *  char ucData[ 20 ];
  * } xMessage;
  *
- * uint32_t ulVar = 10UL;
+ * uint32_t ulVar = 10U;
  *
  * void vATask( void *pvParameters )
  * {
@@ -385,7 +385,7 @@ typedef struct QueueDef_t * QueueSetMemberHandle_t;
  *  char ucData[ 20 ];
  * } xMessage;
  *
- * uint32_t ulVar = 10UL;
+ * uint32_t ulVar = 10U;
  *
  * void vATask( void *pvParameters )
  * {
@@ -470,7 +470,7 @@ typedef struct QueueDef_t * QueueSetMemberHandle_t;
  *  char ucData[ 20 ];
  * } xMessage;
  *
- * uint32_t ulVar = 10UL;
+ * uint32_t ulVar = 10U;
  *
  * void vATask( void *pvParameters )
  * {
@@ -643,7 +643,7 @@ typedef struct QueueDef_t * QueueSetMemberHandle_t;
  *  char ucData[ 20 ];
  * } xMessage;
  *
- * uint32_t ulVar = 10UL;
+ * uint32_t ulVar = 10U;
  *
  * void vATask( void *pvParameters )
  * {

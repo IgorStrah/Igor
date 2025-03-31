@@ -1,5 +1,5 @@
 
-<<<<<<< HEAD
+
 #define STRIP_PIN 2     // пин ленты
 #define LED_COUNT 4      // кол-во светодиодов
 
@@ -7,8 +7,7 @@
 #include <microLED.h>   // подключаем библу
 microLED<LED_COUNT, STRIP_PIN, MLED_NO_CLOCK, LED_WS2818, ORDER_GRB, CLI_AVER> strip;
 
-=======
->>>>>>> 1ee6cf2a8d496dc6108698c1adff1bf967470a5a
+
 #include <SPI.h>
 #include <MFRC522.h>  // библиотека "RFID".
 
@@ -19,20 +18,12 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);
 String uidDec;  // для храниения номера метки в десятичном формате
 //String uidDecOld;  // для храниения номера мет```ки в десятичном формате
 
-<<<<<<< HEAD
 String worlds_s;
 byte R, G, B;
-long firstPixelHue;
-=======
-#include <Adafruit_NeoPixel.h>
-#define LED_PIN    2
-// How many NeoPixels are attached to the Arduino?
-#define LED_COUNT 4
-Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
- String worlds_s;
-byte R,G,B;
-long firstPixelHue ;
->>>>>>> 1ee6cf2a8d496dc6108698c1adff1bf967470a5a
+
+
+
+
 uint32_t timerRainbow;
 
 byte rainbowstop = 0;
@@ -159,27 +150,12 @@ void setup() {
   mfrc522.PCD_Init();  // инициализация MFRC522 / Init MFRC522 card.
   delay(500);
   randomSeed(analogRead(0));
-<<<<<<< HEAD
-  strip.setBrightness(220);
-  strip.set(2, mRGB(255, 225, 225));    
-  strip.show();                     // выводим все изменения на ленту
-  delay(2000);  
 
-
-    strip.clear();
-  strip.show(); // вывод изменений на ленту
-  delay(1);     // между вызовами show должна быть пауза минимум 40 мкс !!!!
-=======
-  strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
-  strip.setBrightness(70); // Set BRIGHTNESS to about 1/5 (max = 255)
-
->>>>>>> 1ee6cf2a8d496dc6108698c1adff1bf967470a5a
-
+  
 }
 void loop() {
 
 
-<<<<<<< HEAD
   // Поиск новой мет ки
   if (!mfrc522.PICC_IsNewCardPresent()) {
     return;
@@ -187,7 +163,7 @@ void loop() {
   // Выбор метки
   if (!mfrc522.PICC_ReadCardSerial()) {
     return;
-=======
+
  // Поиск новой мет ки
     if ( ! mfrc522.PICC_IsNewCardPresent()) {
       return;
@@ -216,15 +192,7 @@ void loop() {
         onoff++;
         if (onoff>=10)
         {
-          for(int i=0; i<G; i++)
-          {
-        G--;R--;B--;
-        for(int i=0; i<LED_COUNT; i++) { // For each pixel...
-        strip.setPixelColor(i, strip.Color(R, G, B));
-        strip.show(); 
-        delay(10);  
-         }
-          }
+
         first=2;
         }
       }
@@ -235,11 +203,7 @@ void loop() {
                     
       if (uidDec =="49F42921F6F80")
       {
-           G+=4;;R+=4;B+=4;
-        for(int i=0; i<LED_COUNT; i++) { // For each pixel...
-        strip.setPixelColor(i, strip.Color(R, G, B));
-        strip.show();   
-         }
+
         if (B>=30)
         {first=0;}
       }
@@ -265,10 +229,9 @@ else if (first==4)
   G!=0?G--:G=0;
   B!=0?B--:B=0;  
   G==0?first=2:first=4;
->>>>>>> 1ee6cf2a8d496dc6108698c1adff1bf967470a5a
-  }
 
-  String content = "";
+  }
+   content = "";
   byte letter;
   for (byte i = 0; i < mfrc522.uid.size; i++) {
     content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
@@ -321,33 +284,6 @@ else if (first==4)
 
 
 
-  if (first == 0) {
-    first = 1;
-    clocfirst = random(1, 7);
-  }
-  strip.clear();
-
-  if (step_l > 16) {
-    G = step_l;
-    R = 1;
-    B = 1;
-  } else if (first == 1) {
-    G = 30;
-    R = 30;
-    B = 30;
-  } else if (first == 4) {
-
-    R != 0 ? R-- : R = 0;
-    G != 0 ? G-- : G = 0;
-    B != 0 ? B-- : B = 0;
-    G == 0 ? first = 2 : first = 4;
-  }
-
-
-  for (int i = 0; i < LED_COUNT; i++) {  // For each pixel...
-    strip.set(i, mRGB(R, G, B));
-    strip.show();
-  }
 
   Serial.print(" clocfirst    ");
   Serial.println(clocfirst);

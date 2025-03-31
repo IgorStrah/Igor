@@ -521,21 +521,8 @@ void IRsend::sendRaw_P(const uint8_t aBufferWithTicks[], uint_fast16_t aLengthOf
  * For LSB First the LSB of array[0] is sent first then all bits until MSB of array[0]. Next is LSB of array[1] and so on.
  * The output always ends with a space
  * Stop bit is always sent
+ * @param aFlags    Evaluated flags are PROTOCOL_IS_MSB_FIRST and SUPPRESS_STOP_BIT. Stop bit is otherwise sent for all pulse distance protocols.
  */
-void IRsend::sendPulseDistanceWidthFromArray(uint_fast8_t aFrequencyKHz, uint16_t aHeaderMarkMicros, uint16_t aHeaderSpaceMicros,
-        uint16_t aOneMarkMicros, uint16_t aOneSpaceMicros, uint16_t aZeroMarkMicros, uint16_t aZeroSpaceMicros,
-        IRRawDataType *aDecodedRawDataArray, uint16_t aNumberOfBits, bool aMSBFirst, bool aSendStopBit,
-        uint16_t aRepeatPeriodMillis, int_fast8_t aNumberOfRepeats) {
-    uint8_t tFlags = 0;
-    if (aMSBFirst) {
-        tFlags = PROTOCOL_IS_MSB_FIRST;
-    }
-    (void) aSendStopBit;
-
-    sendPulseDistanceWidthFromArray(aFrequencyKHz, aHeaderMarkMicros, aHeaderSpaceMicros, aOneMarkMicros, aOneSpaceMicros,
-            aZeroMarkMicros, aZeroSpaceMicros, aDecodedRawDataArray, aNumberOfBits, tFlags, aRepeatPeriodMillis, aNumberOfRepeats);
-}
-
 void IRsend::sendPulseDistanceWidthFromArray(uint_fast8_t aFrequencyKHz, DistanceWidthTimingInfoStruct *aDistanceWidthTimingInfo,
         IRRawDataType *aDecodedRawDataArray, uint16_t aNumberOfBits, uint8_t aFlags, uint16_t aRepeatPeriodMillis,
         int_fast8_t aNumberOfRepeats) {
@@ -545,7 +532,6 @@ void IRsend::sendPulseDistanceWidthFromArray(uint_fast8_t aFrequencyKHz, Distanc
             aDistanceWidthTimingInfo->ZeroSpaceMicros, aDecodedRawDataArray, aNumberOfBits, aFlags, aRepeatPeriodMillis,
             aNumberOfRepeats);
 }
-
 void IRsend::sendPulseDistanceWidthFromArray(uint_fast8_t aFrequencyKHz, uint16_t aHeaderMarkMicros, uint16_t aHeaderSpaceMicros,
         uint16_t aOneMarkMicros, uint16_t aOneSpaceMicros, uint16_t aZeroMarkMicros, uint16_t aZeroSpaceMicros,
         IRRawDataType *aDecodedRawDataArray, uint16_t aNumberOfBits, uint8_t aFlags, uint16_t aRepeatPeriodMillis,
@@ -589,7 +575,7 @@ void IRsend::sendPulseDistanceWidthFromArray(uint_fast8_t aFrequencyKHz, uint16_
             } else {
                 // intermediate data
                 tNumberOfBitsForOneSend = BITS_IN_RAW_DATA_TYPE;
-                tFlags = aFlags | SUPPRESS_STOP_BIT_FOR_THIS_DATA; // No stop bit for leading data
+                tFlags = aFlags | SUPPRESS_STOP_BIT; // No stop bit for leading data
             }
 
             sendPulseDistanceWidthData(aOneMarkMicros, aOneSpaceMicros, aZeroMarkMicros, aZeroSpaceMicros, aDecodedRawDataArray[i],
@@ -616,6 +602,9 @@ void IRsend::sendPulseDistanceWidthFromArray(uint_fast8_t aFrequencyKHz, uint16_
  * For LSB First the LSB of array[0] is sent first then all bits until MSB of array[0]. Next is LSB of array[1] and so on.
  * The output always ends with a space
  * Stop bit is always sent
+ * @param aNumberOfBits     Number of bits from aDecodedRawDataArray to be actually sent.
+ * @param aNumberOfRepeats  If < 0 and a aProtocolConstants->SpecialSendRepeatFunction() is specified
+ *                          then it is called without leading and trailing space.
  */
 void IRsend::sendPulseDistanceWidthFromArray(PulseDistanceWidthProtocolConstants *aProtocolConstants,
         IRRawDataType *aDecodedRawDataArray, uint16_t aNumberOfBits, int_fast8_t aNumberOfRepeats) {
@@ -666,7 +655,7 @@ void IRsend::sendPulseDistanceWidthFromArray(PulseDistanceWidthProtocolConstants
             } else {
                 // intermediate data
                 tNumberOfBitsForOneSend = BITS_IN_RAW_DATA_TYPE;
-                tFlags = tOriginalFlags | SUPPRESS_STOP_BIT_FOR_THIS_DATA; // No stop bit for leading data
+                tFlags = tOriginalFlags | SUPPRESS_STOP_BIT; // No stop bit for leading data
             }
 
             sendPulseDistanceWidthData(aProtocolConstants->DistanceWidthTimingInfo.OneMarkMicros,
@@ -692,7 +681,7 @@ void IRsend::sendPulseDistanceWidthFromArray(PulseDistanceWidthProtocolConstants
 }
 
 /**
- * Sends PulseDistance frames and repeats and enables receiver again
+ * Sends PulseDistance frames and repeats
  * @param aProtocolConstants    The constants to use for sending this protocol.
  * @param aData             uint32 or uint64 holding the bits to be sent.
  * @param aNumberOfBits     Number of bits from aData to be actually sent.
@@ -761,23 +750,11 @@ void IRsend::sendPulseDistanceWidth(PulseDistanceWidthProtocolConstants *aProtoc
  * @param aFrequencyKHz, aHeaderMarkMicros, aHeaderSpaceMicros, aOneMarkMicros, aOneSpaceMicros, aZeroMarkMicros, aZeroSpaceMicros, aFlags, aRepeatPeriodMillis     Values to use for sending this protocol, also contained in the PulseDistanceWidthProtocolConstants of this protocol.
  * @param aData             uint32 or uint64 holding the bits to be sent.
  * @param aNumberOfBits     Number of bits from aData to be actually sent.
+ * @param aFlags            Evaluated flags are PROTOCOL_IS_MSB_FIRST and SUPPRESS_STOP_BIT. Stop bit is otherwise sent for all pulse distance protocols.
  * @param aNumberOfRepeats  If < 0 and a aProtocolConstants->SpecialSendRepeatFunction() is specified
  *                          then it is called without leading and trailing space.
  * @param aSpecialSendRepeatFunction    If NULL, the first frame is repeated completely, otherwise this function is used for sending the repeat frame.
  */
-void IRsend::sendPulseDistanceWidth(uint_fast8_t aFrequencyKHz, uint16_t aHeaderMarkMicros, uint16_t aHeaderSpaceMicros,
-        uint16_t aOneMarkMicros, uint16_t aOneSpaceMicros, uint16_t aZeroMarkMicros, uint16_t aZeroSpaceMicros, IRRawDataType aData,
-        uint_fast8_t aNumberOfBits, bool aMSBFirst, bool aSendStopBit, uint16_t aRepeatPeriodMillis, int_fast8_t aNumberOfRepeats,
-        void (*aSpecialSendRepeatFunction)()) {
-    uint8_t tFlags = 0;
-    if (aMSBFirst) {
-        tFlags = PROTOCOL_IS_MSB_FIRST;
-    }
-    (void) aSendStopBit;
-    sendPulseDistanceWidth(aFrequencyKHz, aHeaderMarkMicros, aHeaderSpaceMicros, aOneMarkMicros, aOneSpaceMicros, aZeroMarkMicros,
-            aZeroSpaceMicros, aData, aNumberOfBits, tFlags, aRepeatPeriodMillis, aNumberOfRepeats, aSpecialSendRepeatFunction);
-
-}
 void IRsend::sendPulseDistanceWidth(uint_fast8_t aFrequencyKHz, uint16_t aHeaderMarkMicros, uint16_t aHeaderSpaceMicros,
         uint16_t aOneMarkMicros, uint16_t aOneSpaceMicros, uint16_t aZeroMarkMicros, uint16_t aZeroSpaceMicros, IRRawDataType aData,
         uint_fast8_t aNumberOfBits, uint8_t aFlags, uint16_t aRepeatPeriodMillis, int_fast8_t aNumberOfRepeats,
@@ -825,9 +802,12 @@ void IRsend::sendPulseDistanceWidth(uint_fast8_t aFrequencyKHz, uint16_t aHeader
 }
 
 /**
- * Sends PulseDistance data
+ * Sends PulseDistance from data contained in parameter using ProtocolConstants structure for timing etc.
  * The output always ends with a space
  * Each additional call costs 16 bytes program memory
+ * @param aProtocolConstants    The constants to use for sending this protocol.
+ * @param aData                 uint32 or uint64 holding the bits to be sent.
+ * @param aNumberOfBits         Number of bits from aData to be actually sent.
  */
 void IRsend::sendPulseDistanceWidthData(PulseDistanceWidthProtocolConstants *aProtocolConstants, IRRawDataType aData,
         uint_fast8_t aNumberOfBits) {
@@ -838,18 +818,13 @@ void IRsend::sendPulseDistanceWidthData(PulseDistanceWidthProtocolConstants *aPr
 }
 
 /**
- * Sends PulseDistance data
+ * Sends PulseDistance data with timing parameters and flag parameters.
  * The output always ends with a space
+ * @param aOneMarkMicros    Timing for sending this protocol.
+ * @param aData             uint32 or uint64 holding the bits to be sent.
+ * @param aNumberOfBits     Number of bits from aData to be actually sent.
+ * @param aFlags            Evaluated flags are PROTOCOL_IS_MSB_FIRST and SUPPRESS_STOP_BIT. Stop bit is otherwise sent for all pulse distance protocols.
  */
-void IRsend::sendPulseDistanceWidthData(uint16_t aOneMarkMicros, uint16_t aOneSpaceMicros, uint16_t aZeroMarkMicros,
-        uint16_t aZeroSpaceMicros, IRRawDataType aData, uint_fast8_t aNumberOfBits, bool aMSBFirst, bool aSendStopBit) {
-    uint8_t tFlags = 0;
-    if (aMSBFirst) {
-        tFlags = PROTOCOL_IS_MSB_FIRST;
-    }
-    (void) aSendStopBit;
-    sendPulseDistanceWidthData(aOneMarkMicros, aOneSpaceMicros, aZeroMarkMicros, aZeroSpaceMicros, aData, aNumberOfBits, tFlags);
-}
 void IRsend::sendPulseDistanceWidthData(uint16_t aOneMarkMicros, uint16_t aOneSpaceMicros, uint16_t aZeroMarkMicros,
         uint16_t aZeroSpaceMicros, IRRawDataType aData, uint_fast8_t aNumberOfBits, uint8_t aFlags) {
 
@@ -883,15 +858,16 @@ void IRsend::sendPulseDistanceWidthData(uint16_t aOneMarkMicros, uint16_t aOneSp
         }
     }
     /*
-     * Stop bit is sent for all pulse distance protocols i.e. aOneMarkMicros == aZeroMarkMicros.
-     * Therefore it is not sent for Sony and Magiquest :-)
+     * Stop bit is sent for all pulse distance protocols i.e. aOneSpaceMicros != aZeroSpaceMicros.
+     * Therefore it is not sent for Sony :-)
+     * For sending from an array, no intermediate stop bit must be sent for all but last data chunk.
      */
-    if (!(aFlags & SUPPRESS_STOP_BIT_FOR_THIS_DATA) && aOneMarkMicros == aZeroMarkMicros) {
+    if ((!(aFlags & SUPPRESS_STOP_BIT)) && (abs(aOneSpaceMicros - aZeroSpaceMicros) > (aOneSpaceMicros / 4))) {
         // Send stop bit here
 #if defined(LOCAL_TRACE)
         Serial.print('S');
 #endif
-        mark(aZeroMarkMicros); // Use aZeroMarkMicros for stop bits. This seems to be correct for all protocols :-)
+        mark(aOneMarkMicros); // Use aOneMarkMicros for stop bits. This seems to be correct for all protocols :-)
     }
 #if defined(LOCAL_TRACE)
     Serial.println();
@@ -905,6 +881,8 @@ void IRsend::sendPulseDistanceWidthData(uint16_t aOneMarkMicros, uint16_t aOneSp
  * 1 -> space+mark
  * The output always ends with a space
  * can only send 31 bit data, since we put the start bit as 32th bit on front
+ * @param aData             uint32 or uint64 holding the bits to be sent.
+ * @param aNumberOfBits     Number of bits from aData to be actually sent.
  */
 void IRsend::sendBiphaseData(uint16_t aBiphaseTimeUnit, uint32_t aData, uint_fast8_t aNumberOfBits) {
 
@@ -948,7 +926,7 @@ void IRsend::sendBiphaseData(uint16_t aBiphaseTimeUnit, uint32_t aData, uint_fas
             tLastBitValue = 0;
         }
     }
-    IR_TRACE_PRINTLN(F(""));
+    IR_TRACE_PRINTLN();
 }
 
 /**
@@ -990,7 +968,10 @@ void IRsend::mark(uint16_t aMarkMicros) {
      * Here we generate no carrier PWM, just simulate an active low receiver signal.
      */
 #  if defined(USE_OPEN_DRAIN_OUTPUT_FOR_SEND_PIN) && !defined(OUTPUT_OPEN_DRAIN)
+    // Here we have no hardware supported Open Drain outputs, so we must mimicking it
     pinModeFast(sendPin, OUTPUT); // active state for mimicking open drain
+#  elif defined(USE_ACTIVE_HIGH_OUTPUT_FOR_SEND_PIN)
+    digitalWriteFast(sendPin, HIGH); // Set output to active high.
 #  else
     digitalWriteFast(sendPin, LOW); // Set output to active low.
 #  endif
@@ -1059,7 +1040,7 @@ void IRsend::mark(uint16_t aMarkMicros) {
          */
         if (!FeedbackLedIsActive) {
             FeedbackLedIsActive = true;
-            if (FeedbackLEDControl.LedFeedbackEnabled == LED_FEEDBACK_ENABLED_FOR_SEND) {
+            if (FeedbackLEDControl.LedFeedbackEnabled & LED_FEEDBACK_ENABLED_FOR_SEND) {
                 setFeedbackLED(true);
             }
         }
@@ -1099,7 +1080,7 @@ void IRsend::mark(uint16_t aMarkMicros) {
 //            tDeltaMicros += (160 / CLOCKS_PER_MICRO); // adding this once increases program size, so do it below !
 #  if !defined(NO_LED_FEEDBACK_CODE)
             if (tDeltaMicros >= aMarkMicros - (30 + (112 / CLOCKS_PER_MICRO))) { // 30 to be constant. Using periodTimeMicros increases program size too much.
-                if (FeedbackLEDControl.LedFeedbackEnabled == LED_FEEDBACK_ENABLED_FOR_SEND) {
+                if (FeedbackLEDControl.LedFeedbackEnabled & LED_FEEDBACK_ENABLED_FOR_SEND) {
                     setFeedbackLED(false);
                 }
             }
@@ -1136,6 +1117,8 @@ void IRsend::IRLedOff() {
 #  if defined(USE_OPEN_DRAIN_OUTPUT_FOR_SEND_PIN) && !defined(OUTPUT_OPEN_DRAIN)
     digitalWriteFast(sendPin, LOW); // prepare for all next active states.
     pinModeFast(sendPin, INPUT);// inactive state for open drain
+#  elif defined(USE_ACTIVE_HIGH_OUTPUT_FOR_SEND_PIN)
+    digitalWriteFast(sendPin, LOW); // Set output to inactive low.
 #  else
     digitalWriteFast(sendPin, HIGH); // Set output to inactive high.
 #  endif
@@ -1152,7 +1135,7 @@ void IRsend::IRLedOff() {
 #endif
 
 #if !defined(NO_LED_FEEDBACK_CODE)
-    if (FeedbackLEDControl.LedFeedbackEnabled == LED_FEEDBACK_ENABLED_FOR_SEND) {
+    if (FeedbackLEDControl.LedFeedbackEnabled & LED_FEEDBACK_ENABLED_FOR_SEND) {
         setFeedbackLED(false);
     }
 #endif

@@ -2,9 +2,6 @@
 #define DECODE_DISTANCE_WIDTH  // Universal decoder for pulse distance width protocols
 //#define DECODE_HASH
 
-
-#include "ATtinySerialOut.hpp"  // TX is at pin 2 - Available as Arduino library "ATtinySerialOut" - Saves up to 700 bytes program memory and 70 bytes
-
 #include <IRremote.h>
 #define F_CPU 8000000  //F_CPU 8000000. This is used by delay.h library
 volatile boolean f_wdt = 1;
@@ -21,7 +18,7 @@ tinyLED<1> strip;  // указываем пин (в порядке порта)
 
 #define NUMLEDS 72  // количество светодиодов (для циклов)
 
-uint16_t Timer_Fire=0;
+uint16_t Timer_Fire=300;
 
 void setup() {
   wdt_reset();
@@ -39,7 +36,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Start ");
   wdt_enable(WDTO_8S);
-  IrReceiver.begin(PB0, ENABLE_LED_FEEDBACK);
+  IrReceiver.begin(PB4, ENABLE_LED_FEEDBACK);
   delay(100);  // Delay for 1 second
 
   strip.setBrightness(255);
