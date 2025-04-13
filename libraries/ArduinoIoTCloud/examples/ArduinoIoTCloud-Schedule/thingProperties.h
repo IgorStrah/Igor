@@ -2,16 +2,12 @@
 #include <Arduino_ConnectionHandler.h>
 #include "arduino_secrets.h"
 
-#if !(defined(HAS_TCP) || defined(HAS_LORA))
+#if !defined(HAS_TCP)
   #error  "Please check Arduino IoT Cloud supported boards list: https://github.com/arduino-libraries/ArduinoIoTCloud/#what"
 #endif
 
-#if defined(BOARD_HAS_SECRET_KEY)
+#if !defined(BOARD_HAS_SECURE_ELEMENT)
   #define BOARD_ID "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-#endif
-
-#if defined(HAS_LORA)
-  #define THING_ID "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 #endif
 
 void onSwitchButtonChange();
@@ -26,10 +22,6 @@ CloudSchedule monthly;
 CloudSchedule yearly;
 
 void initProperties() {
-#if defined(BOARD_HAS_SECRET_KEY)
-  ArduinoCloud.setBoardId(BOARD_ID);
-  ArduinoCloud.setSecretDeviceKey(SECRET_DEVICE_KEY);
-#endif
 #if defined(HAS_TCP)
   ArduinoCloud.addProperty(switchButton, Permission::Write);
   ArduinoCloud.addProperty(oneShot, Permission::ReadWrite);
@@ -39,10 +31,11 @@ void initProperties() {
   ArduinoCloud.addProperty(weekly, Permission::ReadWrite);
   ArduinoCloud.addProperty(monthly, Permission::ReadWrite);
   ArduinoCloud.addProperty(yearly, Permission::ReadWrite);
-#elif defined(HAS_LORA)
-  ArduinoCloud.addProperty(switchButton, 1, Permission::Write);
 
-  ArduinoCloud.setThingId(THING_ID);
+#if !defined(BOARD_HAS_SECURE_ELEMENT)
+  ArduinoCloud.setBoardId(BOARD_ID);
+  ArduinoCloud.setSecretDeviceKey(SECRET_DEVICE_KEY);
+#endif
 #endif
 }
 
@@ -50,8 +43,6 @@ void initProperties() {
   WiFiConnectionHandler ArduinoIoTPreferredConnection(SECRET_WIFI_SSID, SECRET_WIFI_PASS);
 #elif defined(BOARD_HAS_GSM)
   GSMConnectionHandler ArduinoIoTPreferredConnection(SECRET_PIN, SECRET_APN, SECRET_LOGIN, SECRET_PASS);
-#elif defined(BOARD_HAS_LORA)
-  LoRaConnectionHandler ArduinoIoTPreferredConnection(SECRET_APP_EUI, SECRET_APP_KEY, _lora_band::EU868, NULL, _lora_class::CLASS_A);
 #elif defined(BOARD_HAS_NB)
   NBConnectionHandler ArduinoIoTPreferredConnection(SECRET_PIN, SECRET_APN, SECRET_LOGIN, SECRET_PASS);
 #elif defined(BOARD_HAS_CATM1_NBIOT)

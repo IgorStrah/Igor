@@ -15,7 +15,7 @@ const char rfidMap[uidCount][2][15] = {
     { "04418F1A237380", "f" }, 
     { "04458F1A237380", "g" }, 
     { "04488F1A237380", "h" }, 
-    { "044C8F1A237380", "l" }, 
+    { "044C8F1A237380", "i" }, 
     { "04508F1A237380", "j" }, 
     { "04548F1A237380", "k" }, 
     { "04588F1A237380", "l" }, 
@@ -47,6 +47,35 @@ const char rfidMap[uidCount][2][15] = {
     { "04B18F1A237380", "&" }
 };
 
+void readFromEEPROM(int page) {
+    int baseAddr = page * 32;  // Адрес начала страницы
+
+    Wire.beginTransmission(EEPROM_ADDR);
+    Wire.write((baseAddr >> 8) & 0xFF);  // Старший байт адреса
+    Wire.write(baseAddr & 0xFF);         // Младший байт адреса
+    Wire.endTransmission();
+    
+    Wire.requestFrom(EEPROM_ADDR, 32);  // Читаем 32 байта (по 15 для UID и 2 для буквы)
+
+    char uid[15];
+    char letter[2];
+
+    // Читаем UID
+    for (int i = 0; i < 15; i++) {
+        uid[i] = Wire.read();
+    }
+
+    // Читаем букву
+    for (int i = 0; i < 2; i++) {
+        letter[i] = Wire.read();
+    }
+
+    // Выводим считанные данные
+    Serial.print("UID: ");
+    Serial.print(uid);
+    Serial.print(", Буква: ");
+    Serial.println(letter);
+}
 
 void writeToEEPROM(int page, const char* uid, const char* letter) {
     int baseAddr = page * 32;  // 32 байта на одну страницу, 2 строки по 15 символов
@@ -80,9 +109,16 @@ void setup() {
         Serial.print(rfidMap[i][0]);
         Serial.print(", Буква = ");
         Serial.println(rfidMap[i][1]);
+        delay(10);
     }
 
     Serial.println("Данные записаны в EEPROM.");
+
+     for (int i = 0; i < 45; i++) {
+        readFromEEPROM(i);  // Читаем и выводим данные для каждой страницы
+        delay(10);  // Задержка для удобства
+    }
+    delay(50000);
 }
 
 void loop() {

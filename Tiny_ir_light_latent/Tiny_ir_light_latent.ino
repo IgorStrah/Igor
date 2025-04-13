@@ -4,7 +4,6 @@
 #include <IRremote.h>
 #define F_CPU 8000000  //F_CPU 8000000. This is used by delay.h library
 volatile boolean f_wdt = 1;
-bool light = 0;
 long heartbeatMillis = 0;
 uint64_t time;
 
@@ -24,9 +23,9 @@ void setup() {
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
   wdt_enable(WDTO_8S);
-  IrReceiver.begin(PB4);
+ 
   delay(100);            // Delay for 1 second
-  pinMode(PB3, OUTPUT);  // кнопка на D12 и GND
+  pinMode(PB3, OUTPUT);  
   digitalWrite(PB3, 0);
 }
 

@@ -31,16 +31,14 @@
 #if defined(BOARD_HAS_SECURE_ELEMENT)
   #include <Arduino_SecureElement.h>
   #include <utility/SElementArduinoCloudDeviceId.h>
-  #if !defined(BOARD_HAS_OFFLOADED_ECCX08)
-    #include <utility/SElementArduinoCloudCertificate.h>
-  #endif
+  #include <utility/SElementArduinoCloudCertificate.h>
 #endif
 
 #include <tls/utility/TLSClientMqtt.h>
 #include <tls/utility/TLSClientOta.h>
 
 #if OTA_ENABLED
-#include <ota/OTA.h>
+  #include <ota/OTA.h>
 #endif
 
 #include "cbor/MessageDecoder.h"
@@ -49,9 +47,10 @@
 /******************************************************************************
    CONSTANTS
  ******************************************************************************/
-static char const DEFAULT_BROKER_ADDRESS_SECURE_AUTH[] = "iot.arduino.cc";
-static uint16_t const DEFAULT_BROKER_PORT_SECURE_AUTH = 8883;
-static uint16_t const DEFAULT_BROKER_PORT_USER_PASS_AUTH = 8884;
+static constexpr char DEFAULT_BROKER_ADDRESS[] = "iot.arduino.cc";
+static constexpr uint16_t DEFAULT_BROKER_PORT_SECURE_AUTH = 8885;
+static constexpr uint16_t DEFAULT_BROKER_PORT_USER_PASS_AUTH = 8884;
+static constexpr uint16_t DEFAULT_BROKER_PORT_AUTO = 0;
 
 /******************************************************************************
  * TYPEDEF
@@ -74,13 +73,17 @@ class ArduinoIoTCloudTCP: public ArduinoIoTCloudClass
     virtual int  connected     () override;
     virtual void printDebugInfo() override;
 
-    int begin(ConnectionHandler & connection, bool const enable_watchdog = true, String brokerAddress = DEFAULT_BROKER_ADDRESS_SECURE_AUTH, uint16_t brokerPort = DEFAULT_BROKER_PORT_SECURE_AUTH);
-    int begin(bool const enable_watchdog = true, String brokerAddress = DEFAULT_BROKER_ADDRESS_SECURE_AUTH, uint16_t brokerPort = DEFAULT_BROKER_PORT_SECURE_AUTH);
+    int begin(ConnectionHandler & connection, bool const enable_watchdog = true, String brokerAddress = DEFAULT_BROKER_ADDRESS, uint16_t brokerPort = DEFAULT_BROKER_PORT_AUTO);
+    int begin(bool const enable_watchdog = true, String brokerAddress = DEFAULT_BROKER_ADDRESS, uint16_t brokerPort = DEFAULT_BROKER_PORT_AUTO);
 
-    #ifdef BOARD_HAS_SECRET_KEY
+#if defined(BOARD_HAS_SECURE_ELEMENT)
+    int updateCertificate(String authorityKeyIdentifier, String serialNumber, String notBefore, String notAfter, String signature);
+#endif
+
+#ifdef BOARD_HAS_SECRET_KEY
     inline void setBoardId        (String const device_id) { setDeviceId(device_id); }
     inline void setSecretDeviceKey(String const password)  { _password = password;  }
-    #endif
+#endif
 
     inline String   getBrokerAddress() const { return _brokerAddress; }
     inline uint16_t getBrokerPort   () const { return _brokerPort; }
@@ -142,9 +145,9 @@ class ArduinoIoTCloudTCP: public ArduinoIoTCloudClass
 
 #if defined(BOARD_HAS_SECURE_ELEMENT)
     SecureElement _selement;
-  #if !defined(BOARD_HAS_OFFLOADED_ECCX08)
     ECP256Certificate _cert;
-  #endif
+    /* Flag used to store updated device certificate after broker connection has succeeded */
+    bool _writeCertOnConnect;
 #endif
 
     TLSClientMqtt _brokerClient;
@@ -154,7 +157,6 @@ class ArduinoIoTCloudTCP: public ArduinoIoTCloudClass
     String _messageTopicIn;
     String _dataTopicOut;
     String _dataTopicIn;
-
 
 #if OTA_ENABLED
     TLSClientOta _otaClient;

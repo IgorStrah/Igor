@@ -137,6 +137,11 @@
   #define HAS_TCP
 #endif
 
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
+  #define BOARD_HAS_SECRET_KEY
+  #define HAS_TCP
+#endif
+
 #if defined(BOARD_HAS_SOFTSE) || defined(BOARD_HAS_OFFLOADED_ECCX08) || defined(BOARD_HAS_ECCX08) || defined(BOARD_HAS_SE050)
   #define BOARD_HAS_SECURE_ELEMENT
 #endif
@@ -178,6 +183,6 @@
   #define AIOT_CONFIG_LASTVALUES_SYNC_MAX_RETRY_CNT                  (10UL)
 #endif
 
-#define AIOT_CONFIG_LIB_VERSION "2.2.0"
+#define AIOT_CONFIG_LIB_VERSION "2.4.1"
 
 #endif /* ARDUINO_AIOTC_CONFIG_H_ */

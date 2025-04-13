@@ -9,7 +9,7 @@
 #endif
 
 /* ESP8266 ESP32 */
-#if defined(BOARD_HAS_SECRET_KEY)
+#if !defined(BOARD_HAS_SECURE_ELEMENT)
   #define SECRET_DEVICE_KEY "my-device-password"
 #endif
 
@@ -21,12 +21,6 @@
   #define SECRET_APN ""
   #define SECRET_LOGIN ""
   #define SECRET_PASS ""
-#endif
-
-/* MKR WAN 1300/1310 */
-#if defined(BOARD_HAS_LORA)
-  #define SECRET_APP_EUI ""
-  #define SECRET_APP_KEY ""
 #endif
 
 /* Portenta H7 + Ethernet shield */

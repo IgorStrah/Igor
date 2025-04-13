@@ -24,6 +24,7 @@
   /*
    * Arduino MKR GSM 1400
    * Arduino MKR NB 1500
+   * Arduino NANO RP 2040
    * Arduino Portenta H7
    * Arduino Giga R1
    * OPTA
@@ -54,10 +55,11 @@
    */
   #include <WiFiSSLClient.h>
   class TLSClientOta : public WiFiSSLClient {
-#elif defined(BOARD_ESP)
+#elif defined(BOARD_ESP) || defined(ARDUINO_RASPBERRY_PI_PICO_W)
   /*
    * ESP32*
    * ESP82*
+   * PICOW
    */
   #include <WiFiClientSecure.h>
   class TLSClientOta : public WiFiClientSecure {
@@ -89,6 +91,10 @@ private:
     case NetworkAdapter::CATM1:
       return new GSMClient();
 #endif // BOARD_HAS_CATM1_NBIOT
+#ifdef BOARD_HAS_CELLULAR
+    case NetworkAdapter::CELL:
+      return new TinyGsmClient(modem, 1);
+#endif // BOARD_HAS_CELLULAR
     default:
       return nullptr;
     }

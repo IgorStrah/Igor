@@ -33,23 +33,29 @@
   }
 #endif
 
-void TLSClientMqtt::begin(ConnectionHandler & connection) {
+
+void TLSClientMqtt::begin(ConnectionHandler & connection, ArduinoIoTAuthenticationMode authMode) {
 
 #if defined(BOARD_HAS_OFFLOADED_ECCX08)
   /* Arduino Root CA is configured in nina-fw
    * https://github.com/arduino/nina-fw/blob/master/arduino/libraries/ArduinoBearSSL/src/BearSSLTrustAnchors.h
    */
+  (void)authMode;
 #elif defined(BOARD_HAS_ECCX08)
+  (void)authMode;
   setClient(connection.getClient());
   setProfile(aiotc_client_profile_init);
   setTrustAnchors(ArduinoIoTCloudTrustAnchor, ArduinoIoTCloudTrustAnchor_NUM);
   onGetTime(getTime);
 #elif defined(ARDUINO_PORTENTA_C33)
+  (void)authMode;
   setClient(connection.getClient());
   setCACert(AIoTSSCert);
 #elif defined(ARDUINO_NICLA_VISION)
+  (void)authMode;
   appendCustomCACert(AIoTSSCert);
 #elif defined(ARDUINO_EDGE_CONTROL)
+  (void)authMode;
   appendCustomCACert(AIoTUPCert);
 #elif defined(ARDUINO_UNOR4_WIFI)
   /* Arduino Root CA is configured in uno-r4-wifi-usb-bridge fw >= 0.4.1
@@ -59,13 +65,17 @@ void TLSClientMqtt::begin(ConnectionHandler & connection) {
    * https://github.com/arduino/uno-r4-wifi-usb-bridge/blob/f09ca94fdcab845b8368d4435fdac9f6999d21d2/certificates/certificates.pem#L852
    */
   (void)connection;
+  /* Temporary force CACert to add new CA without rebuilding firmware */
+  if (authMode == ArduinoIoTAuthenticationMode::CERTIFICATE) {
+    setCACert(AIoTSSCert);
+  }
+#elif defined(ARDUINO_RASPBERRY_PI_PICO_W)
+    setCACert(AIoTUPCert);
 #elif defined(ARDUINO_ARCH_ESP32)
-  #if (ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 0, 4))
-    setCACertBundle(x509_crt_bundle);
-  #else
-    setCACertBundle(x509_crt_bundle, sizeof(x509_crt_bundle));
-  #endif
+  (void)authMode;
+  setCACert(AIoTUPCert);
 #elif defined(ARDUINO_ARCH_ESP8266)
+  (void)authMode;
   setInsecure();
 #endif
 }

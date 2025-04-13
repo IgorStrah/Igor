@@ -55,12 +55,10 @@ void TLSClientOta::begin(ConnectionHandler &connection) {
    * https://github.com/arduino-libraries/Arduino_ESP32_OTA/blob/fc755e7d1d3946232107e2590662ee08d6ccdec4/src/tls/amazon_root_ca.h
    */
   (void)connection;
+#elif defined(ARDUINO_RASPBERRY_PI_PICO_W)
+    setCACert(AIoTUPCert);
 #elif defined(ARDUINO_ARCH_ESP32)
-  #if (ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 0, 4))
-    setCACertBundle(x509_crt_bundle);
-  #else
-    setCACertBundle(x509_crt_bundle, sizeof(x509_crt_bundle));
-  #endif
+  setCACert(AIoTUPCert);
 #elif defined(ARDUINO_ARCH_ESP8266)
   setInsecure();
 #endif

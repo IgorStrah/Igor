@@ -63,7 +63,7 @@ void setup() {
 void loop() {
 
 
-  if (millis() - lastReadTime > 200) {
+  if (millis() - lastReadTime > 50) {
     lastReadTime = millis();  // Обновляем таймер
     if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
       // Читаем UID карты
