@@ -46,6 +46,7 @@ void loop() {
 
   // Чтение состояния кнопок и запись нажатых кнопок в массив
   for (int i = 0; i < 5; i++) {
+    if (onlyOneButtonPressed) {
     buttonState[i] = digitalRead(buttonPins[i]);
     if (buttonState[i] == HIGH && previousButtonState != i) {
       enteredCode[enteredCodeIndex] = i;
@@ -62,6 +63,7 @@ void loop() {
       previousButtonState = i;
       printArray() ;
     }
+    }
   }
 
 
@@ -77,7 +79,7 @@ void loop() {
       break;
     }
   }
- // Serial.println();
+ // Seriaw.println();
   // Если код правильный, открыть замок
   if (codeCorrect) {
     
@@ -126,4 +128,13 @@ void playsoundnom(byte soundnomnow) {
     if (soundnomnow == 222) { player.stop(); }
     noundnom = soundnomnow;
   }
+}
+
+
+bool onlyOneButtonPressed() {
+  int sum = 0;
+  for (int i = 0; i < 5; i++) {
+    sum += buttonState[i];
+  }
+  return (sum == 1);
 }

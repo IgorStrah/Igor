@@ -9,7 +9,7 @@
 #define NUM_LEDS 4            // Количество светодиодов
 #define LED_ALWAYS_ON 1       // Светодиод, который всегда горит (до выигрыша)
 #define LED_NOISE 0           // Светодиод, реагирующий на шум
-#define LED_SILENCE 2       // Светодиод, реагирующий на тишину
+#define LED_SILENCE 2         // Светодиод, реагирующий на тишину
 #define CYCLE_DURATION 3000   // Время на плавное загорание и затухание (в мс)
 #define PAUSE_DURATION 500    // Пауза между циклами (в мс)
 #define MIN_MIC_DURATION 400  // Минимальная продолжительность шума/тишины (в мс)
@@ -19,13 +19,13 @@
 #define SAMPLE_INTERVAL 10  // Интервал между измерениями, в мс
 #define BUFFER_SIZE 10      // Размер буфера для скользящего окна (50 * 10 мс = 500 мс)
 // Константы для обработки сигнала
-#define NOISE_THRESHOLD 550 // Минимальный уровень сигнала, который считается шумом (подбирается опытным путем)
-#define MAX_SIGNAL 1023     // Максимальное значение для analogRead (10-битный ADC)
+#define NOISE_THRESHOLD 550  // Минимальный уровень сигнала, который считается шумом (подбирается опытным путем)
+#define MAX_SIGNAL 1023      // Максимальное значение для analogRead (10-битный ADC)
 
-int micBuffer[BUFFER_SIZE];  // Буфер для хранения данных микрофона
-int bufferIndex = 0;         // Текущий индекс буфера
-int cloc_res = 0;         // Текущий индекс буфера
-unsigned long lastSampleTime = 0; // Время последнего обновления фильтра
+int micBuffer[BUFFER_SIZE];        // Буфер для хранения данных микрофона
+int bufferIndex = 0;               // Текущий индекс буфера
+int cloc_res = 0;                  // Текущий индекс буфера
+unsigned long lastSampleTime = 0;  // Время последнего обновления фильтра
 
 // Создаем объект Adafruit_NeoPixel
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -66,7 +66,7 @@ void setup() {
 void loop() {
   unsigned long currentMillis = millis();
 
-   if (currentMillis - lastSampleTime >= SAMPLE_INTERVAL) {
+  if (currentMillis - lastSampleTime >= SAMPLE_INTERVAL) {
     lastSampleTime = currentMillis;
 
     // Считываем значение микрофона (аналоговый сигнал)
@@ -74,10 +74,10 @@ void loop() {
 
     // Конвертируем аналоговое значение в "шум или тишина" на основе порога
     micBuffer[bufferIndex] = (micValue > NOISE_THRESHOLD) ? 1 : 0;
-    bufferIndex = (bufferIndex + 1) % BUFFER_SIZE; // Переход к следующему индексу
-      int noiseLevel = calculateNoiseLevel();
-    }
-  
+    bufferIndex = (bufferIndex + 1) % BUFFER_SIZE;  // Переход к следующему индексу
+    int noiseLevel = calculateNoiseLevel();
+  }
+
 
   if (gameWon) {
     // Если игра завершена, выключаем светодиод, который всегда горел
@@ -89,7 +89,7 @@ void loop() {
   // Плавное загорание и затухание текущего светодиода
   if (currentMillis - cycleStartMillis < CYCLE_DURATION) {
     updateBrightness(currentMillis);
-if (brightness==128) {    checkMic();}
+    if (brightness == 128) { checkMic(); }
     if (currentLED == 0) {
       strip.setPixelColor(currentLED, strip.Color(0, 0, brightness));  // Устанавливаем красный цвет
     } else {
@@ -105,13 +105,12 @@ if (brightness==128) {    checkMic();}
     cycleStartMillis = currentMillis;
     currentLED = (currentLED == LED_NOISE) ? LED_SILENCE : LED_NOISE;  // Переключаем светодиод
 
-      if (cloc_res==2)
-{    noiseConfirmed = false;
-    silenceConfirmed = false;
-    cloc_res=0;
-    
-}
-cloc_res++;
+    if (cloc_res == 2) {
+      noiseConfirmed = false;
+      silenceConfirmed = false;
+      cloc_res = 0;
+    }
+    cloc_res++;
   }
   // Победа
   if (correctCycles >= 5) {
@@ -139,31 +138,30 @@ void updateBrightness(unsigned long currentMillis) {
 void checkMic() {
 
 
-    
+
   int noiseLevel = calculateNoiseLevel();
-  if (noiseLevel <9 && currentLED == LED_NOISE) {
+  if (noiseLevel < 9 && currentLED == LED_NOISE) {
     // Проверка на шум в цикле LED_NOISE
-      strip.setPixelColor(LED_ALWAYS_ON, strip.Color(100, 55, 0));
-      noiseConfirmed = true;
+    strip.setPixelColor(LED_ALWAYS_ON, strip.Color(100, 55, 0));
+    noiseConfirmed = true;
   } else if (noiseLevel > 16 && currentLED == LED_SILENCE) {
     // Проверка на тишину в цикле LED_SILENCE
-      strip.setPixelColor(LED_ALWAYS_ON, strip.Color(100, 55, 0));
-      silenceConfirmed = true;
+    strip.setPixelColor(LED_ALWAYS_ON, strip.Color(100, 55, 0));
+    silenceConfirmed = true;
   } else {
     lastMicMillis = 0;  // Сбрасываем таймер, если условие не выполнено
     strip.setPixelColor(LED_ALWAYS_ON, strip.Color(255, 0, 0));
-    correctCycles=0;
+    correctCycles = 0;
     noiseConfirmed = false;
     silenceConfirmed = false;
   }
   strip.show();
   // Если оба условия выполнены, увеличиваем счетчик правильных циклов
-  if (noiseConfirmed==true && silenceConfirmed==true) {
+  if (noiseConfirmed == true && silenceConfirmed == true) {
     correctCycles++;
-  
+
     noiseConfirmed = false;
     silenceConfirmed = false;
-    
   }
 }
 

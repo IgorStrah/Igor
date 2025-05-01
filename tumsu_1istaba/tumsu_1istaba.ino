@@ -75,7 +75,7 @@ void loop() {
       Serial.println(" cm");
     }
 
-    if (distances[0] < 58 || distances[1] < 55 || distances[3] < 60) {
+    if ((distances[0] < 58 || distances[1] < 55 || distances[3] < 60)&&()) {
       alarm = 1;
       stepclock=0;
       playsoundnom(1);

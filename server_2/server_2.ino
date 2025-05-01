@@ -46,6 +46,14 @@ int x;
 
 
 
+void procedure1() {
+    Serial.println("Executing procedure 1");
+}
+
+void procedure2() {
+    Serial.println("Executing procedure 2");
+}
+
 Step steps[] = {
     { "page95", procedure1, "FF0F34FC020000" },
     { "dimLight", procedure2, "FF0F60E9020000" }
@@ -53,10 +61,12 @@ Step steps[] = {
 const int stepCount = sizeof(steps) / sizeof(steps[0]);
 
 int currentStep = 0;
-bool waitingForWord = true;
-bool waitingForUID = false;
+ 
+ 
 String expectedUID = "";
-int currentLetterIndex = 0;
+bool waitingForWord = true;
+bool waitingForWordwite = false;
+bool waitingForUID = false;
 
 
 void setup() {
@@ -66,7 +76,7 @@ void setup() {
      Serial.println("Start");
     Serial.print("Searching for word: ");
     Serial.println(steps[currentStep].word);
-    expectedUID = searchLetterInEEPROM(steps[currentStep].word[currentLetterIndex]);
+    expectedUID = searchInEEPROM(steps[currentStep].word[currentLetterIndex]);
 }
 
 void loop() {
@@ -118,29 +128,36 @@ void loop() {
 
 
 
-      if (receivedLetter.charAt(0) == targetWord[currentLetterIndex]) {
-        #ifdef DEBUG     
-           Serial.println("✅ Верная буква!");
-        #endif
-        currentLetterClock++;
-        telemetry[0] = 15+currentLetterClock*2;
-        telemetry[1] = 1122;
+if (expectedUID == receivedUID) {
 
-        if (currentLetterClock == 10) {
-          currentLetterClock = 0;
-          currentLetterIndex++;
-        }
-        if (currentLetterIndex >= strlen(targetWord)) {
-          Serial.println("🎉 Задание выполнено!");
-          gameActive = false;
-        }
-      } else {
-        currentLetterClock = 0;
-           telemetry[0] = 1;
-        telemetry[1] = 1;
 #ifdef DEBUG
-        Serial.println("❌ Ошибка, ждём правильную букву!");
+      Serial.println("✅ Correct UID detected!");
 #endif
+      currentLetterClock++;
+      telemetry[0] = 15 + currentLetterClock * 2;
+      telemetry[1] = 1400;
+
+      if (currentLetterClock == 10) {
+        currentLetterClock = 0;
+        currentLetterIndex++;
+        waitingForWordwite = true;
+      }
+
+      if (steps[currentStep].word[currentLetterIndex] == '\0' && waitingForUID == false) {  // Проверка конца слова
+        Serial.println("✅ Word completed!");
+   
+        telemetry[0] = 55;
+        telemetry[1] = 2100;
+
+        steps[currentStep].procedure();  // Выполняем процедуру
+        waitingForUID = true;            // Ждём новый UID
+        waitingForWord = false;
+
+      } else {
+        if (waitingForWordwite == true) {
+          waitingForWord = true;  // Переход к следующей букве
+          waitingForWordwite = false;
+        }
       }
   //  }
 
@@ -150,6 +167,7 @@ void loop() {
      radio.flush_rx();
   }
 
+}
 }
 
 // Функция для поиска UID в памяти 24C64 и возврата соответствующей буквы
@@ -187,19 +205,7 @@ String searchInEEPROM(const char* uid) {
 }
 
 
-
-// Функция запуска игры по внешнему событию
-void startNewGame(int wordIndex) {
-  if (wordIndex < 0 || wordIndex >= wordCount) return;
-
-  strcpy(targetWord, words[wordIndex]);  // Выбираем слово
-  currentLetterIndex = 0;                // Сбрасываем индекс
-  gameActive = true;
-
-  Serial.print("🎯 Загадано слово: ");
-  Serial.println(targetWord);
-}
-
+ 
 
 void radioSetup() {                      // настройка радио
   radio.begin();                         // активировать модуль
@@ -220,11 +226,44 @@ void radioSetup() {                      // настройка радио
 
 
 
+// Функция для поиска UID в памяти 24C64 и возврата соответствующей буквы
+String searchInEEPROM(char letter) {
+  char uidBuffer[15];
+  char letterBuffer[2];
+  int pageCount = 45;  // Количество страниц для поиска (каждая страница по 32 байта)
+#ifdef DEBUG
+  Serial.print("(letter  ");
+  Serial.println(letter);
+#endif
+  for (int page = 0; page < pageCount; page++) {
+    int baseAddr = page * 32;  // Каждый элемент UID + буква занимает 17 байт
+    // Читаем данные с EEPROM
+    Wire.beginTransmission(EEPROM_ADDR);
+    Wire.write((baseAddr >> 8) & 0xFF);  // Старший байт адреса
+    Wire.write(baseAddr & 0xFF);         // Младший байт адреса
+    Wire.endTransmission();
+    Wire.requestFrom(EEPROM_ADDR, 17);  // Запрашиваем 17 байт (UID + буква)
 
-void procedure1() {
-    Serial.println("Executing procedure 1");
+    for (int i = 0; i < 15; i++) {
+      uidBuffer[i] = Wire.read();
+    }
+
+    // Читаем букву
+    for (int i = 0; i < 2; i++) {
+      letterBuffer[i] = Wire.read();
+    }
+
+    if (letterBuffer[0] == letter) {
+#ifdef DEBUG
+      Serial.print("(letterBuffer[0]  ");
+      Serial.println(letterBuffer[0]);
+      Serial.print("uidBuffer  ");
+      Serial.println(uidBuffer);
+#endif
+      return String(uidBuffer);
+    }
+  }
+
+  return "";  // Если не нашли совпадение
 }
 
-void procedure2() {
-    Serial.println("Executing procedure 2");
-}
