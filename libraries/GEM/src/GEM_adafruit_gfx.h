@@ -14,7 +14,7 @@
   For documentation visit:
   https://github.com/Spirik/GEM
 
-  Copyright (c) 2018-2024 Alexander 'Spirik' Spiridonov
+  Copyright (c) 2018-2025 Alexander 'Spirik' Spiridonov
 
   This file is part of GEM library.
 
@@ -187,6 +187,7 @@ class GEM_adafruit_gfx {
     GEM_VIRTUAL void printMenuItemFull(const char* str, int offset = 0);
     GEM_VIRTUAL byte getMenuItemInsetOffset(bool forSprite = false);
     GEM_VIRTUAL byte getCurrentItemTopOffset(bool withInsetOffset = true, bool forSprite = false);
+    GEM_VIRTUAL byte calculateSpriteOverlap(const Splash sprite[]);
     GEM_VIRTUAL void printMenuItem(GEMItem* menuItemTmp, byte yText, byte yDraw, uint16_t color);
     GEM_VIRTUAL void printMenuItems();
     GEM_VIRTUAL void drawMenuPointer(bool clear = false);
@@ -226,6 +227,7 @@ class GEM_adafruit_gfx {
     GEM_VIRTUAL void drawEditValueSelect();
     GEM_VIRTUAL void saveEditValue();
     GEM_VIRTUAL void cancelEditValue();
+    GEM_VIRTUAL void resetEditValueState();
     GEM_VIRTUAL void exitEditValue(bool redrawMenu = true);
     char* trimString(char* str);
 

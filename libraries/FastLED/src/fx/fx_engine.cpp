@@ -3,13 +3,9 @@
 
 namespace fl {
 
-
-FxEngine::FxEngine(uint16_t numLeds, bool interpolate):
-      mTimeFunction(0), 
-      mCompositor(numLeds), 
-      mCurrId(0),
-      mInterpolate(interpolate) {
-}
+FxEngine::FxEngine(uint16_t numLeds, bool interpolate)
+    : mTimeFunction(0), mCompositor(numLeds), mCurrId(0),
+      mInterpolate(interpolate) {}
 
 FxEngine::~FxEngine() {}
 
@@ -18,7 +14,9 @@ int FxEngine::addFx(FxPtr effect) {
     if (mInterpolate && effect->hasFixedFrameRate(&fps)) {
         // Wrap the effect in a VideoFxWrapper so that we can get
         // interpolation.
-        effect = VideoFxWrapperPtr::New(effect);
+        VideoFxWrapperPtr vid_fx = VideoFxWrapperPtr::New(effect);
+        vid_fx->setFade(0, 0); // No fade for interpolated effects
+        effect = vid_fx;
     }
     bool auto_set = mEffects.empty();
     bool ok = mEffects.insert(mCounter, effect).first;
@@ -55,20 +53,20 @@ FxPtr FxEngine::removeFx(int index) {
     if (!mEffects.has(index)) {
         return FxPtr();
     }
-    
+
     FxPtr removedFx;
     bool ok = mEffects.get(index, &removedFx);
     if (!ok) {
         return FxPtr();
     }
-    
+
     if (mCurrId == index) {
         // If we're removing the current effect, switch to the next one
         mEffects.next(mCurrId, &mCurrId, true);
         mDurationSet = true;
         mDuration = 0; // Instant transition
     }
-    
+
     return removedFx;
 }
 
@@ -104,4 +102,4 @@ bool FxEngine::draw(uint32_t now, CRGB *finalBuffer) {
     return true;
 }
 
-}  // namespace fl
+} // namespace fl

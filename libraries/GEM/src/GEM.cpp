@@ -14,7 +14,7 @@
   For documentation visit:
   https://github.com/Spirik/GEM
   
-  Copyright (c) 2018-2024 Alexander 'Spirik' Spiridonov
+  Copyright (c) 2018-2025 Alexander 'Spirik' Spiridonov
 
   This file is part of GEM library.
 
@@ -318,6 +318,7 @@ void GEM::printMenuItems() {
   GEMItem* menuItemTmp = _menuPageCurrent->getMenuItem(currentPageScreenNum * menuItemsPerScreen);
   byte y = getCurrentAppearance()->menuPageScreenTopOffset;
   byte i = 0;
+  char valueStringTmp[GEM_STR_LEN];
   while (menuItemTmp != nullptr && i < menuItemsPerScreen) {
     _glcd.setY(y + getMenuItemInsetOffset());
     byte yDraw = y + getMenuItemInsetOffset(true);
@@ -336,12 +337,12 @@ void GEM::printMenuItems() {
           _glcd.setX(menuValuesLeftOffset);
           switch (menuItemTmp->linkedType) {
             case GEM_VAL_INTEGER:
-              itoa(*(int*)menuItemTmp->linkedVariable, _valueString, 10);
-              printMenuItemValue(_valueString);
+              itoa(*(int*)menuItemTmp->linkedVariable, valueStringTmp, 10);
+              printMenuItemValue(valueStringTmp);
               break;
             case GEM_VAL_BYTE:
-              itoa(*(byte*)menuItemTmp->linkedVariable, _valueString, 10);
-              printMenuItemValue(_valueString);
+              itoa(*(byte*)menuItemTmp->linkedVariable, valueStringTmp, 10);
+              printMenuItemValue(valueStringTmp);
               break;
             case GEM_VAL_CHAR:
               printMenuItemValue((char*)menuItemTmp->linkedVariable);
@@ -366,35 +367,35 @@ void GEM::printMenuItems() {
                 GEMSpinner* spinner = menuItemTmp->spinner;
                 switch (spinner->getType()) {
                   case GEM_VAL_BYTE:
-                    itoa(*(byte*)menuItemTmp->linkedVariable, _valueString, 10);
+                    itoa(*(byte*)menuItemTmp->linkedVariable, valueStringTmp, 10);
                     break;
                   case GEM_VAL_INTEGER:
-                    itoa(*(int*)menuItemTmp->linkedVariable, _valueString, 10);
+                    itoa(*(int*)menuItemTmp->linkedVariable, valueStringTmp, 10);
                     break;
                   #ifdef GEM_SUPPORT_FLOAT_EDIT
                   case GEM_VAL_FLOAT:
-                    dtostrf(*(float*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
+                    dtostrf(*(float*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, valueStringTmp);
                     break;
                   case GEM_VAL_DOUBLE:
-                    dtostrf(*(double*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
+                    dtostrf(*(double*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, valueStringTmp);
                     break;
                   #endif
                 }
-                printMenuItemValue(_valueString);
+                printMenuItemValue(valueStringTmp);
                 _glcd.drawSprite(_glcd.xdim-7, yDraw, GEM_SPR_SELECT_ARROWS, GLCD_MODE_NORMAL);
               }
               break;
             #endif
             #ifdef GEM_SUPPORT_FLOAT_EDIT
             case GEM_VAL_FLOAT:
-              // sprintf(_valueString,"%.6f", *(float*)menuItemTmp->linkedVariable); // May work for non-AVR boards
-              dtostrf(*(float*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
-              printMenuItemValue(_valueString);
+              // sprintf(valueStringTmp,"%.6f", *(float*)menuItemTmp->linkedVariable); // May work for non-AVR boards
+              dtostrf(*(float*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, valueStringTmp);
+              printMenuItemValue(valueStringTmp);
               break;
             case GEM_VAL_DOUBLE:
-              // sprintf(_valueString,"%.6f", *(double*)menuItemTmp->linkedVariable); // May work for non-AVR boards
-              dtostrf(*(double*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
-              printMenuItemValue(_valueString);
+              // sprintf(valueStringTmp,"%.6f", *(double*)menuItemTmp->linkedVariable); // May work for non-AVR boards
+              dtostrf(*(double*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, valueStringTmp);
+              printMenuItemValue(valueStringTmp);
               break;
             #endif
           }
@@ -423,12 +424,16 @@ void GEM::printMenuItems() {
         }
         _glcd.drawSprite(5, yDraw, GEM_SPR_ARROW_BTN, GLCD_MODE_NORMAL);
         break;
+      case GEM_ITEM_LABEL:
+        _glcd.setX(5);
+        printMenuItemFull(menuItemTmp->title);
+        break;
     }
     menuItemTmp = menuItemTmp->getMenuItemNext();
     y += getCurrentAppearance()->menuItemHeight;
     i++;
   }
-  memset(_valueString, '\0', GEM_STR_LEN - 1);
+  memset(valueStringTmp, '\0', GEM_STR_LEN - 1);
 }
 
 void GEM::drawMenuPointer() {
@@ -438,7 +443,7 @@ void GEM::drawMenuPointer() {
     byte menuItemHeight = getCurrentAppearance()->menuItemHeight;
     if (getCurrentAppearance()->menuPointerType == GEM_POINTER_DASH) {
       _glcd.eraseBox(0, getCurrentAppearance()->menuPageScreenTopOffset, 1, _glcd.ydim-1);
-      if (menuItemTmp->readonly) {
+      if (menuItemTmp->readonly || menuItemTmp->type == GEM_ITEM_LABEL) {
         for (byte i = 0; i < (menuItemHeight - 1) / 2; i++) {
           _glcd.drawPixel(0, pointerPosition + i * 2, GLCD_MODE_NORMAL);
           _glcd.drawPixel(1, pointerPosition + i * 2 + 1, GLCD_MODE_NORMAL);
@@ -450,7 +455,7 @@ void GEM::drawMenuPointer() {
       _glcd.drawMode(GLCD_MODE_XOR);
       _glcd.fillBox(0, pointerPosition-1, _glcd.xdim-3, pointerPosition + menuItemHeight - 1);
       _glcd.drawMode(GLCD_MODE_NORMAL);
-      if (menuItemTmp->readonly) {
+      if (menuItemTmp->readonly || menuItemTmp->type == GEM_ITEM_LABEL) {
         for (byte i = 0; i < (menuItemHeight + 2) / 2; i++) {
           _glcd.drawPixel(0, pointerPosition + i * 2, GLCD_MODE_REVERSE);
           _glcd.drawPixel(1, pointerPosition + i * 2 - 1, GLCD_MODE_REVERSE);
@@ -609,12 +614,16 @@ void GEM::checkboxToggle() {
   bool checkboxValue = *(bool*)menuItemTmp->linkedVariable;
   *(bool*)menuItemTmp->linkedVariable = !checkboxValue;
   if (menuItemTmp->callbackAction != nullptr) {
+    resetEditValueState(); // Explicitly reset edit value state to be more predictable before user-defined callback is called
     if (menuItemTmp->callbackWithArgs) {
       menuItemTmp->callbackActionArg(menuItemTmp->callbackData);
     } else {
       menuItemTmp->callbackAction();
     }
-    exitEditValue();
+    if (!_editValueMode) { // Edge case e.g. when edit mode was activated from inside callback (e.g. on another menu item)
+      drawEditValueCursor();
+      drawMenu();
+    }
   } else {
     if (!checkboxValue) {
       _glcd.drawSprite(getCurrentAppearance()->menuValuesLeftOffset, topOffset, GEM_SPR_CHECKBOX_CHECKED, GLCD_MODE_NORMAL);
@@ -836,13 +845,19 @@ void GEM::nextEditValueSelect() {
   GEMSelect* select = menuItemTmp->select;
   if (_valueSelectNum+1 < select->getLength()) {
     _valueSelectNum++;
+  } else if (select->getLoop()) {
+    _valueSelectNum = 0;
   }
   drawEditValueSelect();
 }
 
 void GEM::prevEditValueSelect() {
+  GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
+  GEMSelect* select = menuItemTmp->select;
   if (_valueSelectNum > 0) {
     _valueSelectNum--;
+  } else if (select->getLoop()) {
+    _valueSelectNum = select->getLength() - 1;
   }
   drawEditValueSelect();
 }
@@ -853,12 +868,21 @@ void GEM::nextEditValueSpinner() {
   GEMSpinner* spinner = menuItemTmp->spinner;
   if (_valueSelectNum+1 < spinner->getLength()) {
     _valueSelectNum++;
+  } else if (spinner->getLoop()) {
+    _valueSelectNum = 0;
   }
   drawEditValueSelect();
 }
 
 void GEM::prevEditValueSpinner() {
-  prevEditValueSelect();
+  GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
+  GEMSpinner* spinner = menuItemTmp->spinner;
+  if (_valueSelectNum > 0) {
+    _valueSelectNum--;
+  } else if (spinner->getLoop()) {
+    _valueSelectNum = spinner->getLength() - 1;
+  }
+  drawEditValueSelect();
 }
 #endif
 
@@ -941,23 +965,33 @@ void GEM::saveEditValue() {
     #endif
   }
   if (menuItemTmp->callbackAction != nullptr) {
+    resetEditValueState(); // Explicitly reset edit value state to be more predictable before user-defined callback is called
     if (menuItemTmp->callbackWithArgs) {
       menuItemTmp->callbackActionArg(menuItemTmp->callbackData);
     } else {
       menuItemTmp->callbackAction();
     }
+    if (!_editValueMode) { // Edge case e.g. when edit mode was activated from inside callback (e.g. on another menu item)
+      drawEditValueCursor();
+      drawMenu();
+    }
+  } else {
+    exitEditValue();
   }
-  exitEditValue();
 }
 
 void GEM::cancelEditValue() {
   exitEditValue();
 }
 
-void GEM::exitEditValue() {
+void GEM::resetEditValueState() {
   memset(_valueString, '\0', GEM_STR_LEN - 1);
   _valueSelectNum = -1;
   _editValueMode = false;
+}
+
+void GEM::exitEditValue() {
+  resetEditValueState();
   drawEditValueCursor();
   drawMenu();
 }
@@ -1029,7 +1063,11 @@ void GEM::dispatchKeyPress() {
             prevEditValueSelect();
           #ifdef GEM_SUPPORT_SPINNER
           } else if (_editValueType == GEM_VAL_SPINNER) {
-            prevEditValueSpinner();
+            if (_invertKeysDuringEdit) {
+              prevEditValueSpinner();
+            } else {
+              nextEditValueSpinner();
+            }
           #endif
           } else if (_invertKeysDuringEdit) {
             prevEditValueDigit();
@@ -1047,7 +1085,11 @@ void GEM::dispatchKeyPress() {
             nextEditValueSelect();
           #ifdef GEM_SUPPORT_SPINNER
           } else if (_editValueType == GEM_VAL_SPINNER) {
-            nextEditValueSpinner();
+            if (_invertKeysDuringEdit) {
+              nextEditValueSpinner();
+            } else {
+              prevEditValueSpinner();
+            }
           #endif
           } else if (_invertKeysDuringEdit) {
             nextEditValueDigit();

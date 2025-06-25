@@ -1,10 +1,11 @@
+#pragma once
+
 /// @file fastspi_types.h
 /// Data types and constants used by SPI interfaces
 
 #ifndef __INC_FASTSPI_TYPES_H
 #define __INC_FASTSPI_TYPES_H
 
-#include "FastLED.h"
 #include "fl/force_inline.h"
 #include "fl/namespace.h"
 #include "fl/unused.h"

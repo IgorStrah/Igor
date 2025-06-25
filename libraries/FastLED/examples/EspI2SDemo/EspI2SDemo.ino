@@ -1,5 +1,11 @@
-/// THIS IS A PLACEHOLDER FOR THE ESP32 I2S DEMO
+// Simple test for the I2S on the ESP32dev board.
+// IMPORTANT:
+//   This is using examples is built on esp-idf 4.x. This existed prior to Arduino Core 3.0.0.
+//   To use this example, you MUST downgrade to Arduino Core < 3.0.0
+//   or it won't work on Arduino.
 
+
+#define FASTLED_ESP32_I2S
 #include <FastLED.h>
 
 // How many leds in your strip?
@@ -29,4 +35,12 @@ void loop() {
   leds[0] = CRGB::Black;
   FastLED.show();
   delay(500);
+
+  // This is a no-op but tests that we have access to gCntBuffer, part of the
+  // i2s api. You can delete this in your own sketch. It's only here for testing
+  // purposes.
+  if (false) {
+    int value = gCntBuffer;
+    value++;
+  }
 }

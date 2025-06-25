@@ -1,14 +1,15 @@
 
 
-
 #include <stdint.h>
 
+#define FASTLED_INTERNAL
+
 #include "FastLED.h"
+#include "fl/ptr.h"
+#include "fl/xymap.h"
 #include "fx/fx2d.h"
 #include "lib8tion/random8.h"
 #include "noise.h"
-#include "fl/ptr.h"
-#include "fl/xymap.h"
 
 #include "noisepalette.h"
 
@@ -30,8 +31,8 @@ NoisePalette::NoisePalette(XYMap xyMap, float fps)
 
     setPalettePreset(0);
 
-    // Allocate memory for the noise array using scoped_ptr
-    noise = scoped_ptr<uint8_t>(new uint8_t[width * height]);
+    // Allocate memory for the noise array using vector
+    noise.resize(width * height);
 }
 
 void NoisePalette::setPalettePreset(int paletteIndex) {
@@ -99,6 +100,8 @@ void NoisePalette::setPalettePreset(int paletteIndex) {
         scale = 20;
         colorLoop = 1;
         break;
+    default:
+        break;
     }
 }
 
@@ -111,8 +114,8 @@ void NoisePalette::mapNoiseToLEDsUsingPalette(CRGB *leds) {
             // array for our brightness, and the flipped value from (j,i)
             // for our pixel's index into the color palette.
 
-            uint8_t index = noise.get()[i * height + j];
-            uint8_t bri = noise.get()[j * width + i];
+            uint8_t index = noise[i * height + j];
+            uint8_t bri = noise[j * width + i];
 
             // if this palette is a 'loop', add a slowly-changing base value
             if (colorLoop) {
@@ -160,13 +163,13 @@ void NoisePalette::fillnoise8() {
             data = qadd8(data, scale8(data, 39));
 
             if (dataSmoothing) {
-                uint8_t olddata = noise.get()[i * height + j];
+                uint8_t olddata = noise[i * height + j];
                 uint8_t newdata = scale8(olddata, dataSmoothing) +
                                   scale8(data, 256 - dataSmoothing);
                 data = newdata;
             }
 
-            noise.get()[i * height + j] = data;
+            noise[i * height + j] = data;
         }
     }
 
@@ -189,8 +192,4 @@ uint8_t NoisePalette::changeToRandomPalette() {
     }
 }
 
-
-
-
-
-}  // namespace fl
+} // namespace fl

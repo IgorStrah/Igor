@@ -16,7 +16,7 @@
   For documentation visit:
   https://github.com/Spirik/GEM
 
-  Copyright (c) 2018-2024 Alexander 'Spirik' Spiridonov
+  Copyright (c) 2018-2025 Alexander 'Spirik' Spiridonov
 
   This file is part of GEM library.
 
@@ -46,6 +46,7 @@
 #define GEM_ITEM_LINK 1    // Menu item represents link to another menu page
 #define GEM_ITEM_BACK 2    // Menu item represents Back button (that links to parent level menu page)
 #define GEM_ITEM_BUTTON 3  // Menu item represents button (that leads to execution of user-defined routine in its own context)
+#define GEM_ITEM_LABEL 4   // Menu item represents non-interactive label
 
 // Macro constant (alias) for readonly modifier of associated with menu item variable
 #define GEM_READONLY true
@@ -83,6 +84,10 @@ class GEMItem {
   friend class GEM_adafruit_gfx;
   friend class GEMPage;
   public:
+    /* 
+      Constructor for menu item that represents non-interactive label
+    */
+    GEMItem(const char* title_);
     /* 
       Constructors for menu item that represents option select, w/ callback (optionally w/ user-defined callback argument)
       @param 'title_' - title of the menu item displayed on the screen
@@ -343,6 +348,8 @@ class GEMItem {
     GEMCallbackData getCallbackData();                  // Get GEMCallbackData struct associated with menu item
     GEM_VIRTUAL GEMItem& setTitle(const char* title_);  // Set title of the menu item
     GEM_VIRTUAL const char* getTitle();                 // Get title of the menu item
+    byte getLinkedType();                               // Get type of linked variable (see linkedType field description below for possible values)
+    byte getType();                                     // Get type of menu item (see type field description below for possible values)
     GEMItem& setPrecision(byte prec);                   // Explicitly set precision for float or double variables as required by dtostrf() conversion,
                                                         // i.e. the number of digits after the decimal sign
     GEMItem& setAdjustedASCIIOrder(bool mode = true);   // Turn adjsuted order of characters when editing char[17] variables on (with space character followed by `a` and preceded by `) or off
@@ -356,12 +363,14 @@ class GEMItem {
     bool getHidden();                                   // Get hidden state of the menu item
     GEMItem& remove();                                  // Remove menu item from parent menu page
     GEM_VIRTUAL void* getLinkedVariablePointer();       // Get pointer to a linked variable (relevant for menu items that represent variable)
+    GEM_VIRTUAL GEMPage* getParentPage();               // Get pointer to menu page that holds this menu item
+    GEM_VIRTUAL GEMPage* getLinkedPage();               // Get pointer to menu page that menu link GEM_ITEM_LINK or back button GEM_ITEM_BACK links to
     GEM_VIRTUAL GEMItem* getMenuItemNext(bool total = false); // Get next menu item (including hidden ones if total set to true)
   protected:
     const char* title;
     void* linkedVariable = nullptr;
-    byte linkedType;
-    byte type;
+    byte linkedType;                                    // GEM_VAL_INTEGER, GEM_VAL_BYTE, GEM_VAL_CHAR, GEM_VAL_BOOL, GEM_VAL_SELECT, GEM_VAL_FLOAT, GEM_VAL_DOUBLE, GEM_VAL_SPINNER
+    byte type;                                          // GEM_ITEM_VAL, GEM_ITEM_LINK, GEM_ITEM_BACK, GEM_ITEM_BUTTON, GEM_ITEM_LABEL
     byte precision = GEM_FLOAT_PREC;
     bool adjustedAsciiOrder = false;
     bool readonly = false;

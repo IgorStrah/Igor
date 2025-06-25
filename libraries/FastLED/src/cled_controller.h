@@ -11,6 +11,7 @@
 #include "color.h"
 
 #include "fl/force_inline.h"
+#include "fl/unused.h"
 #include "pixel_controller.h"
 #include "dither_mode.h"
 #include "pixel_iterator.h"
@@ -45,6 +46,7 @@ protected:
     static CLEDController *m_pHead;  ///< pointer to the first LED controller in the linked list
     static CLEDController *m_pTail;  ///< pointer to the last LED controller in the linked list
 
+public:
 
     /// Set all the LEDs to a given color. 
     /// @param data the CRGB color to set the LEDs to
@@ -58,7 +60,6 @@ protected:
     /// @param scale the rgb scaling to apply to each led before writing it out
     virtual void show(const struct CRGB *data, int nLeds, uint8_t brightness) = 0;
 
-public:
 
     Rgbw mRgbMode = RgbwInvalid::value();
     CLEDController& setRgbw(const Rgbw& arg = RgbwDefault::value()) {
@@ -69,28 +70,19 @@ public:
     }
 
     void setEnabled(bool enabled) { m_enabled = enabled; }
+    bool getEnabled() { return m_enabled; }
 
     CLEDController();
-    #if defined(FASTLED_TESTING)
-    // Silences the warning about the destructor not being virtual during testing.
+    // If we added virtual to the AVR boards then we are going to add 600 bytes of memory to the binary
+    // flash size. This is because the virtual destructor pulls in malloc and free, which are the largest
     // Testing shows that this virtual destructor adds a 600 bytes to the binary on
     // attiny85 and about 1k for the teensy 4.X series.
     // Attiny85:
     //   With CLEDController destructor virtual: 11018 bytes to binary.
     //   Without CLEDController destructor virtual: 10666 bytes to binary.
-    // Looking at the ELF/Map file, it appears that adding a virtual destructor to this
-    // base class not only adds vtables to the subclasses, but also pulls in malloc & free,
-    // which are by far the largest functions in binary size.
-    // Since we don't control how this library is compiled, the only thing we can do is
-    // carefully enable this virtual destructor for testing only and in the future, for boards
-    // that have enough space to handle the extra binary size.
-    virtual ~CLEDController();
-    #else
-    ~CLEDController();
-    #endif
+    VIRTUAL_IF_NOT_AVR ~CLEDController();
+
     Rgbw getRgbw() const { return mRgbMode; }
-
-
 
     /// Initialize the LED controller
     virtual void init() = 0;
@@ -104,7 +96,7 @@ public:
 
     // Compatibility with the 3.8.x codebase.
     VIRTUAL_IF_NOT_AVR void showLeds(uint8_t brightness) {
-        void* data = beginShowLeds();
+        void* data = beginShowLeds(m_nLeds);
         showLedsInternal(brightness);
         endShowLeds(data);
     }
@@ -202,6 +194,12 @@ public:
     CLEDController& setScreenMap(const fl::XYMap& map) {
         // EngineEvents::onCanvasUiSet(this, map);
         fl::ScreenMap screenmap = map.toScreenMap();
+        if (screenmap.getDiameter() <= 0.0f) {
+            // screen map was not set.
+            if (map.getTotal() <= (64*64)) {
+                screenmap.setDiameter(.2); // Assume small matrix is being used.
+            }
+        }
         fl::EngineEvents::onCanvasUiSet(this, screenmap);
         return *this;
     }
@@ -219,7 +217,8 @@ public:
     /// @return the currently set dithering option (CLEDController::m_DitherMode)
     inline uint8_t getDither() { return m_DitherMode; }
 
-    virtual void* beginShowLeds() {
+    virtual void* beginShowLeds(int size) {
+        FASTLED_UNUSED(size);
         // By default, emit an integer. This integer will, by default, be passed back.
         // If you override beginShowLeds() then
         // you should also override endShowLeds() to match the return state.
@@ -236,6 +235,7 @@ public:
         void* out = reinterpret_cast<void*>(d);
         return out;
     }
+
     virtual void endShowLeds(void* data) {
         // By default recieves the integer that beginShowLeds() emitted.
         //For async controllers this should be used to signal the controller
@@ -264,7 +264,7 @@ public:
     /// @copydoc setTemperature()
     CLEDController & setTemperature(ColorTemperature temperature) { m_ColorTemperature = temperature; return *this; }
 
-    /// Get the color temperature, aka whipe point, for this controller
+    /// Get the color temperature, aka white point, for this controller
     /// @returns the current color temperature (CLEDController::m_ColorTemperature)
     CRGB getTemperature() { return m_ColorTemperature; }
 

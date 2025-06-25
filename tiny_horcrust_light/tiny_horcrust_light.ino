@@ -3,9 +3,10 @@
 #include <avr/power.h>
 #define F_CPU 8000000  //F_CPU 8000000. This is used by delay.h library
 #define DECODE_DISTANCE_WIDTH  // Universal decoder for pulse distance width protocols
-//#define DECODE_DISTANCE_WIDTH
-//#define EXCLUDE_EXOTIC_PROTOCOLS
-//#define DISABLE_PARITY_CHECKS
+#define DECODE_DISTANCE_WIDTH
+#define EXCLUDE_EXOTIC_PROTOCOLS
+#define DISABLE_PARITY_CHECKS
+
 #include <IRremote.h>
 
 int light=0;
@@ -33,10 +34,7 @@ void setup() {
  pinMode(PB3, INPUT);
   IrReceiver.begin(PB4,ENABLE_LED_FEEDBACK);
     delay(100);  // Delay for 1 second
-
-
-strip.send(mBlue);
-  delay(1000);
+strip.send(mRed);
   
   
 }
@@ -47,21 +45,21 @@ void loop() {
 
   lightread = map(analogRead(PB3),0,1024,0,255);
 
-  /*
-  if ((lightread>10)&&(lightread<50))
-  {strip.sendRGB(100,0,0);}
-
-  else  if ((lightread>50)&&(lightread<100))
-  {strip.sendRGB(0,100,0);}
- 
-  else if  ((lightread>100)&&(lightread<230))
-  {strip.sendRGB(0,0,100);}
-
-else if  ((lightread>230))
-  {strip.sendRGB(100,100,100);}
   
-  delay(200);
-*/
+//   if ((lightread>10)&&(lightread<150))
+//   {strip.sendRGB(100,0,0);}
+
+//   else  if ((lightread>150)&&(lightread<200))
+//   {strip.sendRGB(0,100,0);}
+ 
+//   else if  ((lightread>230)&&(lightread<240))
+//   {strip.sendRGB(0,0,100);}
+
+// else if  ((lightread>240))
+//   {strip.sendRGB(100,100,100);}
+  
+//   delay(200);
+
 
     if (millis() - heartbeatMillis >= 30000) {
       //restart this TIMER
@@ -85,23 +83,23 @@ else if  ((lightread>230))
     }
 
     if ((newCode == 1111000001) || (newCode == 16724175)) {
-       if  (lightread>230)
+       if  (lightread>220)
        {
 light++;
    heartbeatMillis = millis();
 
-strip.send(mRed);
+strip.send(mGreen);
 delay(300);
-strip.send(mBlue);
+strip.send(mRed);
   delay(300);
 
     }
     else
     {
       
-strip.send(mWhite);
-delay(300);
 strip.send(mBlue);
+delay(300);
+strip.send(mRed);
   delay(300);
     }
     }

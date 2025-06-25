@@ -1,7 +1,7 @@
 
 // g++ --std=c++11 test.cpp
 
-#include "test.h"
+#include <random>
 
 #include "test.h"
 #include "fl/vector.h"
@@ -203,6 +203,40 @@ TEST_CASE("fl::FixedVector construction and destruction") {
         }
         CHECK(live_object_count == 0);
     }
+
+    SUBCASE("Stress test clear, insert and remove") {
+
+        fl::vector_inlined<TestObject, 20> vec;
+        size_t checked_size = 0;
+        for (int i = 0; i < 1000; ++i) {
+            int random_value = rand() % 4;
+
+            switch (random_value) {
+                case 0:
+                    if (!vec.full()) {
+                        vec.push_back(TestObject(i));
+                        ++checked_size;
+                    } else {
+                        REQUIRE_EQ(20, vec.size());
+                    }
+                    break;
+                case 1:
+                    if (!vec.empty()) {
+                        vec.pop_back();
+                        --checked_size;
+                    } else {
+                        REQUIRE_EQ(0, checked_size);
+                    }
+                    break;
+                case 2:
+                    vec.clear();
+                    checked_size = 0;
+                    REQUIRE_EQ(0, vec.size());
+                    break;
+            }
+
+        }
+    }
 }
 
 TEST_CASE("Fixed vector advanced") {
@@ -374,5 +408,17 @@ TEST_CASE("SortedVector") {
         CHECK(!ok);  // Should return false
         CHECK(vec.size() == 0);  // Should still be empty
         CHECK(vec.empty());
+    }
+}
+
+TEST_CASE("HeapVector") {
+    SUBCASE("resize") {
+        HeapVector<int> vec;
+        vec.resize(5);
+        CHECK(vec.size() == 5);
+        CHECK(vec.capacity() >= 5);
+        for (int i = 0; i < 5; ++i) {
+            CHECK_EQ(0, vec[i]);
+        }
     }
 }

@@ -1,9 +1,16 @@
+#pragma once
+
 #ifndef __INC_LED_SYSDEFS_H
 #define __INC_LED_SYSDEFS_H
 
 #include "FastLED.h"
 
 #include "fastled_config.h"
+
+// Arduino.h needed for convenience functions digitalPinToPort/BitMask/portOutputRegister and the pinMode methods.
+#if defined(ARDUINO)
+#include <Arduino.h>  // ok include
+#endif
 
 /// @file led_sysdefs.h
 /// Determines which platform system definitions to include
@@ -48,6 +55,8 @@
 #include "platforms/apollo3/led_sysdefs_apollo3.h"
 #elif defined(ARDUINO_ARCH_RENESAS) || defined(ARDUINO_ARCH_RENESAS_UNO) || defined(ARDUINO_ARCH_RENESAS_PORTENTA)
 #include "platforms/arm/renesas/led_sysdef_arm_renesas.h"
+#elif defined(ARDUINO_GIGA)|| defined(ARDUINO_GIGA_M7)
+#include "platforms/arm/giga/led_sysdef_arm_giga.h"
 #elif defined(__x86_64__) || defined(FASTLED_STUB_IMPL) || defined(__APPLE__) || defined(__linux__) || defined(__unix__) || defined(__EMSCRIPTEN__)
 // Not on a microcontroller
 //#    ifdef FASTLED_HAS_PRAGMA_MESSAGE
@@ -72,11 +81,6 @@
 #endif
 
 #include "fl/namespace.h"
-
-// Arduino.h needed for convenience functions digitalPinToPort/BitMask/portOutputRegister and the pinMode methods.
-#if defined(ARDUINO)
-#include <Arduino.h>  // ok include
-#endif
 
 /// Clock cycles per microsecond. 
 /// Calculated using the F_CPU preprocessor define

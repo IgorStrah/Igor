@@ -4,11 +4,12 @@
 #include <string.h>
 
 #include "crgb.h"
+#include "fl/clamp.h"
 #include "fl/force_inline.h"
 #include "fl/lut.h"
+#include "fl/namespace.h"
 #include "fl/ptr.h"
 #include "fl/xmap.h" // Include xmap.h for LUT16
-#include "fl/namespace.h"
 
 namespace fl {
 class ScreenMap;
@@ -33,8 +34,12 @@ FASTLED_FORCE_INLINE uint16_t xy_line_by_line(uint16_t x, uint16_t y,
 typedef uint16_t (*XYFunction)(uint16_t x, uint16_t y, uint16_t width,
                                uint16_t height);
 
-// XYMap holds either a function or a look up table to map x, y coordinates to a
-// 1D index.
+// Maps x,y -> led index
+//
+// The common output led matrix you can buy on amazon is in a serpentine layout.
+//
+// XYMap allows you do to do graphic calculations on an LED layout as if it were
+// a grid.
 class XYMap {
   public:
     enum XyMapType { kSerpentine = 0, kLineByLine, kFunction, kLookUpTable };
@@ -50,12 +55,20 @@ class XYMap {
                                           const uint16_t *lookUpTable,
                                           uint16_t offset = 0);
 
+    static XYMap constructSerpentine(uint16_t width, uint16_t height,
+                                     uint16_t offset = 0);
+
+    static XYMap identity(uint16_t width, uint16_t height) {
+        return constructRectangularGrid(width, height);
+    }
+
     // is_serpentine is true by default. You probably want this unless you are
     // using a different layout
     XYMap(uint16_t width, uint16_t height, bool is_serpentine = true,
           uint16_t offset = 0);
 
     XYMap(const XYMap &other) = default;
+    XYMap &operator=(const XYMap &other) = default;
 
     fl::ScreenMap toScreenMap() const;
 
@@ -69,7 +82,32 @@ class XYMap {
         return mapToIndex(x, y);
     }
 
-    uint16_t mapToIndex(uint16_t x, uint16_t y) const;
+    uint16_t mapToIndex(const uint16_t &x, const uint16_t &y) const;
+
+    template <typename IntType,
+              typename = fl::enable_if_t<!fl::is_integral<IntType>::value>>
+    uint16_t mapToIndex(IntType x, IntType y) const {
+        x = fl::clamp<int>(x, 0, width - 1);
+        y = fl::clamp<int>(y, 0, height - 1);
+        return mapToIndex((uint16_t)x, (uint16_t)y);
+    }
+
+    bool has(uint16_t x, uint16_t y) const {
+        return (x < width) && (y < height);
+    }
+
+    bool has(int x, int y) const {
+        return (x >= 0) && (y >= 0) && has((uint16_t)x, (uint16_t)y);
+    }
+
+    bool isSerpentine() const { return type == kSerpentine; }
+    bool isLineByLine() const { return type == kLineByLine; }
+    bool isFunction() const { return type == kFunction; }
+    bool isLUT() const { return type == kLookUpTable; }
+    bool isRectangularGrid() const { return type == kLineByLine; }
+    bool isSerpentineOrLineByLine() const {
+        return type == kSerpentine || type == kLineByLine;
+    }
 
     uint16_t getWidth() const;
     uint16_t getHeight() const;

@@ -101,7 +101,7 @@
     _FL_DEFPIN( 4, 42, 1); // D4  is P1.10 -- PIN_LED2 (blue)
     _FL_DEFPIN( 5, 40, 1); // D5  is P1.08 -- SPI/SS
     _FL_DEFPIN( 6,  7, 0); // D6  is P0.07
-    _FL_DEFPIN( 7, 34, 1); // D7  is P1.02 -- PIN_DFU (Button)
+    _FL_DEFPIN( 7, 34, 1); // D7  is P1.02 -- PIN_DFU (UIButton)
     
     // Arduino pins 8..15
     _FL_DEFPIN( 8, 16, 0); // D8  is P0.16 -- PIN_NEOPIXEL
@@ -156,7 +156,7 @@
     _FL_DEFPIN( 4, 42, 1); // D4  is P1.10 -- PIN_LED2 (blue)
     _FL_DEFPIN( 5, 40, 1); // D5  is P1.08 -- SPI/SS
     _FL_DEFPIN( 6,  7, 0); // D6  is P0.07
-    _FL_DEFPIN( 7, 34, 1); // D7  is P1.02 -- PIN_DFU (Button)
+    _FL_DEFPIN( 7, 34, 1); // D7  is P1.02 -- PIN_DFU (UIButton)
     
     // Arduino pins 8..15
     _FL_DEFPIN( 8, 16, 0); // D8  is P0.16 -- PIN_NEOPIXEL
@@ -416,7 +416,7 @@
     _FL_DEFPIN( 1, 24, 0); // D1  is P0.24 (UART TX)
     _FL_DEFPIN( 2,  2, 1); // D2  is P1.02
     _FL_DEFPIN( 3,  6, 0); // D3  is P0.06 LED
-    _FL_DEFPIN( 4, 29, 0); // D4  is P0.29 Button
+    _FL_DEFPIN( 4, 29, 0); // D4  is P0.29 UIButton
     _FL_DEFPIN( 5, 27, 0); // D5  is P0.27
     _FL_DEFPIN( 6,  9, 1); // D6  is P1.09 (DotStar Clock)
     _FL_DEFPIN( 7,  8, 1); // D7  is P1.08
@@ -472,7 +472,7 @@
     _FL_DEFPIN( 3, 23, 0); // D3  is P0.23 (SPI MOSI)
     _FL_DEFPIN( 4, 24, 0); // D4  is P0.24 (SPI MISO, also A3)
     _FL_DEFPIN( 5, 25, 0); // D5  is P0.25 (SPI SCK )
-    _FL_DEFPIN( 6, 16, 0); // D6  is P0.16 (Button)
+    _FL_DEFPIN( 6, 16, 0); // D6  is P0.16 (UIButton)
     _FL_DEFPIN( 7, 19, 0); // D7  is P0.19 (R)
     _FL_DEFPIN( 8, 18, 0); // D8  is P0.18 (G)
     _FL_DEFPIN( 9, 17, 0); // D9  is P0.17 (B)
@@ -748,7 +748,7 @@
     _FL_DEFPIN( 4, 42, 1); // D4  is P1.10 -- PIN_LED2 (blue)
     _FL_DEFPIN( 5, 40, 1); // D5  is P1.08 -- SPI/SS
     _FL_DEFPIN( 6,  7, 0); // D6  is P0.07
-    _FL_DEFPIN( 7, 34, 1); // D7  is P1.02 -- PIN_DFU (Button)
+    _FL_DEFPIN( 7, 34, 1); // D7  is P1.02 -- PIN_DFU (UIButton)
     
     // Arduino pins 8..15
     _FL_DEFPIN( 8, 16, 0); // D8  is P0.16 -- PIN_NEOPIXEL
@@ -793,7 +793,7 @@
     #endif
 
     #if !defined(FASTLED_NRF52_SUPPRESS_UNTESTED_BOARD_WARNING)
-        #warning "ARDUINO_Seeed_XIAO_nRF52840 board is an untested board -- test and let use know your results via https://github.com/FastLED/FastLED/issues"
+        #warning "ARDUINO_Seeed_XIAO_nRF52840 board is semi tested, pins 0-15 have been provided by the community -- if everything works well let us know at https://github.com/FastLED/FastLED/issues so we can suppress this warning"
     #endif
 
     // Arduino pins 0..7
@@ -803,13 +803,13 @@
     _FL_DEFPIN( 3, 29, 0); // D3  is P0.29 
     _FL_DEFPIN( 4, 4, 0); // D4  is P0.4
     _FL_DEFPIN( 5, 5, 0); // D5  is P0.5
-    _FL_DEFPIN( 6, 11, 1); // D6  is P1.11
-    _FL_DEFPIN( 7, 12, 1); // D7  is P1.12
+    _FL_DEFPIN( 6, 43, 1); // D6  is P1.11    <-- 11 to 43
+    _FL_DEFPIN( 7, 44, 1); // D7  is P1.12    <-- 12 to 44
     
     // Arduino pins 8..15
-    _FL_DEFPIN( 8, 13, 1); // D8  is P1.13
-    _FL_DEFPIN( 9, 14, 1); // D9  is P1.14
-    _FL_DEFPIN(10, 15, 1); // D10 is P1.15
+    _FL_DEFPIN( 8, 45, 1); // D8  is P1.13    <-- 13 to 45
+    _FL_DEFPIN( 9, 46, 1); // D9  is P1.14    <-- 14 to 46
+    _FL_DEFPIN(10, 47, 1); // D10 is P1.15    <-- 15 to 47
 
     _FL_DEF_INVALID_PIN(11, 26, 0); // D11 is P0.26 (LED RED)
     _FL_DEF_INVALID_PIN(12, 6, 0); // D12 is P0.06 (LED BLUE)
@@ -931,7 +931,7 @@
     _FL_DEFPIN( 4, 42, 1); // D4  is P1.10 -- PIN_LED2 (blue)
     _FL_DEFPIN( 5, 40, 1); // D5  is P1.08 -- SPI/SS
     _FL_DEFPIN( 6,  7, 0); // D6  is P0.07
-    _FL_DEFPIN( 7, 34, 1); // D7  is P1.02 -- PIN_DFU (Button)
+    _FL_DEFPIN( 7, 34, 1); // D7  is P1.02 -- PIN_DFU (UIButton)
     
     // Arduino pins 8..15
     _FL_DEFPIN( 8, 16, 0); // D8  is P0.16 -- PIN_NEOPIXEL

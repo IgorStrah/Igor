@@ -3,10 +3,9 @@ import os
 import shutil
 import subprocess
 import warnings
-from os import stat
 from pathlib import Path
 
-from ci.boards import Board
+from ci.boards import Board  # type: ignore
 from ci.locked_print import locked_print
 
 
@@ -77,7 +76,11 @@ def remove_readonly(func, path, _):
     if os.name == "nt":
         os.system(f"attrib -r {path}")
     else:
-        os.chmod(path, stat.S_IWRITE)
+        try:
+            os.chmod(path, 0o777)
+        except Exception:
+            print(f"Error removing readonly attribute from {path}")
+
     func(path)
 
 
@@ -92,6 +95,10 @@ def create_build_dir(
     extra_scripts: str | None,
 ) -> tuple[bool, str]:
     """Create the build directory for the given board."""
+    # filter out "web" board because it's not a real board.
+    if board.board_name == "web":
+        locked_print(f"Skipping web target for board {board.board_name}")
+        return True, ""
     if board.defines:
         defines.extend(board.defines)
         # remove duplicates

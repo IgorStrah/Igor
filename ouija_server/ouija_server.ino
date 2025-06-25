@@ -31,7 +31,7 @@ RF24 radio(9, 8);  // "создать" модуль на пинах 9 и 10 дл
 //--------------------- ПЕРЕМЕННЫЕ ----------------------
 byte pipeNo;
 byte address[][6] = { "1Node", "2Node", "3Node", "4Node", "5Node", "6Node" };  // возможные номера труб
-
+String serialInput = "";
 struct Step {
   const char* word;
   void (*procedure)();
@@ -44,7 +44,7 @@ int currentLetterIndex = 0, currentLetterClock = 0;
 bool gameActive = false;
 unsigned long lastReadTime = 0;
 unsigned long lightflash = 0;
-int lightflashclock, brige;
+int lightflashclock;
 byte tempclocll;
 bool CnockDor;
 int telemetry[2];                            // массив данных телеметрии (то что шлём на передатчик)
@@ -62,7 +62,7 @@ int x;
 
 const char* expectedUIDs[] = {
   "4DCD063E",
-  "12CD063E",
+  "0289063E",
   "91CD063E",
   "53CD063E",
   "DCA8063E"
@@ -70,7 +70,7 @@ const char* expectedUIDs[] = {
 const int totalSteps = sizeof(expectedUIDs) / sizeof(expectedUIDs[0]);
 
 int currentStepFin = 0;
-char lastUID[16] = "";  // Для фильтрации повторов
+char lastUID[16] = "123123";  // Для фильтрации повторов
 
 void procedure1() {
 
@@ -101,19 +101,27 @@ void procedure4() {
 void procedure5() {
   delay(1000);
 }
-
+void procedure6() {
+  delay(1000);
+  myMP3.play(10);
+}
 
 const int stepSequence[] = { 1, 3, 5, 2, 4, 1 };  // порядок шагов
 Step steps[] = {
-  { "@clock1815%", procedure1, "3FA8063E" },
-  { "@knockdoor6%", procedure2, "7A84063E" },
+  { "@clock1815%", procedure1, "19AD063E" },
+  { "@knockdoor6%", procedure2, "3FA8063E" },
   { "@exploreshelf%", procedure3, "4DCD063E" },
-  { "@insideshelf%", procedure3, "12CD063E" },
+  { "@insideshelf%", procedure3, "0289063E" },
   { "@usekey%", procedure4, "91CD063E" },
   { "@secretknock%", procedure5, "53CD063E" },
-  { "@dolleg%", procedure5, "DCA8063E" },
+  { "@dolleg%", procedure6, "DCA8063E" },
   { "@blackmugheat%", procedure5, "4DCD063E" }
 };
+
+// Step steps[] = {
+//   { "@clock1815%", procedure1, "19AD063E" },
+
+// };
 const int stepCount = sizeof(steps) / sizeof(steps[0]);
 
 int currentStep = 0;
@@ -126,7 +134,7 @@ String expectedUID = "";
 void setup() {
   mySerial.begin(9600);
   myMP3.begin(mySerial, true);
-  myMP3.volume(30);
+  myMP3.volume(28);
   pinMode(light, OUTPUT);
   analogWrite(light, 0);
   pinMode(g_common_pin, OUTPUT);
@@ -144,6 +152,19 @@ void setup() {
 }
 
 void loop() {
+
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+
+    if (c == '\n' || c == '\r') {
+      // Конец строки — обрабатываем команду
+      handleSerialCommand(serialInput);
+      serialInput = ""; // Очистка после обработки
+    } else {
+      serialInput += c;
+    }
+  }
+
 
   if (CnockDor == 1) {
     if (analogRead(micPin) > knockThreshold) {
@@ -167,16 +188,29 @@ void loop() {
         my_mux.channel(16);
         delay(2000);
       }
+      
+//NEW!
+           currentStep++;
+      currentLetterIndex = 0;
+      waitingForUID = false;
+      waitingForWord = true;
+      telemetry[0] = 40;
+      telemetry[1] = 1000;
+
+      
+      myMP3.play(11);
       CnockDor = 0;
       knockCount = 0;
     }
 
     // Сброс по таймауту
     if (knockCount > 0 && millis() - lastKnockTime > knockTimeout) {
-      Serial.println("Время вышло. Сброс счётчика стуков.");
       knockCount = 0;
     }
   }
+
+
+
 
   if (waitingForWord) {
     Serial.print("Next letter: ");
@@ -187,33 +221,16 @@ void loop() {
 
   if (millis() - lightflash > 60) {
     lightflash = millis();
-    if (lightflashclock == 9999) {
-      analogWrite(light, brige);
-      brige--;
-    } else if (lightflashclock > 1) {
+    if (lightflashclock == 8990) { myMP3.play(8); }
 
+    if (lightflashclock == 20) { myMP3.play(9); }
+    if (lightflashclock > 1) {
       lightflashclock--;
-      if (lightflashclock==8990) { myMP3.play(8);}
-      analogWrite(light, random(240, 255));
+      analogWrite(light, random(215, 255));
     } else {
       analogWrite(light, 0);
-      myMP3.play(10);
     }
   }
-
-  // // Проверяем правильность буквы и задержку
-  // if ( millis() - lastReadTime > 15000) {
-  //   lastReadTime = millis();  // Обновляем таймер
-  // Serial.println("✅ сенд труба2 буква!");
-  // tempclocll++;
-  //  char message[32];// = "Data from server" ;
-  // sprintf(message, "Data from server %d", tempclocll);
-  // radio.stopListening();  // Останавливаем прослушивание
-  // delay(5);
-  // radio.write(&message, sizeof(message));  // Отправляем данные на трубу 2
-  // delay(5);
-  // radio.startListening();  // Возвращаемся к прослушиванию
-  // }
 
 
   if (radio.available(&pipeNo)) {  // слушаем эфир
@@ -222,9 +239,9 @@ void loop() {
     telemetry[1] = 0;
     radio.read(&receivedUID, sizeof(receivedUID));
 
-
+ 
     for (int i = 0; i < 5; i++) {
-      if (strcmp(receivedUID, expectedUIDs[i]) == 0) {
+      if (strcmp(receivedUID, expectedUIDs[i]) == 0 && waitingPentacle == false) {
         Serial.println(expectedUIDs[i]);
         myMP3.play(i + 2);
         delay(2000);  // Пауза, чтобы не проигрывать мелодию повторно сразу
@@ -239,7 +256,7 @@ void loop() {
     Serial.println(expectedUID);
 #endif
 
-    if (strcmp(receivedUID, "7A84063E") == 0) {
+    if (strcmp(receivedUID, "3FA8063E") == 0) {
       lightflashclock = 9000;
     }
     if (strcmp(receivedUID, "19AD063E") == 0) {
@@ -256,6 +273,10 @@ void loop() {
       currentLetterClock++;
       telemetry[0] = 15 + currentLetterClock * 2;
       telemetry[1] = 1400;
+
+if (strcmp(receivedUID, "04AC8F1A237380") == 0) {
+      currentLetterClock = 10;
+    }
 
       if (currentLetterClock == 10) {
         currentLetterClock = 0;
@@ -283,6 +304,7 @@ void loop() {
       Serial.print("✅ Expected UID received  ");
       Serial.println(steps[currentStep].expectedUID);
 #endif
+      myMP3.play(10);
       currentStep++;
       currentLetterIndex = 0;
       waitingForUID = false;
@@ -290,7 +312,6 @@ void loop() {
       telemetry[0] = 40;
       telemetry[1] = 1000;
       if (currentStep >= stepCount) {
-        Serial.println("🎉 All steps completed!");
         waitingPentacle = true;
         waitingForUID = false;
         waitingForWord = false;
@@ -307,35 +328,35 @@ void loop() {
     }
 
 
-
-
     if (waitingPentacle == true) {
       // Игнорировать повтор предыдущего UID
       if (strcmp(receivedUID, lastUID) == 0) {
-        return;
+        Serial.println(" lastUID = receivedUID!");
       }
-      strcpy(lastUID, receivedUID);  // обновить последний UID
-      telemetry[0] = 55;
-      telemetry[1] = 2100;
+      else {
+        strcpy(lastUID, receivedUID);  // обновить последний UID
+        telemetry[0] = 55;
+        telemetry[1] = 1100;
 
 
-      // Проверка на правильный UID
-      if (strcmp(receivedUID, expectedUIDs[stepSequence[currentStepFin] - 1]) == 0) {
-        Serial.print("Step ");
-        Serial.print(currentStepFin + 1);
+        // Проверка на правильный UID
+        if (strcmp(receivedUID, expectedUIDs[stepSequence[currentStepFin] - 1]) == 0) {
+          Serial.print("Step ");
+          Serial.print(currentStepFin + 1);
 
-        currentStepFin++;
+          currentStepFin++;
 
-        if (currentStepFin >= totalSteps) {
+          if (currentStepFin >= totalSteps) {
 
-          myMP3.loop(7);
-          delay(100);
-          myMP3.loop(7);
-          currentStepFin = 0;  // Сброс для следующей попытки
+            myMP3.loop(7);
+            delay(100);
+            myMP3.loop(7);
+            currentStepFin = 0;  // Сброс для следующей попытки
+          }
+        } else {
+
+          currentStepFin = 0;  // Сброс прогресса
         }
-      } else {
-
-        currentStepFin = 0;  // Сброс прогресса
       }
     }
 
@@ -363,7 +384,7 @@ String searchInEEPROM(char letter) {
     Wire.write((baseAddr >> 8) & 0xFF);  // Старший байт адреса
     Wire.write(baseAddr & 0xFF);         // Младший байт адреса
     Wire.endTransmission();
-    Wire.requestFrom(EEPROM_ADDR, 17);  // Запрашиваем 17 байт (UID + буква)
+    Wire.requestFrom(EEPROM_ADDR, 32);  // Запрашиваем 17 байт (UID + буква)
 
     for (int i = 0; i < 15; i++) {
       uidBuffer[i] = Wire.read();
@@ -381,6 +402,12 @@ String searchInEEPROM(char letter) {
       Serial.print("uidBuffer  ");
       Serial.println(uidBuffer);
 #endif
+      if (uidBuffer == "") {
+        Serial.print("(letterBuffer[0]  ");
+        Serial.println(letterBuffer[0]);
+        Serial.print("ERROR  ");
+        delay(10000);
+      }
       return String(uidBuffer);
     }
   }
@@ -396,7 +423,8 @@ void radioSetup() {                      // настройка радио
   radio.enableAckPayload();              // разрешить отсылку данных в ответ на входящий сигнал
   radio.setPayloadSize(32);              // размер пакета, байт
   radio.openReadingPipe(1, address[0]);  // хотим слушать трубу 0
-  radio.openWritingPipe(address[1]);     // хотим писать трубу 1
+  
+  //radio.openWritingPipe(address[1]);     // хотим писать трубу 1
   radio.setChannel(CH_NUM);              // выбираем канал (в котором нет шумов!)
   radio.setPALevel(SIG_POWER);           // уровень мощности передатчика
   radio.setDataRate(SIG_SPEED);          // скорость обмена
@@ -404,4 +432,28 @@ void radioSetup() {                      // настройка радио
   // при самой низкой скорости имеем самую высокую чувствительность и дальность!!
   radio.powerUp();         // начать работу
   radio.startListening();  // начинаем слушать эфир, мы приёмный модуль
+}
+
+
+
+void handleSerialCommand(String command) {
+  command.trim(); // Убирает лишние пробелы, \r и \n на всякий случай
+ Serial.println(command);
+  if (command == "10101") {
+    Serial.println("Door open");
+        for (int i = 0; i < 2; i++) {
+        my_mux.channel(1);
+        delay(2000);
+        my_mux.channel(16);
+        delay(2000);
+      }
+      myMP3.play(11);
+  } else if (command == "10202") {
+    Serial.println("goodbay");
+    //doActionB();
+  } 
+   else if (command == "10303") {
+    Serial.println("Fin");
+    //doActionB();
+  }
 }

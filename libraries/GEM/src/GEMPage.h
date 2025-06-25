@@ -16,7 +16,7 @@
   For documentation visit:
   https://github.com/Spirik/GEM
 
-  Copyright (c) 2018-2023 Alexander 'Spirik' Spiridonov
+  Copyright (c) 2018-2025 Alexander 'Spirik' Spiridonov
 
   This file is part of GEM library.
 
@@ -62,7 +62,7 @@ class GEMPage {
       @param 'exitAction_' - pointer to callback function executed when GEM_KEY_CANCEL is pressed while being on top level menu page
       @param 'parentMenuPage_' - reference to parent level menu page (to know where to go back to when Back button is pressed)
     */
-    GEMPage(const char* title_);
+    GEMPage(const char* title_ = "");
     GEMPage(const char* title_, void (*exitAction_)());
     GEMPage(const char* title_, GEMPage& parentMenuPage_);
     GEM_VIRTUAL GEMPage& addMenuItem(GEMItem& menuItem, byte pos = GEM_LAST_POS, bool total = GEM_ITEMS_TOTAL);  // Add menu item to menu page (optionally at specified index out of total or only visible items)
@@ -73,6 +73,8 @@ class GEMPage {
     GEM_VIRTUAL GEMItem* getMenuItem(byte index, bool total = false);       // Get pointer to menu item by index (counting hidden ones if total set to true)
     GEM_VIRTUAL GEMItem* getCurrentMenuItem();                              // Get pointer to current menu item
     GEM_VIRTUAL byte getCurrentMenuItemIndex();                             // Get index of current menu item
+    GEMPage& setCurrentMenuItemIndex(byte index);                           // Set index of current menu item
+    GEM_VIRTUAL byte getItemsCount(bool total = false);                     // Get items count of the menu page (counting hidden ones if total set to true)
   protected:
     const char* title;
     byte currentItemNum = 0;                                                // Currently selected (focused) menu item of the page

@@ -2,6 +2,7 @@
 // Устанавливаем максимальную частоту тактового сигнала
 // CLKPR = 0x80;  // Включаем изменение предделителя тактового сигнала
 // CLKPR = 0;     // Без предделителя (максимальная частота)
+#include <avr/wdt.h>
 
 const int micPin = PB3;
 const int lockPin = PB1;    // PB1 = Digital 9
@@ -24,6 +25,7 @@ unsigned long lastTapTime = 0;
 bool listening = true;
 unsigned long sound_time;
 void setup() {
+  wdt_enable(WDTO_8S);  // Если зависнет более 4 сек — перезагрузит
 
   // Устанавливаем максимальную частоту тактового сигнала
   CLKPR = 0x80;  // Включаем изменение предделителя тактового сигнала
@@ -38,7 +40,7 @@ void setup() {
 }
 
 void loop() {
-
+  wdt_reset(); 
   if (millis() - sound_time > 85000) {
     playCombination();
     sound_time = millis();

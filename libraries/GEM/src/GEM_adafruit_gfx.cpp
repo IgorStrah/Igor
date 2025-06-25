@@ -14,7 +14,7 @@
   For documentation visit:
   https://github.com/Spirik/GEM
   
-  Copyright (c) 2018-2024 Alexander 'Spirik' Spiridonov
+  Copyright (c) 2018-2025 Alexander 'Spirik' Spiridonov
 
   This file is part of GEM library.
 
@@ -285,7 +285,7 @@ GEM_adafruit_gfx& GEM_adafruit_gfx::setTextSize(uint8_t size) {
 }
 
 GEM_adafruit_gfx& GEM_adafruit_gfx::setSpriteSize(uint8_t size) {
-  _spriteSize = size > 0 ? size : 1;
+  _spriteSize = size > 1 ? 2 : 1;
   if (_splash.image == logo[0].image || _splash.image == logo[1].image) {
     _splash = logo[_spriteSize > 1 ? 1 : 0];
   }
@@ -415,7 +415,7 @@ void GEM_adafruit_gfx::drawTitleBar() {
 }
 
 void GEM_adafruit_gfx::drawSprite(int16_t x, int16_t y, const Splash sprite[], uint16_t color) {
-  byte variant = _spriteSize > 1 ? 1 : 0;
+  byte variant = _spriteSize - 1;
   _agfx.drawBitmap(x, y, sprite[variant].image, sprite[variant].width, sprite[variant].height, color);
 }
 
@@ -450,101 +450,107 @@ byte GEM_adafruit_gfx::getCurrentItemTopOffset(bool withInsetOffset, bool forSpr
   return (_menuPageCurrent->currentItemNum % getMenuItemsPerScreen()) * getCurrentAppearance()->menuItemHeight + getCurrentAppearance()->menuPageScreenTopOffset + (withInsetOffset ? getMenuItemInsetOffset(forSprite) : 0);
 }
 
+byte GEM_adafruit_gfx::calculateSpriteOverlap(const Splash sprite[]) {
+  return ((sprite[_spriteSize - 1].width - 3 * _textSize) / _menuItemFont[getMenuItemFontSize()].width * _textSize);
+}
+
 void GEM_adafruit_gfx::printMenuItem(GEMItem* menuItemTmp, byte yText, byte yDraw, uint16_t color) {
   _agfx.setTextColor(color);
+  char valueStringTmp[GEM_STR_LEN];
   switch (menuItemTmp->type) {
-      case GEM_ITEM_VAL:
-        {
-          _agfx.setCursor(5 * _textSize, yText);
-          if (menuItemTmp->readonly) {
-            printMenuItemTitle(menuItemTmp->title, -1);
-            _agfx.print("^");
-          } else {
-            printMenuItemTitle(menuItemTmp->title);
-          }
-
-          byte menuValuesLeftOffset = getCurrentAppearance()->menuValuesLeftOffset;
-          _agfx.setCursor(menuValuesLeftOffset, yText);
-          switch (menuItemTmp->linkedType) {
-            case GEM_VAL_INTEGER:
-              itoa(*(int*)menuItemTmp->linkedVariable, _valueString, 10);
-              printMenuItemValue(_valueString);
-              break;
-            case GEM_VAL_BYTE:
-              itoa(*(byte*)menuItemTmp->linkedVariable, _valueString, 10);
-              printMenuItemValue(_valueString);
-              break;
-            case GEM_VAL_CHAR:
-              printMenuItemValue((char*)menuItemTmp->linkedVariable);
-              break;
-            case GEM_VAL_BOOL:
-              if (*(bool*)menuItemTmp->linkedVariable) {
-                drawSprite(menuValuesLeftOffset, yDraw, checkboxChecked, color);
-              } else {
-                drawSprite(menuValuesLeftOffset, yDraw, checkboxUnchecked, color);
-              }
-              break;
-            case GEM_VAL_SELECT:
-              {
-                GEMSelect* select = menuItemTmp->select;
-                printMenuItemValue(select->getSelectedOptionName(menuItemTmp->linkedVariable));
-                drawSprite(_agfx.width() - 7 * _spriteSize, yDraw, selectArrows, color);
-              }
-              break;
-            #ifdef GEM_SUPPORT_SPINNER
-            case GEM_VAL_SPINNER:
-              {
-                GEMSpinner* spinner = menuItemTmp->spinner;
-                switch (spinner->getType()) {
-                  case GEM_VAL_BYTE:
-                    itoa(*(byte*)menuItemTmp->linkedVariable, _valueString, 10);
-                    break;
-                  case GEM_VAL_INTEGER:
-                    itoa(*(int*)menuItemTmp->linkedVariable, _valueString, 10);
-                    break;
-                  #ifdef GEM_SUPPORT_FLOAT_EDIT
-                  case GEM_VAL_FLOAT:
-                    dtostrf(*(float*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
-                    break;
-                  case GEM_VAL_DOUBLE:
-                    dtostrf(*(double*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
-                    break;
-                  #endif
-                }
-                printMenuItemValue(_valueString);
-                drawSprite(_agfx.width() - 7 * _spriteSize, yDraw, selectArrows, color);
-              }
-              break;
-            #endif
-            #ifdef GEM_SUPPORT_FLOAT_EDIT
-            case GEM_VAL_FLOAT:
-              // sprintf(_valueString,"%.6f", *(float*)menuItemTmp->linkedVariable); // May work for non-AVR boards
-              dtostrf(*(float*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
-              printMenuItemValue(_valueString);
-              break;
-            case GEM_VAL_DOUBLE:
-              // sprintf(_valueString,"%.6f", *(double*)menuItemTmp->linkedVariable); // May work for non-AVR boards
-              dtostrf(*(double*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, _valueString);
-              printMenuItemValue(_valueString);
-              break;
-            #endif
-          }
-          break;
-        }
-      case GEM_ITEM_LINK:
+    case GEM_ITEM_VAL:
+      {
         _agfx.setCursor(5 * _textSize, yText);
         if (menuItemTmp->readonly) {
-          printMenuItemFull(menuItemTmp->title, -1);
+          printMenuItemTitle(menuItemTmp->title, -1);
           _agfx.print("^");
         } else {
-          printMenuItemFull(menuItemTmp->title);
+          printMenuItemTitle(menuItemTmp->title);
         }
-        drawSprite(_agfx.width() - 8 * _spriteSize, yDraw, arrowRight, color);
+
+        byte menuValuesLeftOffset = getCurrentAppearance()->menuValuesLeftOffset;
+        _agfx.setCursor(menuValuesLeftOffset, yText);
+        switch (menuItemTmp->linkedType) {
+          case GEM_VAL_INTEGER:
+            itoa(*(int*)menuItemTmp->linkedVariable, valueStringTmp, 10);
+            printMenuItemValue(valueStringTmp);
+            break;
+          case GEM_VAL_BYTE:
+            itoa(*(byte*)menuItemTmp->linkedVariable, valueStringTmp, 10);
+            printMenuItemValue(valueStringTmp);
+            break;
+          case GEM_VAL_CHAR:
+            printMenuItemValue((char*)menuItemTmp->linkedVariable);
+            break;
+          case GEM_VAL_BOOL:
+            if (*(bool*)menuItemTmp->linkedVariable) {
+              drawSprite(menuValuesLeftOffset, yDraw, checkboxChecked, color);
+            } else {
+              drawSprite(menuValuesLeftOffset, yDraw, checkboxUnchecked, color);
+            }
+            break;
+          case GEM_VAL_SELECT:
+            {
+              GEMSelect* select = menuItemTmp->select;
+              printMenuItemValue(select->getSelectedOptionName(menuItemTmp->linkedVariable), -1 * calculateSpriteOverlap(selectArrows));
+              drawSprite(_agfx.width() - 7 * _spriteSize, yDraw, selectArrows, color);
+            }
+            break;
+          #ifdef GEM_SUPPORT_SPINNER
+          case GEM_VAL_SPINNER:
+            {
+              GEMSpinner* spinner = menuItemTmp->spinner;
+              switch (spinner->getType()) {
+                case GEM_VAL_BYTE:
+                  itoa(*(byte*)menuItemTmp->linkedVariable, valueStringTmp, 10);
+                  break;
+                case GEM_VAL_INTEGER:
+                  itoa(*(int*)menuItemTmp->linkedVariable, valueStringTmp, 10);
+                  break;
+                #ifdef GEM_SUPPORT_FLOAT_EDIT
+                case GEM_VAL_FLOAT:
+                  dtostrf(*(float*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, valueStringTmp);
+                  break;
+                case GEM_VAL_DOUBLE:
+                  dtostrf(*(double*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, valueStringTmp);
+                  break;
+                #endif
+              }
+              printMenuItemValue(valueStringTmp, -1 * calculateSpriteOverlap(selectArrows));
+              drawSprite(_agfx.width() - 7 * _spriteSize, yDraw, selectArrows, color);
+            }
+            break;
+          #endif
+          #ifdef GEM_SUPPORT_FLOAT_EDIT
+          case GEM_VAL_FLOAT:
+            // sprintf(valueStringTmp,"%.6f", *(float*)menuItemTmp->linkedVariable); // May work for non-AVR boards
+            dtostrf(*(float*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, valueStringTmp);
+            printMenuItemValue(valueStringTmp);
+            break;
+          case GEM_VAL_DOUBLE:
+            // sprintf(valueStringTmp,"%.6f", *(double*)menuItemTmp->linkedVariable); // May work for non-AVR boards
+            dtostrf(*(double*)menuItemTmp->linkedVariable, menuItemTmp->precision + 1, menuItemTmp->precision, valueStringTmp);
+            printMenuItemValue(valueStringTmp);
+            break;
+          #endif
+        }
         break;
-      case GEM_ITEM_BACK:
-        drawSprite(5 * _textSize + 2 * (_spriteSize > 1 ? 1 : 0), yDraw, arrowLeft, color);
-        break;
-      case GEM_ITEM_BUTTON:
+      }
+    case GEM_ITEM_LINK:
+      _agfx.setCursor(5 * _textSize, yText);
+      if (menuItemTmp->readonly) {
+        printMenuItemFull(menuItemTmp->title, -1);
+        _agfx.print("^");
+      } else {
+        printMenuItemFull(menuItemTmp->title, -1 * calculateSpriteOverlap(arrowRight));
+      }
+      drawSprite(_agfx.width() - 8 * _spriteSize, yDraw, arrowRight, color);
+      break;
+    case GEM_ITEM_BACK:
+      drawSprite(5 * _textSize + 2 * (_spriteSize > 1 ? 1 : 0), yDraw, arrowLeft, color);
+      break;
+    case GEM_ITEM_BUTTON:
+      {
         byte variant = _spriteSize > 1 ? 1 : 0;
         _agfx.setCursor((5 * _textSize + arrowBtn[variant].width + 2 * variant), yText);
         if (menuItemTmp->readonly) {
@@ -555,7 +561,13 @@ void GEM_adafruit_gfx::printMenuItem(GEMItem* menuItemTmp, byte yText, byte yDra
         }
         drawSprite(5 * _textSize + 2 * variant, yDraw, arrowBtn, color);
         break;
-    }
+      }
+    case GEM_ITEM_LABEL:
+      _agfx.setCursor(5 * _textSize, yText);
+      printMenuItemFull(menuItemTmp->title);
+      break;
+  }
+  memset(valueStringTmp, '\0', GEM_STR_LEN - 1);
   _agfx.setTextColor(_menuForegroundColor);
 }
 
@@ -575,7 +587,6 @@ void GEM_adafruit_gfx::printMenuItems() {
     y += getCurrentAppearance()->menuItemHeight;
     i++;
   }
-  memset(_valueString, '\0', GEM_STR_LEN - 1);
 }
 
 void GEM_adafruit_gfx::drawMenuPointer(bool clear) {
@@ -586,7 +597,7 @@ void GEM_adafruit_gfx::drawMenuPointer(bool clear) {
     if (getCurrentAppearance()->menuPointerType == GEM_POINTER_DASH) {
       byte menuPageScreenTopOffset = getCurrentAppearance()->menuPageScreenTopOffset;
       _agfx.fillRect(0, menuPageScreenTopOffset, 2 * _spriteSize, _agfx.height() - menuPageScreenTopOffset, _menuBackgroundColor);
-      if (menuItemTmp->readonly) {
+      if (menuItemTmp->readonly || menuItemTmp->type == GEM_ITEM_LABEL) {
         for (byte i = 0; i < (menuItemHeight - 1) / 2; i++) {
           _agfx.drawPixel(0, pointerPosition + i * 2, _menuForegroundColor);
           _agfx.drawPixel(1, pointerPosition + i * 2 + 1, _menuForegroundColor);
@@ -609,7 +620,7 @@ void GEM_adafruit_gfx::drawMenuPointer(bool clear) {
       byte yDraw = pointerPosition + getMenuItemInsetOffset(true);
       _agfx.fillRect(0, pointerPosition - 1, _agfx.width() - 2, menuItemHeight + 1, clear ? _menuBackgroundColor : _menuForegroundColor);
       printMenuItem(menuItemTmp, yText, yDraw, clear ? _menuForegroundColor : _menuBackgroundColor);
-      if (menuItemTmp->readonly) {
+      if (menuItemTmp->readonly || menuItemTmp->type == GEM_ITEM_LABEL) {
         for (byte i = 0; i < (menuItemHeight + 2) / 2; i++) {
           _agfx.drawPixel(0, pointerPosition + i * 2, _menuBackgroundColor);
           _agfx.drawPixel(1, pointerPosition + i * 2 - 1, _menuBackgroundColor);
@@ -773,12 +784,15 @@ void GEM_adafruit_gfx::checkboxToggle() {
   bool checkboxValue = *(bool*)menuItemTmp->linkedVariable;
   *(bool*)menuItemTmp->linkedVariable = !checkboxValue;
   if (menuItemTmp->callbackAction != nullptr) {
+    resetEditValueState(); // Explicitly reset edit value state to be more predictable before user-defined callback is called
     if (menuItemTmp->callbackWithArgs) {
       menuItemTmp->callbackActionArg(menuItemTmp->callbackData);
     } else {
       menuItemTmp->callbackAction();
     }
-    exitEditValue();
+    if (!_editValueMode) { // Edge case e.g. when edit mode was activated from inside callback (e.g. on another menu item)
+      drawMenu();
+    }
   } else {
     byte menuPointerType = getCurrentAppearance()->menuPointerType;
     uint16_t foreColor = (menuPointerType == GEM_POINTER_DASH) ? _menuForegroundColor : _menuBackgroundColor;
@@ -1004,13 +1018,19 @@ void GEM_adafruit_gfx::nextEditValueSelect() {
   GEMSelect* select = menuItemTmp->select;
   if (_valueSelectNum+1 < select->getLength()) {
     _valueSelectNum++;
+  } else if (select->getLoop()) {
+    _valueSelectNum = 0;
   }
   drawEditValueSelect();
 }
 
 void GEM_adafruit_gfx::prevEditValueSelect() {
+  GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
+  GEMSelect* select = menuItemTmp->select;
   if (_valueSelectNum > 0) {
     _valueSelectNum--;
+  } else if (select->getLoop()) {
+    _valueSelectNum = select->getLength() - 1;
   }
   drawEditValueSelect();
 }
@@ -1021,12 +1041,21 @@ void GEM_adafruit_gfx::nextEditValueSpinner() {
   GEMSpinner* spinner = menuItemTmp->spinner;
   if (_valueSelectNum+1 < spinner->getLength()) {
     _valueSelectNum++;
+  } else if (spinner->getLoop()) {
+    _valueSelectNum = 0;
   }
   drawEditValueSelect();
 }
 
 void GEM_adafruit_gfx::prevEditValueSpinner() {
-  prevEditValueSelect();
+  GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
+  GEMSpinner* spinner = menuItemTmp->spinner;
+  if (_valueSelectNum > 0) {
+    _valueSelectNum--;
+  } else if (spinner->getLoop()) {
+    _valueSelectNum = spinner->getLength() - 1;
+  }
+  drawEditValueSelect();
 }
 #endif
 
@@ -1043,7 +1072,7 @@ void GEM_adafruit_gfx::drawEditValueSelect() {
     case GEM_VAL_SELECT:
       {
         GEMSelect* select = menuItemTmp->select;
-        printMenuItemValue(select->getOptionNameByIndex(_valueSelectNum));
+        printMenuItemValue(select->getOptionNameByIndex(_valueSelectNum), -1 * calculateSpriteOverlap(selectArrows));
       }
       break;
     #ifdef GEM_SUPPORT_SPINNER
@@ -1068,7 +1097,7 @@ void GEM_adafruit_gfx::drawEditValueSelect() {
             break;
           #endif
         }
-        printMenuItemValue(valueStringTmp);
+        printMenuItemValue(valueStringTmp, -1 * calculateSpriteOverlap(selectArrows));
       }
       break;
     #endif
@@ -1114,12 +1143,15 @@ void GEM_adafruit_gfx::saveEditValue() {
     #endif
   }
   if (menuItemTmp->callbackAction != nullptr) {
+    resetEditValueState(); // Explicitly reset edit value state to be more predictable before user-defined callback is called
     if (menuItemTmp->callbackWithArgs) {
       menuItemTmp->callbackActionArg(menuItemTmp->callbackData);
     } else {
       menuItemTmp->callbackAction();
     }
-    exitEditValue();
+    if (!_editValueMode) { // Edge case e.g. when edit mode was activated from inside callback (e.g. on another menu item)
+      drawMenu();
+    }
   } else {
     // exitEditValue(false); // Can speed up work of Adafruit GFX version of GEM on UNO R3, but disabled to be in line with other GEM versions
     exitEditValue();
@@ -1130,10 +1162,14 @@ void GEM_adafruit_gfx::cancelEditValue() {
   exitEditValue(false);
 }
 
-void GEM_adafruit_gfx::exitEditValue(bool redrawMenu) {
+void GEM_adafruit_gfx::resetEditValueState() {
   memset(_valueString, '\0', GEM_STR_LEN - 1);
   _valueSelectNum = -1;
   _editValueMode = false;
+}
+
+void GEM_adafruit_gfx::exitEditValue(bool redrawMenu) {
+  resetEditValueState();
   if (redrawMenu) {
     drawMenu();
   } else {
@@ -1208,7 +1244,11 @@ void GEM_adafruit_gfx::dispatchKeyPress() {
             prevEditValueSelect();
           #ifdef GEM_SUPPORT_SPINNER
           } else if (_editValueType == GEM_VAL_SPINNER) {
-            prevEditValueSpinner();
+            if (_invertKeysDuringEdit) {
+              prevEditValueSpinner();
+            } else {
+              nextEditValueSpinner();
+            }
           #endif
           } else if (_invertKeysDuringEdit) {
             prevEditValueDigit();
@@ -1226,7 +1266,11 @@ void GEM_adafruit_gfx::dispatchKeyPress() {
             nextEditValueSelect();
           #ifdef GEM_SUPPORT_SPINNER
           } else if (_editValueType == GEM_VAL_SPINNER) {
-            nextEditValueSpinner();
+            if (_invertKeysDuringEdit) {
+              nextEditValueSpinner();
+            } else {
+              prevEditValueSpinner();
+            }
           #endif
           } else if (_invertKeysDuringEdit) {
             nextEditValueDigit();

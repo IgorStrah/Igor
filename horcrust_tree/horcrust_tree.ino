@@ -36,10 +36,10 @@ void setup() {
   while (millis() - startCal < calibrationTime) {
     sum += analogRead(MIC_PIN);
     count++;
-    delay(5);
+    delay(10);
   }
   baseNoise = (float)sum / count;
-  silenceThreshold = baseNoise +100;
+  silenceThreshold = baseNoise +45;
 
   strip.setPixelColor(0, strip.Color(0, 0, 255)); // синий
   strip.show();

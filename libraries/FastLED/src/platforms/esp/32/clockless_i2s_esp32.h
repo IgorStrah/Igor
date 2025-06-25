@@ -99,13 +99,14 @@
 
 #pragma once
 
-#ifndef FASTLED_INTERNAL
+#ifdef FASTLED_INTERNAL
+#error "This should only be active for includion of FastLED.h in a sketch."
+#endif
 #pragma message                                                                \
     "NOTE: ESP32 support using I2S parallel driver. All strips must use the same chipset"
-#endif
 
 #include "eorder.h"
-#include "i2s.h"
+#include "platforms/esp/32/i2s/i2s_esp32dev.h"
 #include "fl/namespace.h"
 
 FASTLED_NAMESPACE_BEGIN

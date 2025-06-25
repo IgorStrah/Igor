@@ -4,22 +4,19 @@
 
 #include <IRremote.h>
 
+
 long heartbeatMillis, flash_milis;
-long time;
 int on=0;
 
 
 void setup() {
 
-  noInterrupts();
-  CLKPR = 0x80;  // enable clock prescale change
-  CLKPR = 0;     // no prescale
-  interrupts();
+
 // Routines to set and clear bits (used in the sleep code)
   IrReceiver.begin(PB4);
            // Delay for 1 second
-  pinMode(PB1, OUTPUT);  
-  digitalWrite(PB1, 0);
+  pinMode(PB3, OUTPUT);  
+  digitalWrite(PB3, 0);
 }
 
 void loop() {
@@ -27,16 +24,11 @@ void loop() {
  
 if (on==0)
 {
-    digitalWrite(PB1, 0); 
+    digitalWrite(PB3, 0); 
 }
 else {
-
-    if (millis() - flash_milis>= 100)
-    {
-      flash_milis = millis();
-    //  digitalWrite(PB1, 1); 
-  analogWrite(PB1, random(111,228));  
-    }
+  analogWrite(PB3, 200);
+  //digitalWrite(PB3, 1); 
 }
 
 
@@ -68,7 +60,6 @@ else {
     }
     if ((newCode == 1111000001) || (newCode == 16724175)) {
       heartbeatMillis = millis();
-      flash_milis = millis();
     on=1;
         }
 

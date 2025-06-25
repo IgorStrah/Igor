@@ -10,7 +10,7 @@ import time
 import warnings
 from pathlib import Path
 
-from ci.boards import ESP32_S3_DEVKITC_1, ESP32DEV, Board, get_board
+from ci.boards import Board, get_board  # type: ignore
 from ci.concurrent_run import ConcurrentRunArgs, concurrent_run
 from ci.locked_print import locked_print
 
@@ -34,6 +34,9 @@ BUILD_FLAGS = ["-Wl,-Map,firmware.map", "-fopt-info-all=optimization_report.txt"
 # prior to running this script. This happens automatically as of 2024-08-20
 # with the github workflow scripts.
 DEFAULT_BOARDS_NAMES = [
+    "apollo3_red",
+    "apollo3_thing_explorable",
+    "web",  # work in progress
     "uno",  # Build is faster if this is first, because it's used for global init.
     "esp32dev",
     "esp01",  # ESP8266
@@ -51,11 +54,12 @@ DEFAULT_BOARDS_NAMES = [
     "rpipico",
     "rpipico2",
     "uno_r4_wifi",
-    "esp32dev_i2s",
     "esp32rmt_51",
     "esp32dev_idf44",
     "bluepill",
     "esp32rmt_51",
+    "giga_r1",
+    "sparkfun_xrp_controller",
 ]
 
 OTHER_BOARDS_NAMES = [
@@ -92,20 +96,21 @@ DEFAULT_EXAMPLES = [
     "RGBWEmulated",
     "TwinkleFox",
     "XYMatrix",
-    "fx/Gfx2Video",
-    "fx/SdCard",
-    "fx/Cylon",
-    "fx/DemoReel100",
-    "fx/TwinkleFox",
-    "fx/Fire2012",
-    "fx/NoisePlusPalette",
-    "fx/Pacifica",
-    "fx/FxEngine",
+    "FxGfx2Video",
+    "FxSdCard",
+    "FxCylon",
+    "FxDemoReel100",
+    "FxTwinkleFox",
+    "FxFire2012",
+    "FxNoisePlusPalette",
+    "FxPacifica",
+    "FxEngine",
+    "WS2816",
 ]
 
 EXTRA_EXAMPLES: dict[Board, list[str]] = {
-    ESP32DEV: ["EspI2SDemo"],
-    ESP32_S3_DEVKITC_1: ["EspI2SDemo"],
+    # ESP32DEV: ["EspI2SDemo"],
+    # ESP32_S3_DEVKITC_1: ["EspS3I2SDemo"],
 }
 
 
