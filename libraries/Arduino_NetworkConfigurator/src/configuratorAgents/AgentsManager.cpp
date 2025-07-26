@@ -239,7 +239,15 @@ AgentsManagerStates AgentsManagerClass::handleInit() {
         (*agent)->end();
       }
     }
-    LEDFeedbackClass::getInstance().setMode(LEDFeedbackClass::LEDFeedbackMode::PEER_CONNECTED);
+
+    if(_selectedAgent->getAgentType() == ConfiguratorAgent::AgentTypes::BLE) {
+      LEDFeedbackClass::getInstance().setMode(LEDFeedbackClass::LEDFeedbackMode::PEER_CONNECTED_BLE);
+    } else if(_selectedAgent->getAgentType() == ConfiguratorAgent::AgentTypes::USB_SERIAL) {
+      LEDFeedbackClass::getInstance().setMode(LEDFeedbackClass::LEDFeedbackMode::PEER_CONNECTED_SERIAL);
+    } else {
+      LEDFeedbackClass::getInstance().setMode(LEDFeedbackClass::LEDFeedbackMode::PEER_CONNECTED);
+    }
+
   }
   return nextState;
 }
@@ -308,6 +316,7 @@ void AgentsManagerClass::updateProgressRequest(MessageOutputType type) {
     case MessageOutputType::WIFI_FW_VERSION:       key = RequestType::GET_WIFI_FW_VERSION            ; break;
     case MessageOutputType::PROV_SKETCH_VERSION:   key = RequestType::GET_PROVISIONING_SKETCH_VERSION; break;
     case MessageOutputType::NETCONFIG_LIB_VERSION: key = RequestType::GET_NETCONFIG_LIB_VERSION      ; break;
+    case MessageOutputType::PROV_PUBLIC_KEY:       key = RequestType::GET_ID                         ; break;
   }
 
   if (key == RequestType::NONE) {
@@ -316,7 +325,7 @@ void AgentsManagerClass::updateProgressRequest(MessageOutputType type) {
 
   if( key == RequestType::GET_ID && _statusRequest.key == key && _statusRequest.pending){
     _statusRequest.completion++;
-    if(_statusRequest.completion == 2){
+    if(_statusRequest.completion == 3){
       _statusRequest.reset();
     }
     return;

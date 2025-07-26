@@ -1,11 +1,11 @@
-
+#include <avr/sleep.h>
+#include <avr/power.h>
 #include <TinyWireM.h>
 #include <Tiny4kOLED.h>
 #include "RevEng_PAJ7620.h"
 #define Wire TinyWireM
 // Create gesture sensor driver object
 RevEng_PAJ7620 sensor = RevEng_PAJ7620();
-
 #include <tinyNeoPixel.h>
 #define NUM_LEDS 4
 #define NEOPIXEL_PIN 1  // PB1 (physical pin 6)
@@ -131,5 +131,26 @@ void fadeToBlack() {
   strip.setBrightness(0);
 //  allRed();
   strip.show();
+
+      strip.clear();
+      enterDeepSleep();
+
+}
+
+void enterDeepSleep() {
+  // Отключаем ненужные модули для экономии энергии
+  power_all_disable();
+
+  // Устанавливаем режим сна "Power-down"
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+
+  // Включаем режим сна
+  sleep_enable();
+
+  // Переходим в сон
+  sleep_cpu();
+
+  // После пробуждения (если оно произойдёт) выполнение начнётся отсюда, но для ATtiny85 это не нужно
+  sleep_disable();
 }
 

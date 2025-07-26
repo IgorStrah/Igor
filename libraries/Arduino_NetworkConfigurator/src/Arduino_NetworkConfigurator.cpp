@@ -49,19 +49,9 @@ bool NetworkConfiguratorClass::begin() {
   if(_state != NetworkConfiguratorStates::END) {
     return true;
   }
-  /*
-   * If the board is zero touch capable, starts with zero touch configuration mode
-   * In this state the board will try to connect to the network using a set of
-   * default network settings ex. Ethernet with DHCP
-   * This mode will fail if the provided ConnectionHandler is not GenericConnectionHandler type
-   * falling back to read the network settings from the storage
-   */
 
-  #if  ZERO_TOUCH_ENABLED
-  _state = NetworkConfiguratorStates::ZERO_TOUCH_CONFIG;
-  #else
   _state = NetworkConfiguratorStates::READ_STORED_CONFIG;
-  #endif
+
   _connectionHandler->enableCheckInternetAvailability(true);
 
   memset(&_networkSetting, 0x00, sizeof(models::NetworkSetting));
@@ -86,7 +76,6 @@ bool NetworkConfiguratorClass::begin() {
     DEBUG_ERROR("NetworkConfiguratorClass::%s Failed to initialize the AgentsManagerClass", __FUNCTION__);
   }
 
-  _connectionTimeout.begin(NC_CONNECTION_TIMEOUT_ms);
   _connectionRetryTimer.begin(NC_CONNECTION_RETRY_TIMER_ms);
   _resetInput->begin();
 
@@ -98,10 +87,10 @@ NetworkConfiguratorStates NetworkConfiguratorClass::update() {
   _ledFeedback->update();
 
   switch (_state) {
+    case NetworkConfiguratorStates::READ_STORED_CONFIG: nextState = handleReadStorage    (); break;
 #if ZERO_TOUCH_ENABLED
     case NetworkConfiguratorStates::ZERO_TOUCH_CONFIG:  nextState = handleZeroTouchConfig(); break;
 #endif
-    case NetworkConfiguratorStates::READ_STORED_CONFIG: nextState = handleReadStorage    (); break;
     case NetworkConfiguratorStates::WAITING_FOR_CONFIG: nextState = handleWaitingForConf (); break;
     case NetworkConfiguratorStates::CONNECTING:         nextState = handleConnecting     (); break;
     case NetworkConfiguratorStates::CONFIGURED:         nextState = handleConfigured     (); break;
@@ -112,7 +101,7 @@ NetworkConfiguratorStates NetworkConfiguratorClass::update() {
 
   if(_state != nextState){
     if(nextState == NetworkConfiguratorStates::CONNECTING){
-      _connectionTimeout.reload();
+      setConnectionTimeoutTimer();
     }
     _state = nextState;
   }
@@ -122,6 +111,9 @@ NetworkConfiguratorStates NetworkConfiguratorClass::update() {
    * - Arduino MKR WiFi 1010: short the pin 7 to GND until the led turns off
    * - Arduino GIGA R1 WiFi: short the pin 7 to GND until the led turns off
    * - Arduino Nano RP2040 Connect: short the pin 2 to 3.3V until the led turns off
+   * - Portenta H7: short the pin 0 to GND until the led turns off
+   * - Portenta C33: short the pin 0 to GND until the led turns off
+   * - Portenta Machine Control: the reset is not available
    * - Other boards: short the pin 2 to GND until the led turns off
    */
 
@@ -392,6 +384,60 @@ bool NetworkConfiguratorClass::handleConnectRequest() {
   return true;
 }
 
+void NetworkConfiguratorClass::setConnectionTimeoutTimer() {
+  uint32_t timeout = 0;
+  switch (_networkSetting.type) {
+#if defined(BOARD_HAS_WIFI)
+    case NetworkAdapter::WIFI:
+      timeout = NC_CONNECTION_TIMEOUT_ms; // 15 seconds
+      break;
+#endif
+
+#if defined(BOARD_HAS_ETHERNET)
+    case NetworkAdapter::ETHERNET:
+      timeout = NC_CONNECTION_TIMEOUT_ms; // 15 seconds
+      break;
+#endif
+
+#if defined(BOARD_HAS_NB)
+    case NetworkAdapter::NB:
+      timeout = 2 * NC_CONNECTION_TIMEOUT_ms; // 30 seconds
+      break;
+#endif
+
+#if defined(BOARD_HAS_GSM)
+    case NetworkAdapter::GSM:
+      timeout = 2 * NC_CONNECTION_TIMEOUT_ms; // 30 seconds
+      break;
+#endif
+
+#if defined(BOARD_HAS_CATM1_NBIOT)
+    case NetworkAdapter::CATM1:
+      timeout = 2 * NC_CONNECTION_TIMEOUT_ms; // 30 seconds
+      break;
+#endif
+
+#if defined(BOARD_HAS_CELLULAR)
+    case NetworkAdapter::CELL:
+      timeout = 2 * NC_CONNECTION_TIMEOUT_ms; // 30 seconds
+      break;
+#endif
+
+#if defined(BOARD_HAS_LORA)
+    case NetworkAdapter::LORA:
+      timeout = NC_CONNECTION_TIMEOUT_ms; // 15 seconds
+      break;
+#endif
+    default:
+      timeout = NC_CONNECTION_TIMEOUT_ms; // Default to 15 seconds for other adapters
+      break;
+  }
+
+  _connectionTimeout.begin(timeout);
+  _connectionTimeout.reload();
+  return;
+}
+
 String NetworkConfiguratorClass::decodeConnectionErrorMessage(NetworkConnectionState err, StatusMessage *errorCode) {
   switch (err) {
     case NetworkConnectionState::ERROR:
@@ -456,10 +502,10 @@ NetworkConfiguratorStates NetworkConfiguratorClass::handleZeroTouchConfig() {
     defaultEthernetSettings();
     #endif
     if (!_connectionHandler->updateSetting(_networkSetting)) {
-      return NetworkConfiguratorStates::READ_STORED_CONFIG;
+      return NetworkConfiguratorStates::WAITING_FOR_CONFIG;
     }
     _connectionHandlerIstantiated = true;
-    _connectionTimeout.reload();
+    setConnectionTimeoutTimer();
   }
 
   StatusMessage err;
@@ -472,9 +518,10 @@ NetworkConfiguratorStates NetworkConfiguratorClass::handleZeroTouchConfig() {
       sendStatus(StatusMessage::ERROR);
     }
     _connectionHandlerIstantiated = false;
-    return NetworkConfiguratorStates::READ_STORED_CONFIG;
+    return NetworkConfiguratorStates::WAITING_FOR_CONFIG;
   }
-  return NetworkConfiguratorStates::ZERO_TOUCH_CONFIG;
+
+  return handleWaitingForConf();
 }
 #endif
 
@@ -509,13 +556,26 @@ NetworkConfiguratorStates NetworkConfiguratorClass::handleReadStorage() {
 
   if(credFound && _connectionHandler->updateSetting(_networkSetting)) {
     _connectionHandlerIstantiated = true;
+    _configInProgress = _agentsManager->isConfigInProgress();
+    if (_configInProgress) {
+      return NetworkConfiguratorStates::UPDATING_CONFIG;
+    }
     return NetworkConfiguratorStates::CONFIGURED;
   }
 
   if (_optionUpdateTimer.getWaitTime() == 0) {
     scanNetworkOptions();
   }
+  /*
+   * If the board is zero touch capable and without network configuration, it starts the zero touch configuration mode
+   * In this state the board will try to connect to the network using a set of
+   * default network settings ex. Ethernet with DHCP
+   */
+  #if  ZERO_TOUCH_ENABLED
+  return NetworkConfiguratorStates::ZERO_TOUCH_CONFIG;
+  #else
   return NetworkConfiguratorStates::WAITING_FOR_CONFIG;
+  #endif
 }
 
 NetworkConfiguratorStates NetworkConfiguratorClass::handleWaitingForConf() {
@@ -580,7 +640,8 @@ NetworkConfiguratorStates NetworkConfiguratorClass::handleConfigured() {
 }
 
 NetworkConfiguratorStates NetworkConfiguratorClass::handleUpdatingConfig() {
-  if (_agentsManager->isConfigInProgress() == false) {
+  _configInProgress = _agentsManager->isConfigInProgress();
+  if (_configInProgress == false) {
     //If peer disconnects without updating the network settings, go to connecting state for check the connection
     sendStatus(StatusMessage::CONNECTING);
     return NetworkConfiguratorStates::CONNECTING;

@@ -7,6 +7,7 @@
 const int micPin = PB3;
 const int lockPin = PB1;    // PB1 = Digital 9
 const int tapperPin = PB0;  // PB13 = Digital 13
+const int bottomPin = PB2;
 
 const int threshold = 400;     // Подбирается вручную под микрофон
 const int tapDuration = 90;   // Длительность сигнала стука
@@ -44,6 +45,12 @@ void loop() {
   if (millis() - sound_time > 85000) {
     playCombination();
     sound_time = millis();
+  }
+  if (digitalRead(bottomPin))
+  {
+        sound_time = millis();
+        playCombination();
+    
   }
 
   if (listening) {

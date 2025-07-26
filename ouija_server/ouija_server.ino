@@ -108,7 +108,7 @@ void procedure6() {
 
 const int stepSequence[] = { 1, 3, 5, 2, 4, 1 };  // порядок шагов
 Step steps[] = {
-  { "@clock1815%", procedure1, "19AD063E" },
+  { "@clock1815%", procedure1, "048A8E1A237380" },
   { "@knockdoor6%", procedure2, "3FA8063E" },
   { "@exploreshelf%", procedure3, "4DCD063E" },
   { "@insideshelf%", procedure3, "0289063E" },
@@ -119,7 +119,7 @@ Step steps[] = {
 };
 
 // Step steps[] = {
-//   { "@clock1815%", procedure1, "19AD063E" },
+//   { "@clock1815%", procedure1, "048A8E1A237380"  - 7888063E  },
 
 // };
 const int stepCount = sizeof(steps) / sizeof(steps[0]);
@@ -159,7 +159,7 @@ void loop() {
     if (c == '\n' || c == '\r') {
       // Конец строки — обрабатываем команду
       handleSerialCommand(serialInput);
-      serialInput = ""; // Очистка после обработки
+      serialInput = "";  // Очистка после обработки
     } else {
       serialInput += c;
     }
@@ -188,16 +188,10 @@ void loop() {
         my_mux.channel(16);
         delay(2000);
       }
-      
-//NEW!
-           currentStep++;
-      currentLetterIndex = 0;
-      waitingForUID = false;
-      waitingForWord = true;
-      telemetry[0] = 40;
-      telemetry[1] = 1000;
 
-      
+      //NEW!
+
+
       myMP3.play(11);
       CnockDor = 0;
       knockCount = 0;
@@ -239,7 +233,7 @@ void loop() {
     telemetry[1] = 0;
     radio.read(&receivedUID, sizeof(receivedUID));
 
- 
+
     for (int i = 0; i < 5; i++) {
       if (strcmp(receivedUID, expectedUIDs[i]) == 0 && waitingPentacle == false) {
         Serial.println(expectedUIDs[i]);
@@ -259,7 +253,7 @@ void loop() {
     if (strcmp(receivedUID, "3FA8063E") == 0) {
       lightflashclock = 9000;
     }
-    if (strcmp(receivedUID, "19AD063E") == 0) {
+    if (strcmp(receivedUID, "048A8E1A237380") == 0) {
       currentLetterIndex = 0;
       waitingForWord = true;
       waitingForWordwite = false;
@@ -274,9 +268,11 @@ void loop() {
       telemetry[0] = 15 + currentLetterClock * 2;
       telemetry[1] = 1400;
 
-if (strcmp(receivedUID, "04AC8F1A237380") == 0) {
-      currentLetterClock = 10;
-    }
+      if ((strcmp(receivedUID, "04AC8F1A237380") == 0) || (strcmp(receivedUID, "04A88F1A237380") == 0)) {
+        if (currentLetterClock <= 7) {
+          currentLetterClock = 8;
+        }
+      }
 
       if (currentLetterClock == 10) {
         currentLetterClock = 0;
@@ -332,8 +328,7 @@ if (strcmp(receivedUID, "04AC8F1A237380") == 0) {
       // Игнорировать повтор предыдущего UID
       if (strcmp(receivedUID, lastUID) == 0) {
         Serial.println(" lastUID = receivedUID!");
-      }
-      else {
+      } else {
         strcpy(lastUID, receivedUID);  // обновить последний UID
         telemetry[0] = 55;
         telemetry[1] = 1100;
@@ -423,11 +418,11 @@ void radioSetup() {                      // настройка радио
   radio.enableAckPayload();              // разрешить отсылку данных в ответ на входящий сигнал
   radio.setPayloadSize(32);              // размер пакета, байт
   radio.openReadingPipe(1, address[0]);  // хотим слушать трубу 0
-  
+
   //radio.openWritingPipe(address[1]);     // хотим писать трубу 1
-  radio.setChannel(CH_NUM);              // выбираем канал (в котором нет шумов!)
-  radio.setPALevel(SIG_POWER);           // уровень мощности передатчика
-  radio.setDataRate(SIG_SPEED);          // скорость обмена
+  radio.setChannel(CH_NUM);      // выбираем канал (в котором нет шумов!)
+  radio.setPALevel(SIG_POWER);   // уровень мощности передатчика
+  radio.setDataRate(SIG_SPEED);  // скорость обмена
   // должна быть одинакова на приёмнике и передатчике!
   // при самой низкой скорости имеем самую высокую чувствительность и дальность!!
   radio.powerUp();         // начать работу
@@ -437,22 +432,21 @@ void radioSetup() {                      // настройка радио
 
 
 void handleSerialCommand(String command) {
-  command.trim(); // Убирает лишние пробелы, \r и \n на всякий случай
- Serial.println(command);
+  command.trim();  // Убирает лишние пробелы, \r и \n на всякий случай
+  Serial.println(command);
   if (command == "10101") {
     Serial.println("Door open");
-        for (int i = 0; i < 2; i++) {
-        my_mux.channel(1);
-        delay(2000);
-        my_mux.channel(16);
-        delay(2000);
-      }
-      myMP3.play(11);
+    for (int i = 0; i < 2; i++) {
+      my_mux.channel(1);
+      delay(2000);
+      my_mux.channel(16);
+      delay(2000);
+    }
+    myMP3.play(11);
   } else if (command == "10202") {
     Serial.println("goodbay");
     //doActionB();
-  } 
-   else if (command == "10303") {
+  } else if (command == "10303") {
     Serial.println("Fin");
     //doActionB();
   }

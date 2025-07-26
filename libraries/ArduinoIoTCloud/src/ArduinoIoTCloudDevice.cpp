@@ -28,6 +28,7 @@ _state{State::Init},
 _attachAttempt(0, 0),
 _propertyContainer(),
 _propertyContainerIndex(0),
+_getNetConfigCallback(nullptr),
 _attached(false),
 _registered(false) {
 }
@@ -109,8 +110,20 @@ ArduinoCloudDevice::State ArduinoCloudDevice::handleSendCapabilities() {
   DeviceBeginCmd deviceBegin = { DeviceBeginCmdId, AIOT_CONFIG_LIB_VERSION };
   deliver(reinterpret_cast<Message*>(&deviceBegin));
 
+  /* Send Network Configuration */
+  if(_getNetConfigCallback){
+    DeviceNetConfigCmdUp deviceNetConfig = { DeviceNetConfigCmdUpId };
+    _getNetConfigCallback(deviceNetConfig.params );
+    deliver(reinterpret_cast<Message*>(&deviceNetConfig));
+  }
+
+#if defined(BOARD_HAS_WIFI) && not defined(BOARD_ESP)
+  String WiFiFWVersion = WiFi.firmwareVersion();
+  VersionMessage versionMessage = { WiFiFWVersionMessageId, WiFiFWVersion.c_str() };
+  deliver(reinterpret_cast<Message*>(&versionMessage));
+#endif
   /* Subscribe to device topic to request */
-  ThingBeginCmd thingBegin = { ThingBeginCmdId };
+  ThingBeginCmd thingBegin = { ThingBeginCmdId, {} };
   deliver(reinterpret_cast<Message*>(&thingBegin));
 
   /* No device configuration received. Wait: 4s -> 8s -> 16s -> 32s -> 32s ...*/

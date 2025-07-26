@@ -39,8 +39,7 @@ void setup() {
     delay(10);
   }
   baseNoise = (float)sum / count;
-  silenceThreshold = baseNoise +45;
-
+  silenceThreshold = baseNoise +45;\
   strip.setPixelColor(0, strip.Color(0, 0, 255)); // синий
   strip.show();
 }
@@ -48,12 +47,9 @@ void setup() {
 void loop() {
   int mic = analogRead(MIC_PIN);
   unsigned long now = millis();
-
   if (!inTransition) {
     if (mic < silenceThreshold) {
-
       if (silenceStartTime == 0) silenceStartTime = now;
-
       if (now - silenceStartTime >= silenceThresholdTime) {
         // Начинаем переход
               strip.setPixelColor(0, strip.Color(222, 0, 255)); // синий
@@ -62,7 +58,6 @@ void loop() {
         transitionStartTime = now;
       }
     } else {
- 
       silenceStartTime = 0;
     }
   } else {

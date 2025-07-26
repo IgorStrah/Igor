@@ -72,7 +72,8 @@ ArduinoIoTCloudTCP::ArduinoIoTCloudTCP()
 , _get_ota_confirmation{nullptr}
 #endif /* OTA_ENABLED */
 {
-
+  cbor::encoder::iotcloud::commandEncoders();
+  cbor::decoder::iotcloud::commandDecoders();
 }
 
 /******************************************************************************
@@ -167,6 +168,10 @@ int ArduinoIoTCloudTCP::begin(bool const enable_watchdog, String brokerAddress, 
   _thing.begin();
   _device.begin();
 
+  _device.setGetNetworkSettingCbk([connection = this->_connection](models::NetworkSetting &setting) {
+    connection->getSetting(setting);
+  });
+
 #if OTA_ENABLED && !defined(OFFLOADED_DOWNLOAD)
   _ota.setClient(&_otaClient);
 #endif // OTA_ENABLED && !defined(OFFLOADED_DOWNLOAD)
@@ -211,6 +216,7 @@ void ArduinoIoTCloudTCP::update()
   switch (_state)
   {
   case State::ConfigPhy:            next_state = handle_ConfigPhy();            break;
+  case State::UpdatePhy:            next_state = handle_UpdatePhy();            break;
   case State::Init:                 next_state = handle_Init();                 break;
   case State::ConnectPhy:           next_state = handle_ConnectPhy();           break;
   case State::SyncTime:             next_state = handle_SyncTime();             break;
@@ -235,7 +241,7 @@ void ArduinoIoTCloudTCP::update()
    */
   #if NETWORK_CONFIGURATOR_ENABLED
   if(_configurator != nullptr && _state > State::Init && _configurator->update() == NetworkConfiguratorStates::UPDATING_CONFIG){
-    _state = State::ConfigPhy;
+    _state = State::UpdatePhy;
   }
   #endif
 
@@ -306,6 +312,19 @@ ArduinoIoTCloudTCP::State ArduinoIoTCloudTCP::handle_ConfigPhy()
       return State::Init;
     }
   return State::ConfigPhy;
+#else
+  return State::Init;
+#endif
+}
+
+ArduinoIoTCloudTCP::State ArduinoIoTCloudTCP::handle_UpdatePhy()
+{
+#if NETWORK_CONFIGURATOR_ENABLED
+  if(_configurator->update() == NetworkConfiguratorStates::CONFIGURED) {
+      _configurator->disconnectAgent();
+      return State::Disconnect;
+    }
+  return State::UpdatePhy;
 #else
   return State::Init;
 #endif

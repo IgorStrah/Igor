@@ -68,6 +68,20 @@ bool CBORAdapter::BLEMacAddressToCBOR(const uint8_t *mac, uint8_t *data, size_t 
   return status == MessageEncoder::Status::Complete ? true : false;
 }
 
+bool CBORAdapter::provPublicKeyToCBOR(const char *provPublicKey, uint8_t *data, size_t *len) {
+  CBORMessageEncoder encoder;
+  if(*len < CBOR_MIN_PROV_PUBIC_KEY_LEN + strlen(provPublicKey)) {
+    return false;
+  }
+  ProvPublicKeyProvisioningMessage provPublicKeyMsg;
+  provPublicKeyMsg.c.id = ProvisioningMessageId::ProvPublicKeyProvisioningMessageId;
+  provPublicKeyMsg.provPublicKey = provPublicKey;
+
+  MessageEncoder::Status status = encoder.encode((Message *)&provPublicKeyMsg, data, *len);
+
+  return status == MessageEncoder::Status::Complete ? true : false;
+}
+
 bool CBORAdapter::statusToCBOR(StatusMessage msg, uint8_t *data, size_t *len) {
   bool result = false;
 
@@ -87,9 +101,9 @@ bool CBORAdapter::wifiFWVersionToCBOR(const char *wifiFWVersion, uint8_t *data, 
   if(*len < CBOR_MIN_WIFI_FW_VERSION_LEN + strlen(wifiFWVersion)) {
     return false;
   }
-  WiFiFWVersionProvisioningMessage wifiFWVersionMsg;
-  wifiFWVersionMsg.c.id = ProvisioningMessageId::WiFiFWVersionProvisioningMessageId;
-  wifiFWVersionMsg.wifiFwVersion = wifiFWVersion;
+  VersionMessage wifiFWVersionMsg;
+  wifiFWVersionMsg.c.id = StandardMessageId::WiFiFWVersionMessageId;
+  wifiFWVersionMsg.params.version = wifiFWVersion;
 
   MessageEncoder::Status status = encoder.encode((Message *)&wifiFWVersionMsg, data, *len);
 

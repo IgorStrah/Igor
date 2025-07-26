@@ -7,18 +7,18 @@
 #include "tinyLED.h"
 tinyLED<3> strip;  // указываем пин (в порядке порта)
 DFRobot_QMC5883 compass(&Wire, /*I2C addr*/ HMC5883L_ADDRESS);
-#define ENABLE_FEATURE_1 0
+#define ENABLE_FEATURE_1 1
 int azimuth = 0;
 int lastStableAngle = -999;
 unsigned long lastChangeTime = 0;
 unsigned long lastCheckTime = 0;
 
 const int ANGLE_TOLERANCE = 15;
-const unsigned long STABLE_DURATION = 2000;  // 5 секунд
+const unsigned long STABLE_DURATION = 1600;  // 5 секунд
 const unsigned long CHECK_INTERVAL = 1000;   // 1 секунда
 
 char colorSequence[5] = "0000";        // массив + '\0'
-const char targetSequence[] = "ABAD";  // РАБОТАЕТ ЗЕРКАЛЬНО!
+const char targetSequence[] = "ABAC";  // РАБОТАЕТ ЗЕРКАЛЬНО!
 char colorChar = '0';
 
 // Переменные для шагов и таймеров
@@ -72,6 +72,7 @@ void loop() {
   if (azimuth < 0) {
     azimuth += 360;
   }
+  #if ENABLE_FEATURE_1==0
   // Проверка раз в секунду
   if (currentTime - lastCheckTime >= CHECK_INTERVAL) {
     lastCheckTime = currentTime;
@@ -85,16 +86,16 @@ void loop() {
 
     // Если угол стабилен 5 секунд
     if (currentTime - lastChangeTime >= STABLE_DURATION) {
-      if (isWithinRange(lastStableAngle, 165)) {
+      if (isWithinRange(lastStableAngle, 85)) {
         strip.send(mWhite);
         colorChar = 'A';  // Белый
-      } else if (isWithinRange(lastStableAngle, 200)) {
+      } else if (isWithinRange(lastStableAngle, 180)) {
         strip.send(mNavy);
         colorChar = 'B';  // Синий
-      } else if (isWithinRange(lastStableAngle, 285)) {
+      } else if (isWithinRange(lastStableAngle, 270)) {
         strip.send(mGreen);
         colorChar = 'C';  // Зелёный
-      } else if (isWithinRange(lastStableAngle, 250)) {
+      } else if (isWithinRange(lastStableAngle, 350)) {
         strip.send(mPurple);
         colorChar = 'D';  // Голубой
       } else {
@@ -120,7 +121,7 @@ void loop() {
       }
     }
   }
-
+#endif
 
 
 #if ENABLE_FEATURE_1

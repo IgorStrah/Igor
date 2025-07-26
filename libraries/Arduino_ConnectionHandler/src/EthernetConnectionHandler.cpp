@@ -41,6 +41,7 @@ EthernetConnectionHandler::EthernetConnectionHandler(
   bool const keep_alive)
 : ConnectionHandler{keep_alive, NetworkAdapter::ETHERNET}
 {
+  _settings.type = NetworkAdapter::ETHERNET;
   memset(_settings.eth.ip.dword, 0, sizeof(_settings.eth.ip.dword));
   memset(_settings.eth.dns.dword, 0, sizeof(_settings.eth.dns.dword));
   memset(_settings.eth.gateway.dword, 0, sizeof(_settings.eth.gateway.dword));
@@ -54,6 +55,7 @@ EthernetConnectionHandler::EthernetConnectionHandler(
   unsigned long const timeout, unsigned long const responseTimeout, bool const keep_alive)
 : ConnectionHandler{keep_alive, NetworkAdapter::ETHERNET}
 {
+  _settings.type = NetworkAdapter::ETHERNET;
   fromIPAddress(ip, _settings.eth.ip);
   fromIPAddress(dns, _settings.eth.dns);
   fromIPAddress(gateway, _settings.eth.gateway);
@@ -117,7 +119,7 @@ NetworkConnectionState EthernetConnectionHandler::update_handleConnecting()
   if (ping_result < 0)
   {
     Debug.print(DBG_ERROR, F("Internet check failed"));
-    Debug.print(DBG_INFO, F("Retrying in  \"%d\" milliseconds"), CHECK_INTERVAL_TABLE[static_cast<unsigned int>(NetworkConnectionState::CONNECTING)]);
+    Debug.print(DBG_INFO, F("Retrying in  \"%d\" milliseconds"), _timeoutTable.timeout.connecting);
     return NetworkConnectionState::CONNECTING;
   }
   else
