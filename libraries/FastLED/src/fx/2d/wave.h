@@ -1,12 +1,12 @@
 #pragma once
 
-#include <stdint.h>
+#include "fl/stdint.h"
 
 #include "fl/warn.h"
 
 #include "fl/colorutils.h"
 #include "fl/gradient.h"
-#include "fl/ptr.h"
+#include "fl/memory.h"
 #include "fl/wave_simulation.h"
 #include "fl/xymap.h"
 #include "fx/fx.h"
@@ -20,7 +20,7 @@ FASTLED_SMART_PTR(WaveCrgbMap);
 FASTLED_SMART_PTR(WaveCrgbMapDefault);
 FASTLED_SMART_PTR(WaveCrgbGradientMap);
 
-class WaveCrgbMap : public Referent {
+class WaveCrgbMap {
   public:
     virtual ~WaveCrgbMap() = default;
     virtual void mapWaveToLEDs(const XYMap &xymap, WaveSimulation2D &waveSim,
@@ -33,11 +33,11 @@ class WaveCrgbMapDefault : public WaveCrgbMap {
   public:
     void mapWaveToLEDs(const XYMap &xymap, WaveSimulation2D &waveSim,
                        CRGB *leds) override {
-        const uint32_t width = waveSim.getWidth();
-        const uint32_t height = waveSim.getHeight();
-        for (uint32_t y = 0; y < height; y++) {
-            for (uint32_t x = 0; x < width; x++) {
-                uint32_t idx = xymap(x, y);
+        const fl::u32 width = waveSim.getWidth();
+        const fl::u32 height = waveSim.getHeight();
+        for (fl::u32 y = 0; y < height; y++) {
+            for (fl::u32 x = 0; x < width; x++) {
+                fl::u32 idx = xymap(x, y);
                 uint8_t value8 = waveSim.getu8(x, y);
                 leds[idx] = CRGB(value8, value8, value8);
             }
@@ -49,9 +49,12 @@ class WaveCrgbGradientMap : public WaveCrgbMap {
   public:
     using Gradient = fl::GradientInlined;
     WaveCrgbGradientMap(const CRGBPalette16 &palette) : mGradient(palette) {}
+    WaveCrgbGradientMap() = default;
 
     void mapWaveToLEDs(const XYMap &xymap, WaveSimulation2D &waveSim,
                        CRGB *leds) override;
+
+    void setGradient(const Gradient &gradient) { mGradient = gradient; }
 
   private:
     Gradient mGradient;
@@ -79,13 +82,13 @@ class WaveFx : public Fx2d {
   public:
     using Args = WaveFxArgs;
 
-    WaveFx(XYMap xymap, Args args = Args())
+    WaveFx(const XYMap& xymap, Args args = Args())
         : Fx2d(xymap), mWaveSim(xymap.getWidth(), xymap.getHeight(),
                                 args.factor, args.speed, args.dampening) {
         // Initialize the wave simulation with the given parameters.
         if (args.crgbMap == nullptr) {
             // Use the default CRGB mapping function.
-            mCrgbMap = WaveCrgbMapDefaultPtr::New();
+            mCrgbMap = fl::make_shared<WaveCrgbMapDefault>();
         } else {
             // Set a custom CRGB mapping function.
             mCrgbMap = args.crgbMap;
@@ -140,7 +143,7 @@ class WaveFx : public Fx2d {
     // This will now own the crgbMap.
     void setCrgbMap(WaveCrgbMapPtr crgbMap) {
         // Set a custom CRGB mapping function.
-        mCrgbMap.reset(crgbMap);
+        mCrgbMap = crgbMap;
     }
 
     void draw(DrawContext context) override {
@@ -164,7 +167,7 @@ class WaveFx : public Fx2d {
         mWaveSim.update();
     }
 
-    fl::Str fxName() const override { return "WaveFx"; }
+    fl::string fxName() const override { return "WaveFx"; }
 
     WaveSimulation2D mWaveSim;
     WaveCrgbMapPtr mCrgbMap;

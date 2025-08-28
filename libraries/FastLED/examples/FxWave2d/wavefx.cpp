@@ -21,6 +21,8 @@ which are blended together to create complex visual effects.
 #include <Arduino.h>      // Core Arduino functionality
 #include <FastLED.h>      // Main FastLED library for controlling LEDs
 
+#if SKETCH_HAS_LOTS_OF_MEMORY
+
 #include "fl/math_macros.h"  // Math helper functions and macros
 #include "fl/time_alpha.h"   // Time-based alpha/transition effects
 #include "fl/ui.h"           // UI components for the FastLED web compiler
@@ -102,7 +104,7 @@ WaveFx::Args CreateArgsLower() {
     out.auto_updates = true;                    // Automatically update the simulation each frame
     out.speed = 0.18f;                          // Wave propagation speed
     out.dampening = 9.0f;                       // How quickly waves lose energy
-    out.crgbMap = WaveCrgbGradientMapPtr::New(electricBlueFirePal);  // Color palette for this wave
+    out.crgbMap = fl::make_shared<WaveCrgbGradientMap>(electricBlueFirePal);  // Color palette for this wave
     return out;
 }
 
@@ -114,7 +116,7 @@ WaveFx::Args CreateArgsUpper() {
     out.auto_updates = true;                    // Automatically update the simulation each frame
     out.speed = 0.25f;                          // Wave propagation speed (faster than lower)
     out.dampening = 3.0f;                       // How quickly waves lose energy (less than lower)
-    out.crgbMap = WaveCrgbGradientMapPtr::New(electricGreenFirePal);  // Color palette for this wave
+    out.crgbMap = fl::make_shared<WaveCrgbGradientMap>(electricGreenFirePal);  // Color palette for this wave
     return out;
 }
 
@@ -282,25 +284,22 @@ ui_state ui() {
     fxBlend.setGlobalBlurPasses(blurPasses);       // Number of blur passes
 
     // Create parameter structures for each wave layer's blur settings
-    Blend2dParams lower_params = {
-        .blur_amount = blurAmountLower,            // Blur amount for lower layer
-        .blur_passes = blurPassesLower,            // Blur passes for lower layer
-    };
+    fl::Blend2dParams lower_params;
+    lower_params.blur_amount = blurAmountLower;    // Blur amount for lower layer
+    lower_params.blur_passes = blurPassesLower;    // Blur passes for lower layer
 
-    Blend2dParams upper_params = {
-        .blur_amount = blurAmountUpper,            // Blur amount for upper layer
-        .blur_passes = blurPassesUpper,            // Blur passes for upper layer
-    };
+    fl::Blend2dParams upper_params;
+    upper_params.blur_amount = blurAmountUpper;    // Blur amount for upper layer
+    upper_params.blur_passes = blurPassesUpper;    // Blur passes for upper layer
 
     // Apply the layer-specific blur parameters
     fxBlend.setParams(waveFxLower, lower_params);
     fxBlend.setParams(waveFxUpper, upper_params);
     
     // Return the current state of the UI buttons
-    ui_state state{
-        .button = button,         // Regular ripple button
-        .bigButton = buttonFancy, // Fancy effect button
-    };
+    ui_state state;
+    state.button = button;         // Regular ripple button
+    state.bigButton = buttonFancy; // Fancy effect button
     return state;
 }
 
@@ -399,3 +398,6 @@ void wavefx_loop() {
     // Send the color data to the actual LEDs
     FastLED.show();
 }
+
+
+#endif  // SKETCH_HAS_LOTS_OF_MEMORY

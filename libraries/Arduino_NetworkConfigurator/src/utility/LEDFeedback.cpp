@@ -150,10 +150,15 @@ void LEDFeedbackClass::begin() {
 #else
   pinMode(GREEN_LED, OUTPUT);
   digitalWrite(GREEN_LED, LED_OFF);
-  pinMode(BLUE_LED, OUTPUT);
-  digitalWrite(BLUE_LED, LED_OFF);
+
   pinMode(RED_LED, OUTPUT);
   digitalWrite(RED_LED, LED_OFF);
+  #if defined(ARDUINO_OPTA)
+    if(_getPid_() == OPTA_WIFI_PID){
+      pinMode(BLUE_LED, OUTPUT);
+      digitalWrite(BLUE_LED, LED_OFF);
+    }
+  #endif
 #endif
 #else
   pinMode(GREEN_LED, OUTPUT);
@@ -180,6 +185,7 @@ void LEDFeedbackClass::setMode(LEDFeedbackMode mode) {
     case LEDFeedbackMode::NONE:
       {
         _ledChangeInterval = 0;
+        turnOFF();
         #ifdef BOARD_HAS_LED_MATRIX
           ledMatrixAnimationHandler.clear();
         #endif
@@ -288,14 +294,11 @@ void LEDFeedbackClass::restart() {
 }
 
 void LEDFeedbackClass::update() {
-  if(stopped) {
+  if(stopped || _mode == LEDFeedbackMode::NONE) {
     return;
   }
 
-  if(_ledChangeInterval == 0) {
-    turnOFF();
-    return;
-  } else if (_ledChangeInterval == ALWAYS_ON_INTERVAL) {
+  if (_ledChangeInterval == ALWAYS_ON_INTERVAL) {
     turnON();
     return;
   }
@@ -330,11 +333,13 @@ void LEDFeedbackClass::update() {
 }
 
 void LEDFeedbackClass::turnOFF() {
-#ifdef BOARD_USE_NINA
-  WiFiDrv::digitalWrite(_ledPin, LED_OFF);
-#else
-  digitalWrite(_ledPin, LED_OFF);
-#endif
+  if(_ledPin != INVALID_LED_PIN) {
+  #ifdef BOARD_USE_NINA
+    WiFiDrv::digitalWrite(_ledPin, LED_OFF);
+  #else
+    digitalWrite(_ledPin, LED_OFF);
+  #endif
+  }
 #ifdef BOARD_HAS_LED_MATRIX
   if(_framePtr != nullptr){
     ledMatrixAnimationHandler.clear();
@@ -345,11 +350,13 @@ void LEDFeedbackClass::turnOFF() {
 }
 
 void LEDFeedbackClass::turnON() {
-#ifdef BOARD_USE_NINA
-  WiFiDrv::digitalWrite(_ledPin, LED_ON);
-#else
-  digitalWrite(_ledPin, LED_ON);
-#endif
+  if(_ledPin != INVALID_LED_PIN) {
+  #ifdef BOARD_USE_NINA
+    WiFiDrv::digitalWrite(_ledPin, LED_ON);
+  #else
+    digitalWrite(_ledPin, LED_ON);
+  #endif
+  }
 #ifdef BOARD_HAS_LED_MATRIX
   if(_framePtr != nullptr){
     ledMatrixAnimationHandler.loadFrame(_framePtr);
@@ -362,6 +369,11 @@ void LEDFeedbackClass::configurePeerConnectedMode() {
   #ifdef BOARD_HAS_RGB
     turnOFF();
     _ledPin = BLUE_LED;
+    #if defined(ARDUINO_OPTA)
+    if(_getPid_() != OPTA_WIFI_PID){
+      _ledPin = GREEN_LED;
+    }
+    #endif
   #else
     _ledPin = GREEN_LED;
   #endif

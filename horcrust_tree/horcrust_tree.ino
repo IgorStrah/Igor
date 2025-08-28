@@ -39,7 +39,7 @@ void setup() {
     delay(10);
   }
   baseNoise = (float)sum / count;
-  silenceThreshold = baseNoise +45;\
+  silenceThreshold = baseNoise +55;
   strip.setPixelColor(0, strip.Color(0, 0, 255)); // синий
   strip.show();
 }

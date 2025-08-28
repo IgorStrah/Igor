@@ -75,8 +75,6 @@ void setup() {
   }
 
 
-
-
   SPI.begin();         // Инициализация SPI
   mfrc522.PCD_Init();  // Инициализация RC522
   delay(4);
@@ -103,7 +101,7 @@ void loop() {
     lastActivityTime = millis();
 
     // Специальный UID для сна
-    if (scannedUID == "71083BFF") {
+    if (scannedUID == "216B3BFF") {
       logDebug("💤 Sleep UID detected.");
       delay(100);
       mfrc522.PCD_SoftPowerDown();
@@ -111,26 +109,41 @@ void loop() {
       ESP.deepSleep(0);
     }
 
- if (currentPhrase.isEmpty()) {
-  String loadedPhrase = loadPhraseByTriggerUID(scannedUID);
-  if (loadedPhrase.length() > 0) {
-    currentPhrase = loadedPhrase;
-    triggerUID = scannedUID;
-    currentLetterIndex = 0;
-    currentLetterClock = 0;
-    expectedLetterUID = getUIDBySymbolFromFile(currentPhrase[currentLetterIndex]);
-    nextExpectedLetterUID = (currentLetterIndex + 1 < currentPhrase.length())
-      ? getUIDBySymbolFromFile(currentPhrase[currentLetterIndex + 1])
-      : "";
+    // if (currentPhrase.isEmpty()) {
+    //   String loadedPhrase = loadPhraseByTriggerUID(scannedUID);
+    //   if (loadedPhrase.length() > 0) {
+    //     currentPhrase = loadedPhrase;
+    //     triggerUID = scannedUID;
+    //     currentLetterIndex = 0;
+    //     currentLetterClock = 0;
+    //     expectedLetterUID = getUIDBySymbolFromFile(currentPhrase[currentLetterIndex]);
+    //     nextExpectedLetterUID = (currentLetterIndex + 1 < currentPhrase.length())
+    //                               ? getUIDBySymbolFromFile(currentPhrase[currentLetterIndex + 1])
+    //                               : "";
 
-    vibrate(10 + currentLetterIndex, 100);
-    logDebug("▶️ New phrase: " + currentPhrase);
-    logDebug("🔡 Expect: " + String(currentPhrase[currentLetterIndex]));
-    logDebug("🧬 UID: " + expectedLetterUID);
-    return;
-  }
-} else if (scannedUID == triggerUID) {
-  // Повторный скан начального UID — сброс фразы
+    //     vibrate(10 + currentLetterIndex * 10, 100);
+    //     logDebug("▶️ New phrase: " + currentPhrase);
+    //     logDebug("🔡 Expect: " + String(currentPhrase[currentLetterIndex]));
+    //     logDebug("🧬 UID: " + expectedLetterUID);
+    //     return;
+    //   }
+    // } else if (scannedUID == triggerUID) {
+    //   // Повторный скан начального UID — сброс фразы
+    //   currentLetterIndex = 0;
+    //   currentLetterClock = 0;
+    //   expectedLetterUID = getUIDBySymbolFromFile(currentPhrase[0]);
+    //   nextExpectedLetterUID = (currentPhrase.length() > 1)
+    //                             ? getUIDBySymbolFromFile(currentPhrase[1])
+    //                             : "";
+
+    //   vibrate(20, 200);  // Индикация сброса
+    //   logDebug("🔁 Phrase restarted by repeated trigger UID.");
+    //   return;
+    // }
+String loadedPhrase = loadPhraseByTriggerUID(scannedUID);
+if (loadedPhrase.length() > 0) {
+  currentPhrase = loadedPhrase;
+  triggerUID = scannedUID;
   currentLetterIndex = 0;
   currentLetterClock = 0;
   expectedLetterUID = getUIDBySymbolFromFile(currentPhrase[0]);
@@ -138,11 +151,12 @@ void loop() {
     ? getUIDBySymbolFromFile(currentPhrase[1])
     : "";
 
-  vibrate(20, 200);  // Индикация сброса
-  logDebug("🔁 Phrase restarted by repeated trigger UID.");
+  vibrate(10 + currentLetterIndex, 100);
+  logDebug("▶️ New phrase triggered by UID: " + scannedUID);
+  logDebug("🔡 First letter: " + String(currentPhrase[currentLetterIndex]));
+  logDebug("🧬 UID for it: " + expectedLetterUID);
   return;
 }
-
     // Обработка текущей фразы
     if (!currentPhrase.isEmpty()) {
       bool isCurrent = (scannedUID == expectedLetterUID);
@@ -150,7 +164,7 @@ void loop() {
 
       if (isCurrent) {
         currentLetterClock++;
-        vibrate(10 + currentLetterClock, 200);
+        vibrate(10 + currentLetterClock * 10, 200);
         delay(10);
 
         if (currentLetterClock >= 15) {

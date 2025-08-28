@@ -18,7 +18,7 @@ const char* expectedUIDs[] = {
   "04288E1A237380",
   "04B5CB6DBC2A81",
   "FF0F50D5020000",
-  "B2C3063E",
+  "410C3BFF",
   "C3D4063E",
   "D4E5063E",
   "E5F6063E"
@@ -31,8 +31,8 @@ const char* phrases[] = {
   "@lighteye%",
   "@greenwhitebluewhite%",  
   "@picturewall%",
-  "@SAFE UNLOCKED",
-  "@ENTER PORTAL",
+  "@completesilence",
+  "@completesilence",
   "@BEGIN PUZZLE",
   "@ESCAPE ROOM"
 };

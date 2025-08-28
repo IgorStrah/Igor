@@ -7,7 +7,7 @@
 */
 #pragma once
 
-#define ANetworkConfigurator_LIB_VERSION "0.3.1"
+#define ANetworkConfigurator_LIB_VERSION "0.4.1"
 
 #if defined(ARDUINO_SAMD_MKRWIFI1010)
   #define NETWORK_CONFIGURATOR_COMPATIBLE 1
@@ -72,6 +72,7 @@
 #if defined(ARDUINO_OPTA)
   #define NETWORK_CONFIGURATOR_COMPATIBLE 1
   #define ZERO_TOUCH_ENABLED 1
+  #define OPTA_WIFI_PID  _BOARD_PRODUCTID
   #define PIN_RECONFIGURE BTN_USER
   #define LED_RECONFIGURE LED_USER
   #define BOARD_HAS_RGB
@@ -97,7 +98,7 @@
 
 #if defined(ARDUINO_NICLA_VISION)
   #define NETWORK_CONFIGURATOR_COMPATIBLE 1
-  #define PIN_RECONFIGURE 2
+  #define PIN_RECONFIGURE PA_13
   #define LED_RECONFIGURE LED_BUILTIN
   #define BOARD_HAS_RGB
   #define GREEN_LED LEDG

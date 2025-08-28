@@ -23,13 +23,12 @@ void setup() {
   CLKPR = 0x80;
   CLKPR = 0;
   interrupts();
-   IrSender.begin(4);
+  IrSender.begin(4);
   pinMode(BUTTON_A_PIN, INPUT); // внешний pull-down
   pinMode(BUTTON_B_PIN, INPUT);
   pinMode(BUTTON_C_PIN, INPUT);
   pinMode(BUTTON_D_PIN, INPUT);
-   IrSender.sendSonyMSB(1111000008, 32);
- 
+  IrSender.sendSonyMSB(1111000003, 32);
 }
 
 void loop() {
@@ -143,8 +142,6 @@ int matchCombination(uint8_t* sequence) {
   return -1;
 }
 
-
-
 // Вызов действия
 void triggerProcedure(int index) {
   switch (index) {
@@ -165,14 +162,8 @@ void procedure4() { currentIrCode = 1111000009; }  // исправил опеч�
 
 // Отправляем код 5 раз с паузой 500 мс
 void sendIrCodeMultipleTimes() {
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 8; i++) {
     IrSender.sendSonyMSB(currentIrCode, 32);
     delay(500);  // Блокирующая задержка
   }
 }
-
-
-
-
- 
- 

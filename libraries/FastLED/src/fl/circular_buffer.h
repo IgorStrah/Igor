@@ -2,15 +2,17 @@
 
 #include "fl/math_macros.h"
 #include "fl/namespace.h"
-#include "fl/ptr.h" // Assuming this provides `scoped_array` or similar
-#include <stddef.h> // For size_t
-#include <stdint.h> // For standard integer types
+#include "fl/scoped_array.h"
+#include "fl/stdint.h" // For standard integer types
 
 namespace fl {
 
+// TODO:
+// ERROR bit to indicate over flow.
+
 template <typename T> class CircularBuffer {
   public:
-    CircularBuffer(size_t capacity)
+    CircularBuffer(fl::size capacity)
         : mCapacity(capacity + 1), mHead(0),
           mTail(0) { // Extra space for distinguishing full/empty
         mBuffer.reset(new T[mCapacity]);
@@ -69,15 +71,15 @@ template <typename T> class CircularBuffer {
         return mBuffer[(mHead + mCapacity - 1) % mCapacity];
     }
 
-    T &operator[](size_t index) { return mBuffer[(mTail + index) % mCapacity]; }
+    T &operator[](fl::size index) { return mBuffer[(mTail + index) % mCapacity]; }
 
-    const T &operator[](size_t index) const {
+    const T &operator[](fl::size index) const {
         return mBuffer[(mTail + index) % mCapacity];
     }
 
-    size_t size() const { return (mHead + mCapacity - mTail) % mCapacity; }
+    fl::size size() const { return (mHead + mCapacity - mTail) % mCapacity; }
 
-    size_t capacity() const { return mCapacity - 1; }
+    fl::size capacity() const { return mCapacity - 1; }
 
     bool empty() const { return mHead == mTail; }
 
@@ -86,16 +88,16 @@ template <typename T> class CircularBuffer {
     void clear() { mHead = mTail = 0; }
 
   private:
-    size_t increment(size_t index) const { return (index + 1) % mCapacity; }
+    fl::size increment(fl::size index) const { return (index + 1) % mCapacity; }
 
-    size_t decrement(size_t index) const {
+    fl::size decrement(fl::size index) const {
         return (index + mCapacity - 1) % mCapacity;
     }
 
     fl::scoped_array<T> mBuffer;
-    size_t mCapacity;
-    size_t mHead;
-    size_t mTail;
+    fl::size mCapacity;
+    fl::size mHead;
+    fl::size mTail;
 };
 
 } // namespace fl
