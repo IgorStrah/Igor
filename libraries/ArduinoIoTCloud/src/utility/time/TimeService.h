@@ -12,20 +12,20 @@
 #define ARDUINO_IOT_CLOUD_TIME_SERVICE_H_
 
 /******************************************************************************
- * INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <AIoTC_Config.h>
 #include <Arduino_ConnectionHandler.h>
 
 /******************************************************************************
- * TYPEDEF
+  TYPEDEF
  ******************************************************************************/
 
 typedef unsigned long(*syncTimeFunctionPtr)(void);
 
 /******************************************************************************
- * CLASS DECLARATION
+  CLASS DECLARATION
  ******************************************************************************/
 
 class TimeServiceClass
@@ -62,7 +62,7 @@ private:
   unsigned long _sync_interval_ms;
   syncTimeFunctionPtr _sync_func;
 
-#if defined(HAS_NOTECARD) || defined(HAS_TCP)
+#if defined(HAS_TCP)
   unsigned long getRemoteTime();
   bool connected();
 #endif
@@ -74,7 +74,7 @@ private:
 };
 
 /******************************************************************************
- * EXTERN DECLARATION
+  EXTERN DECLARATION
  ******************************************************************************/
 
 extern TimeServiceClass TimeService;

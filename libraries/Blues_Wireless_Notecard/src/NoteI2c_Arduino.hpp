@@ -3,9 +3,8 @@
 
 #include "NoteI2c.hpp"
 
-#include "Notecard.h"
-
 #ifndef NOTE_MOCK
+#include <Arduino.h>
 #include <Wire.h>
 #else
 #include "mock/mock-arduino.hpp"

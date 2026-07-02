@@ -32,11 +32,7 @@
 #ifndef _IR_JVC_HPP
 #define _IR_JVC_HPP
 
-#if defined(DEBUG)
-#define LOCAL_DEBUG
-#else
-//#define LOCAL_DEBUG // This enables debug output only for this file
-#endif
+#include "LocalDebugLevelStart.h"
 
 /** \addtogroup Decoder Decoders and encoders for different protocols
  * @{
@@ -81,7 +77,7 @@
 #define JVC_REPEAT_PERIOD     65000 // assume around 40 ms for a JVC frame. JVC IR Remotes: RM-SA911U, RM-SX463U have 45 ms period
 
 struct PulseDistanceWidthProtocolConstants const JVCProtocolConstants PROGMEM = {JVC, JVC_KHZ, JVC_HEADER_MARK, JVC_HEADER_SPACE, JVC_BIT_MARK,
-    JVC_ONE_SPACE, JVC_BIT_MARK, JVC_ZERO_SPACE, PROTOCOL_IS_LSB_FIRST, (JVC_REPEAT_PERIOD / MICROS_IN_ONE_MILLI), nullptr};
+    JVC_ONE_SPACE, JVC_BIT_MARK, JVC_ZERO_SPACE, PROTOCOL_IS_LSB_FIRST | PROTOCOL_IS_PULSE_DISTANCE, (JVC_REPEAT_PERIOD / MICROS_IN_ONE_MILLI), nullptr};
 
 /************************************
  * Start of send and decode functions
@@ -124,10 +120,9 @@ bool IRrecv::decodeJVC() {
     // Check we have the right amount of data (36 or 34). The +4 is for initial gap, start bit mark and space + stop bit mark.
     // +4 is for first frame, +2 is for repeats
     if (decodedIRData.rawlen != ((2 * JVC_BITS) + 2) && decodedIRData.rawlen != ((2 * JVC_BITS) + 4)) {
-        IR_DEBUG_PRINT(F("JVC: "));
-        IR_DEBUG_PRINT(F("Data length="));
-        IR_DEBUG_PRINT(decodedIRData.rawlen);
-        IR_DEBUG_PRINTLN(F(" is not 34 or 36"));
+        DEBUG_PRINT(F("JVC: Data length="));
+        DEBUG_PRINT(decodedIRData.rawlen);
+        DEBUG_PRINTLN(F(" is not 34 or 36"));
         return false;
     }
 
@@ -137,8 +132,8 @@ bool IRrecv::decodeJVC() {
          * Check leading space and first and last mark length
          */
         if (decodedIRData.initialGapTicks < ((JVC_REPEAT_DISTANCE + (JVC_REPEAT_DISTANCE / 4) / MICROS_PER_TICK))
-                && matchMark(decodedIRData.rawDataPtr->rawbuf[1], JVC_BIT_MARK)
-                && matchMark(decodedIRData.rawDataPtr->rawbuf[decodedIRData.rawlen - 1], JVC_BIT_MARK)) {
+                && matchMark(irparams.rawbuf[1], JVC_BIT_MARK)
+                && matchMark(irparams.rawbuf[decodedIRData.rawlen - 1], JVC_BIT_MARK)) {
             /*
              * We have a repeat here, so do not check for start bit
              */
@@ -153,15 +148,8 @@ bool IRrecv::decodeJVC() {
             return false;
         }
 
-        if (!decodePulseDistanceWidthData_P(&JVCProtocolConstants, JVC_BITS)) {
-#if defined(LOCAL_DEBUG)
-            Serial.print(F("JVC: "));
-            Serial.println(F("Decode failed"));
-#endif
-            return false;
-        }
+        decodePulseDistanceWidthData_P(&JVCProtocolConstants, JVC_BITS);
 
-        // Success
 //    decodedIRData.flags = IRDATA_FLAGS_IS_LSB_FIRST; // Not required, since this is the start value
         decodedIRData.command = decodedIRData.decodedRawData >> JVC_ADDRESS_BITS;  // upper 8 bits of LSB first value
         decodedIRData.address = decodedIRData.decodedRawData & 0xFF;    // lowest 8 bit of LSB first value
@@ -196,9 +184,9 @@ bool IRrecv::decodeJVCMSB(decode_results *aResults) {
 
     // Check we have enough data - +3 for start bit mark and space + stop bit mark
     if (aResults->rawlen <= (2 * JVC_BITS) + 3) {
-        IR_DEBUG_PRINT(F("Data length="));
-        IR_DEBUG_PRINT(aResults->rawlen);
-        IR_DEBUG_PRINTLN(F(" is too small. >= 36 is required."));
+        DEBUG_PRINT(F("Data length="));
+        DEBUG_PRINT(aResults->rawlen);
+        DEBUG_PRINTLN(F(" is too small. >= 36 is required."));
         return false;
     }
 
@@ -208,15 +196,11 @@ bool IRrecv::decodeJVCMSB(decode_results *aResults) {
     }
     offset++;
 
-    if (!decodePulseDistanceWidthData(JVC_BITS, offset, JVC_BIT_MARK, JVC_ONE_SPACE, 0, PROTOCOL_IS_MSB_FIRST)) {
-        return false;
-    }
+    decodePulseDistanceWidthData(JVC_BITS, offset, JVC_BIT_MARK, JVC_ONE_SPACE, 0, PROTOCOL_IS_MSB_FIRST);
 
     // Stop bit
     if (!matchMark(aResults->rawbuf[offset + (2 * JVC_BITS)], JVC_BIT_MARK)) {
-#if defined(LOCAL_DEBUG)
-        Serial.println(F("Stop bit mark length is wrong"));
-#endif
+        DEBUG_PRINTLN(F("Stop bit mark length is wrong"));
         return false;
     }
 
@@ -255,7 +239,6 @@ void IRsend::sendJVCMSB(unsigned long data, int nbits, bool repeat) {
 }
 
 /** @}*/
-#if defined(LOCAL_DEBUG)
-#undef LOCAL_DEBUG
-#endif
+#include "LocalDebugLevelEnd.h"
+
 #endif // _IR_JVC_HPP

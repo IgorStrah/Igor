@@ -14,7 +14,7 @@
   For documentation visit:
   https://github.com/Spirik/GEM
   
-  Copyright (c) 2018-2025 Alexander 'Spirik' Spiridonov
+  Copyright (c) 2018-2026 Alexander 'Spirik' Spiridonov
 
   This file is part of GEM library.
 
@@ -155,6 +155,7 @@ class GEM {
     GEMPage* _menuPageCurrent = nullptr;
     void (*drawMenuCallback)() = nullptr;
     GEM_VIRTUAL void drawTitleBar();
+    GEM_VIRTUAL void drawSprite(uint8_t x, uint8_t y, uint8_t spriteId, uint8_t mode);
     GEM_VIRTUAL void printMenuItemString(const char* str, byte num, byte startPos = 0);
     GEM_VIRTUAL void printMenuItemTitle(const char* str, int offset = 0);
     GEM_VIRTUAL void printMenuItemValue(const char* str, int offset = 0, byte startPos = 0);
@@ -189,6 +190,9 @@ class GEM {
     GEM_VIRTUAL void drawEditValueCursor();
     GEM_VIRTUAL void nextEditValueDigit();
     GEM_VIRTUAL void prevEditValueDigit();
+    #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+    GEM_VIRTUAL void callPreviewCallback(bool reset = false);
+    #endif
     GEM_VIRTUAL void drawEditValueDigit(byte code);
     GEM_VIRTUAL void nextEditValueSelect();
     GEM_VIRTUAL void prevEditValueSelect();

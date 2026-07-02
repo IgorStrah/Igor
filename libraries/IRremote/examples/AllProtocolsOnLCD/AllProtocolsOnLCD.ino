@@ -59,6 +59,7 @@
 #endif
 //#define EXCLUDE_UNIVERSAL_PROTOCOLS // Saves up to 1000 bytes program memory.
 //#define EXCLUDE_EXOTIC_PROTOCOLS // saves around 650 bytes program memory if all other protocols are active
+//#define USE_THRESHOLD_DECODER   // May give slightly better results especially for jittering signals and protocols with short 1 pulses / pauses. Requires additional 120 bytes program memory.
 
 // MARK_EXCESS_MICROS is subtracted from all marks and added to all spaces before decoding,
 // to compensate for the signal forming of different IR receiver modules. See also IRremote.hpp line 135.
@@ -79,19 +80,30 @@
  * because of the long lasting serial communication.
  */
 //#define USE_NO_LCD
-//#define USE_SERIAL_LCD
-// Definitions for the 1602 LCD
-#define LCD_COLUMNS 16
-#define LCD_ROWS 2
-
-#if defined(USE_SERIAL_LCD)
-#include "LiquidCrystal_I2C.h" // Use an up to date library version, which has the init method
+#if !defined(USE_NO_LCD)
+#define USE_LCD
+#define USE_PARALLEL_2004_LCD // Is default
+//#define USE_SERIAL_1602_LCD
+#include "LCDPrintUtils.hpp" // sets USE_PARALLEL_LCD or USE_SERIAL_LCD
+#  if defined(USE_SERIAL_LCD)
 LiquidCrystal_I2C myLCD(0x27, LCD_COLUMNS, LCD_ROWS);  // set the LCD address to 0x27 for a 16 chars and 2 line display
-#elif !defined(USE_NO_LCD)
-#define USE_PARALLEL_LCD
-#include "LiquidCrystal.h"
+#  else
 //LiquidCrystal myLCD(4, 5, 6, 7, 8, 9);
 LiquidCrystal myLCD(7, 8, 3, 4, 5, 6);
+#  endif
+#  if defined(__AVR__) && defined(ADCSRA) && defined(ADATE)
+// For cyclically display of VCC and isVCCUSBPowered()
+#define VOLTAGE_USB_POWERED_LOWER_THRESHOLD_MILLIVOLT 4250
+#include "ADCUtils.hpp"
+#define MILLIS_BETWEEN_VOLTAGE_PRINT    5000
+#define LCD_VOLTAGE_START_INDEX           11
+uint32_t volatile sMillisOfLastVoltagePrint = 0;
+bool ProtocolStringOverwritesVoltage = false;
+#  endif
+#define LCD_IR_COMMAND_START_INDEX         9
+
+void printsVCCVoltageMillivoltOnLCD();
+void printIRResultOnLCD();
 #endif
 
 #if defined(USE_PARALLEL_LCD)
@@ -107,26 +119,6 @@ LiquidCrystal myLCD(7, 8, 3, 4, 5, 6);
 
 #define MILLIS_BETWEEN_ATTENTION_BEEP   60000 // 60 sec
 uint32_t sMillisOfLastReceivedIRFrame = 0;
-
-#if defined(USE_SERIAL_LCD) || defined(USE_PARALLEL_LCD)
-#define USE_LCD
-#  if defined(__AVR__) && defined(ADCSRA) && defined(ADATE)
-// For cyclically display of VCC and isVCCUSBPowered()
-#define VOLTAGE_USB_POWERED_LOWER_THRESHOLD_MILLIVOLT 4250
-#include "ADCUtils.hpp"
-#define MILLIS_BETWEEN_VOLTAGE_PRINT    5000
-#define LCD_VOLTAGE_START_INDEX           11
-uint32_t volatile sMillisOfLastVoltagePrint = 0;
-bool ProtocolStringOverwritesVoltage = false;
-#  endif
-#define LCD_IR_COMMAND_START_INDEX         9
-
-void printsVCCVoltageMillivoltOnLCD();
-void printIRResultOnLCD();
-size_t printByteHexOnLCD(uint16_t aHexByteValue);
-void printSpacesOnLCD(uint_fast8_t aNumberOfSpacesToPrint);
-
-#endif // defined(USE_SERIAL_LCD) || defined(USE_PARALLEL_LCD)
 
 void setup() {
 #if FLASHEND >= 0x3FFF  // For 16k flash or more, like ATtiny1604. Code does not fit in program memory of ATtiny85 etc.
@@ -184,8 +176,13 @@ void setup() {
     // Info for receive
     Serial.print(RECORD_GAP_MICROS);
     Serial.println(F(" us is the (minimum) gap, after which the start of a new IR packet is assumed"));
+
+#  if defined(USE_THRESHOLD_DECODER)
+    Serial.println(F("Threshold decoding is active and thus MARK_EXCESS_MICROS is set to 0"));
+#  else
     Serial.print(MARK_EXCESS_MICROS);
     Serial.println(F(" us are subtracted from all marks and added to all spaces for decoding"));
+#  endif
 #endif
 
 #if defined(USE_LCD) && defined(ADC_UTILS_ARE_AVAILABLE)
@@ -346,47 +343,42 @@ void printIRResultOnLCD() {
             // we overwrite the voltage -> clear rest of line and inhibit new printing of voltage
             ProtocolStringOverwritesVoltage = true;
             if (tProtocolStringLength < LCD_COLUMNS) {
-                printSpacesOnLCD(LCD_COLUMNS - tProtocolStringLength);
+                LCDPrintSpaces(&myLCD, LCD_COLUMNS - tProtocolStringLength);
             }
         } else {
             // Trigger printing of VCC in main loop
             sMillisOfLastVoltagePrint = 0;
             ProtocolStringOverwritesVoltage = false;
-            printSpacesOnLCD(LCD_VOLTAGE_START_INDEX - tProtocolStringLength);
+            LCDPrintSpaces(&myLCD, LCD_VOLTAGE_START_INDEX - tProtocolStringLength);
         }
 #  else
-        printSpacesOnLCD(LCD_COLUMNS - tProtocolStringLength);
+        LCDPrintSpaces(&myLCD, LCD_COLUMNS - tProtocolStringLength);
 #  endif
     }
 
     if (IrReceiver.decodedIRData.protocol == UNKNOWN) {
         /*
-         * Print number of bits received and hash code or microseconds of signal
+         * Print number of bits received and hash code
+         * "123 bit 5E7E4778"
          */
         myLCD.setCursor(0, 1);
-        uint8_t tNumberOfBits = (IrReceiver.decodedIRData.rawDataPtr->rawlen + 1) / 2;
-        uint_fast8_t tPrintedStringLength = myLCD.print(tNumberOfBits);
-        myLCD.print(F(" bit "));
+        uint8_t tNumberOfBits = (IrReceiver.irparams.rawlen + 1) / 2;
+        uint_fast8_t tPrintedStringLength = myLCD.print(tNumberOfBits); // tPrintedStringLength = 1 to 3
+        myLCD.print(F(" bit ")); // 5 characters
 
-        if (IrReceiver.decodedIRData.decodedRawData != 0) {
-            if (tNumberOfBits < 10) {
-                myLCD.print('0');
-                tPrintedStringLength++;
-            }
-            myLCD.print('x');
-            tPrintedStringLength += myLCD.print(IrReceiver.decodedIRData.decodedRawData, HEX) + 1;
-        } else {
-            tPrintedStringLength += myLCD.print(IrReceiver.getTotalDurationOfRawData());
-            myLCD.print(F(" \xE4s")); // \xE4 is micro symbol
+        if (tNumberOfBits < 10) {
+            myLCD.print(F("0x"));
+            tPrintedStringLength += 2;
         }
-        printSpacesOnLCD(11 - tPrintedStringLength);
+        tPrintedStringLength += myLCD.print(IrReceiver.decodedIRData.decodedRawData, HEX); // maximum is += 8;
+        LCDPrintSpaces(&myLCD, (LCD_COLUMNS - 5) - tPrintedStringLength);
         sLastProtocolAddress = 4711;
-        sLastCommand = 44711;
+        sLastCommand = 4711;
 
     } else {
         /*
          * Protocol is know here
-         * Print address only if it has changed
+         * Print address only if it has changed or is PULSE_DISTANCE or PULSE_WIDTH
          */
         if (sLastProtocolAddress != IrReceiver.decodedIRData.address || IrReceiver.decodedIRData.protocol == PULSE_DISTANCE
                 || IrReceiver.decodedIRData.protocol == PULSE_WIDTH) {
@@ -400,7 +392,7 @@ void printIRResultOnLCD() {
                 sLastProtocolAddress = 4711; // To enforce next print of address
                 myLCD.print(F("[0]=0x"));
                 uint_fast8_t tAddressStringLength = myLCD.print(IrReceiver.decodedIRData.decodedRawDataArray[0], HEX);
-                printSpacesOnLCD(LCD_COLUMNS - tAddressStringLength);
+                LCDPrintSpaces(&myLCD, LCD_COLUMNS - tAddressStringLength);
                 sLastCommand = 0; // to trigger restoration of "C=" string, if another protocol is received
                 /*
                  * No command here!
@@ -413,8 +405,8 @@ void printIRResultOnLCD() {
 //                Serial.print(F("Print address 0x"));
 //                Serial.println(IrReceiver.decodedIRData.address, HEX);
                 myLCD.print(F("A="));
-                uint_fast8_t tAddressStringLength = printByteHexOnLCD(IrReceiver.decodedIRData.address);
-                printSpacesOnLCD((LCD_IR_COMMAND_START_INDEX - 2) - tAddressStringLength);
+                uint_fast8_t tAddressStringLength = LCDPrintHex(&myLCD, IrReceiver.decodedIRData.address);
+                LCDPrintSpaces(&myLCD, (LCD_IR_COMMAND_START_INDEX - 2) - tAddressStringLength);
 #  if defined(DECODE_DISTANCE_WIDTH)
             }
 #  endif
@@ -449,7 +441,7 @@ void printIRResultOnLCD() {
 //        Serial.print(F(" at "));
 //        Serial.println(sLastCommandPrintPosition);
         myLCD.setCursor(sLastCommandPrintPosition, 1);
-        printByteHexOnLCD(tCommand);
+        LCDPrintHex(&myLCD, tCommand);
 
         /*
          * Show or clear repetition flag
@@ -461,21 +453,5 @@ void printIRResultOnLCD() {
             myLCD.print(' ');
         }
     } // IrReceiver.decodedIRData.protocol == UNKNOWN
-}
-
-size_t printByteHexOnLCD(uint16_t aHexByteValue) {
-    myLCD.print(F("0x"));
-    size_t tPrintSize = 2;
-    if (aHexByteValue < 0x10 || (aHexByteValue > 0x100 && aHexByteValue < 0x1000)) {
-        myLCD.print('0'); // leading 0
-        tPrintSize++;
-    }
-    return myLCD.print(aHexByteValue, HEX) + tPrintSize;
-}
-
-void printSpacesOnLCD(uint_fast8_t aNumberOfSpacesToPrint) {
-    for (uint_fast8_t i = 0; i < aNumberOfSpacesToPrint; ++i) {
-        myLCD.print(' ');
-    }
 }
 #endif // defined(USE_LCD)

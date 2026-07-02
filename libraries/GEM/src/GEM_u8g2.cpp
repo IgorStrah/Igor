@@ -14,7 +14,7 @@
   For documentation visit:
   https://github.com/Spirik/GEM
 
-  Copyright (c) 2018-2025 Alexander 'Spirik' Spiridonov
+  Copyright (c) 2018-2026 Alexander 'Spirik' Spiridonov
 
   This file is part of GEM library.
 
@@ -82,6 +82,8 @@ static const unsigned char logo_bits [] U8X8_PROGMEM = {
   0x00,0x40,0xf4,0x00,0x40,0xf4,0x9f,0x4f,0xf4,0x00,0x00,0xf0
 };
 
+const GEMSprite logo = {logo_width, logo_height, logo_bits};
+
 // Sprites of the UI elements used to draw menu
 
 #define sprite_height  8
@@ -122,6 +124,18 @@ static const unsigned char selectArrows_bits [] U8X8_PROGMEM = {
    0xc0,0xc4,0xce,0xc0,0xce,0xc4,0xc0,0xc0
 };
 
+const GEMSprite arrowRight = {arrowRight_width, arrowRight_height, arrowRight_bits};
+
+const GEMSprite arrowLeft = {arrowLeft_width, arrowLeft_height, arrowLeft_bits};
+
+const GEMSprite arrowBtn = {arrowBtn_width, arrowBtn_height, arrowBtn_bits};
+
+const GEMSprite checkboxUnchecked = {checkboxUnchecked_width, checkboxUnchecked_height, checkboxUnchecked_bits};
+
+const GEMSprite checkboxChecked = {checkboxChecked_width, checkboxChecked_height, checkboxChecked_bits};
+
+const GEMSprite selectArrows = {selectArrows_width, selectArrows_height, selectArrows_bits};
+
 GEM_u8g2::GEM_u8g2(U8G2& u8g2_, byte menuPointerType_, byte menuItemsPerScreen_, byte menuItemHeight_, byte menuPageScreenTopOffset_, byte menuValuesLeftOffset_)
   : _u8g2(u8g2_)
 {
@@ -131,7 +145,7 @@ GEM_u8g2::GEM_u8g2(U8G2& u8g2_, byte menuPointerType_, byte menuItemsPerScreen_,
   _appearance.menuPageScreenTopOffset = menuPageScreenTopOffset_;
   _appearance.menuValuesLeftOffset = menuValuesLeftOffset_;
   _appearanceCurrent = &_appearance;
-  _splash = {logo_width, logo_height, logo_bits};
+  _splash = logo;
   clearContext();
   _editValueMode = false;
   _editValueCursorPosition = 0;
@@ -144,7 +158,7 @@ GEM_u8g2::GEM_u8g2(U8G2& u8g2_, GEMAppearance appearance_)
   , _appearance(appearance_)
 {
   _appearanceCurrent = &_appearance;
-  _splash = {logo_width, logo_height, logo_bits};
+  _splash = logo;
   clearContext();
   _editValueMode = false;
   _editValueCursorPosition = 0;
@@ -354,6 +368,10 @@ void GEM_u8g2::drawTitleBar() {
  _u8g2.setFont(getMenuItemFontSize() ? _fontFamilies.small : _fontFamilies.big);
 }
 
+void GEM_u8g2::drawSprite(u8g2_uint_t x, u8g2_uint_t y, const GEMSprite sprite) {
+  _u8g2.drawXBMP(x, y, sprite.width, sprite.height, sprite.image);
+}
+
 void GEM_u8g2::printMenuItemString(const char* str, byte num, byte startPos) {
   if (_UTF8Enabled) {
 
@@ -462,9 +480,9 @@ void GEM_u8g2::printMenuItems() {
               break;
             case GEM_VAL_BOOL:
               if (*(bool*)menuItemTmp->linkedVariable) {
-                _u8g2.drawXBMP(menuValuesLeftOffset, yDraw, checkboxChecked_width, checkboxChecked_height, checkboxChecked_bits);
+                drawSprite(menuValuesLeftOffset, yDraw, checkboxChecked);
               } else {
-                _u8g2.drawXBMP(menuValuesLeftOffset, yDraw, checkboxUnchecked_width, checkboxUnchecked_height, checkboxUnchecked_bits);
+                drawSprite(menuValuesLeftOffset, yDraw, checkboxUnchecked);
               }
               break;
             case GEM_VAL_SELECT:
@@ -472,11 +490,11 @@ void GEM_u8g2::printMenuItems() {
                 GEMSelect* select = menuItemTmp->select;
                 if (_editValueMode && menuItemTmp == _menuPageCurrent->getCurrentMenuItem()) {
                   printMenuItemValue(select->getOptionNameByIndex(_valueSelectNum));
-                  _u8g2.drawXBMP(_u8g2.getDisplayWidth() - 7, yDraw, selectArrows_width, selectArrows_height, selectArrows_bits);
+                  drawSprite(_u8g2.getDisplayWidth() - 7, yDraw, selectArrows);
                   drawEditValueCursor();
                 } else {
                   printMenuItemValue(select->getSelectedOptionName(menuItemTmp->linkedVariable));
-                  _u8g2.drawXBMP(_u8g2.getDisplayWidth() - 7, yDraw, selectArrows_width, selectArrows_height, selectArrows_bits);
+                  drawSprite(_u8g2.getDisplayWidth() - 7, yDraw, selectArrows);
                 }
               }
               break;
@@ -503,7 +521,7 @@ void GEM_u8g2::printMenuItems() {
                     #endif
                   }
                   printMenuItemValue(valueStringTmp);
-                  _u8g2.drawXBMP(_u8g2.getDisplayWidth() - 7, yDraw, selectArrows_width, selectArrows_height, selectArrows_bits);
+                  drawSprite(_u8g2.getDisplayWidth() - 7, yDraw, selectArrows);
                   drawEditValueCursor();
                 } else {
                   switch (spinner->getType()) {
@@ -523,7 +541,7 @@ void GEM_u8g2::printMenuItems() {
                     #endif
                   }
                   printMenuItemValue(valueStringTmp);
-                  _u8g2.drawXBMP(_u8g2.getDisplayWidth() - 7, yDraw, selectArrows_width, selectArrows_height, selectArrows_bits);
+                  drawSprite(_u8g2.getDisplayWidth() - 7, yDraw, selectArrows);
                 }
               }
               break;
@@ -561,10 +579,10 @@ void GEM_u8g2::printMenuItems() {
         } else {
           printMenuItemFull(menuItemTmp->title);
         }
-        _u8g2.drawXBMP(_u8g2.getDisplayWidth() - 8, yDraw, arrowRight_width, arrowRight_height, arrowRight_bits);
+        drawSprite(_u8g2.getDisplayWidth() - 8, yDraw, arrowRight);
         break;
       case GEM_ITEM_BACK:
-        _u8g2.drawXBMP(5, yDraw, arrowLeft_width, arrowLeft_height, arrowLeft_bits);
+        drawSprite(5, yDraw, arrowLeft);
         break;
       case GEM_ITEM_BUTTON:
         _u8g2.setCursor(11, yText);
@@ -574,7 +592,7 @@ void GEM_u8g2::printMenuItems() {
         } else {
           printMenuItemFull(menuItemTmp->title);
         }
-        _u8g2.drawXBMP(5, yDraw, arrowBtn_width, arrowBtn_height, arrowBtn_bits);
+        drawSprite(5, yDraw, arrowBtn);
         break;
       case GEM_ITEM_LABEL:
         _u8g2.setCursor(5, yText);
@@ -633,51 +651,57 @@ void GEM_u8g2::drawScrollbar() {
 //====================== MENU ITEMS NAVIGATION
 
 void GEM_u8g2::nextMenuItem() {
-  if (_menuPageCurrent->currentItemNum == _menuPageCurrent->itemsCount-1) {
-    _menuPageCurrent->currentItemNum = 0;
-  } else {
-    _menuPageCurrent->currentItemNum++;
+  if (_menuPageCurrent->itemsCount > 0) {
+    if (_menuPageCurrent->currentItemNum == _menuPageCurrent->itemsCount-1) {
+      _menuPageCurrent->currentItemNum = 0;
+    } else {
+      _menuPageCurrent->currentItemNum++;
+    }
+    drawMenu();
   }
-  drawMenu();
 }
 
 void GEM_u8g2::prevMenuItem() {
-  if (_menuPageCurrent->currentItemNum == 0) {
-    _menuPageCurrent->currentItemNum = _menuPageCurrent->itemsCount-1;
-  } else {
-    _menuPageCurrent->currentItemNum--;
+  if (_menuPageCurrent->itemsCount > 0) {
+    if (_menuPageCurrent->currentItemNum == 0) {
+      _menuPageCurrent->currentItemNum = _menuPageCurrent->itemsCount-1;
+    } else {
+      _menuPageCurrent->currentItemNum--;
+    }
+    drawMenu();
   }
-  drawMenu();
 }
 
 void GEM_u8g2::menuItemSelect() {
   GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
-  switch (menuItemTmp->type) {
-    case GEM_ITEM_VAL:
-      if (!menuItemTmp->readonly) {
-        enterEditValueMode();
-      }
-      break;
-    case GEM_ITEM_LINK:
-      if (!menuItemTmp->readonly) {
+  if (menuItemTmp != nullptr) {
+    switch (menuItemTmp->type) {
+      case GEM_ITEM_VAL:
+        if (!menuItemTmp->readonly) {
+          enterEditValueMode();
+        }
+        break;
+      case GEM_ITEM_LINK:
+        if (!menuItemTmp->readonly) {
+          _menuPageCurrent = menuItemTmp->linkedPage;
+          drawMenu();
+        }
+        break;
+      case GEM_ITEM_BACK:
+        _menuPageCurrent->currentItemNum = (_menuPageCurrent->itemsCount > 1) ? 1 : 0;
         _menuPageCurrent = menuItemTmp->linkedPage;
         drawMenu();
-      }
-      break;
-    case GEM_ITEM_BACK:
-      _menuPageCurrent->currentItemNum = (_menuPageCurrent->itemsCount > 1) ? 1 : 0;
-      _menuPageCurrent = menuItemTmp->linkedPage;
-      drawMenu();
-      break;
-    case GEM_ITEM_BUTTON:
-      if (!menuItemTmp->readonly) {
-        if (menuItemTmp->callbackWithArgs) {
-          menuItemTmp->callbackActionArg(menuItemTmp->callbackData);
-        } else {
-          menuItemTmp->callbackAction();
+        break;
+      case GEM_ITEM_BUTTON:
+        if (!menuItemTmp->readonly) {
+          if (menuItemTmp->callbackWithArgs) {
+            menuItemTmp->callbackActionArg(menuItemTmp->callbackData);
+          } else {
+            menuItemTmp->callbackAction();
+          }
         }
-      }
-      break;
+        break;
+    }
   }
 }
 
@@ -965,9 +989,71 @@ void GEM_u8g2::prevEditValueDigit() {
   drawEditValueDigit(code);
 }
 
+#ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+void GEM_u8g2::callPreviewCallback(bool reset) {
+  GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
+  if (menuItemTmp->previewCallbackAction != nullptr) {
+    GEMPreviewCallbackData previewCallbackData;
+    previewCallbackData.callbackData = menuItemTmp->callbackData;
+    if (!reset) {
+      previewCallbackData.type = menuItemTmp->linkedType;
+      switch (menuItemTmp->linkedType) {
+        case GEM_VAL_INTEGER:
+          previewCallbackData.previewString = _valueString;
+          previewCallbackData.previewValInt = atoi(_valueString);
+          break;
+        case GEM_VAL_BYTE:
+          previewCallbackData.previewString = _valueString;
+          previewCallbackData.previewValByte = atoi(_valueString);
+          break;
+        case GEM_VAL_CHAR:
+          previewCallbackData.previewString = _valueString;
+          previewCallbackData.previewValChar = _valueString;
+          break;
+        case GEM_VAL_SELECT:
+          {
+            previewCallbackData.previewSelectNum = _valueSelectNum;
+            GEMSelect* select = menuItemTmp->select;
+            // Members of an anonymous union share the same memory location, so we can take pointer to any one of them
+            select->setValue(&previewCallbackData.previewValByte, _valueSelectNum);
+            previewCallbackData.type = select->getType();
+          }
+          break;
+        #ifdef GEM_SUPPORT_SPINNER
+        case GEM_VAL_SPINNER:
+          {
+            previewCallbackData.previewSelectNum = _valueSelectNum;
+            GEMSpinner* spinner = menuItemTmp->spinner;
+            void* linkedVariable = menuItemTmp->getLinkedVariablePointer();
+            // Members of an anonymous union share the same memory location, so we can take pointer to any one of them
+            spinner->setValue(&previewCallbackData.previewValByte, _valueSelectNum, linkedVariable);
+            previewCallbackData.type = spinner->getType();
+          }
+          break;
+        #endif
+        #ifdef GEM_SUPPORT_FLOAT_EDIT
+        case GEM_VAL_FLOAT:
+          previewCallbackData.previewString = _valueString;
+          previewCallbackData.previewValFloat = atof(_valueString);
+          break;
+        case GEM_VAL_DOUBLE:
+          previewCallbackData.previewString = _valueString;
+          previewCallbackData.previewValDouble = atof(_valueString);
+          break;
+        #endif
+      }
+    }
+    menuItemTmp->previewCallbackAction(previewCallbackData);
+  }
+}
+#endif
+
 void GEM_u8g2::drawEditValueDigit(byte code) {
   char chrNew = (char)code;
   _valueString[_editValueVirtualCursorPosition] = chrNew;
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback();
+  #endif
   drawMenu();
 }
 
@@ -979,6 +1065,9 @@ void GEM_u8g2::nextEditValueSelect() {
   } else if (select->getLoop()) {
     _valueSelectNum = 0;
   }
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback();
+  #endif
   drawMenu();
 }
 
@@ -990,6 +1079,9 @@ void GEM_u8g2::prevEditValueSelect() {
   } else if (select->getLoop()) {
     _valueSelectNum = select->getLength() - 1;
   }
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback();
+  #endif
   drawMenu();
 }
 
@@ -1002,6 +1094,9 @@ void GEM_u8g2::nextEditValueSpinner() {
   } else if (spinner->getLoop()) {
     _valueSelectNum = 0;
   }
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback();
+  #endif
   drawMenu();
 }
 
@@ -1013,6 +1108,9 @@ void GEM_u8g2::prevEditValueSpinner() {
   } else if (spinner->getLoop()) {
     _valueSelectNum = spinner->getLength() - 1;
   }
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback();
+  #endif
   drawMenu();
 }
 #endif
@@ -1067,6 +1165,9 @@ void GEM_u8g2::saveEditValue() {
 }
 
 void GEM_u8g2::cancelEditValue() {
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback(true);
+  #endif
   exitEditValue();
 }
 
@@ -1201,8 +1302,9 @@ void GEM_u8g2::dispatchKeyPress() {
           prevMenuItem();
           break;
         case GEM_KEY_RIGHT:
-          if (_menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_LINK ||
-              _menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_BUTTON) {
+          if (_menuPageCurrent->getCurrentMenuItem() != nullptr && (
+              _menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_LINK ||
+              _menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_BUTTON)) {
             menuItemSelect();
           }
           break;
@@ -1210,12 +1312,14 @@ void GEM_u8g2::dispatchKeyPress() {
           nextMenuItem();
           break;
         case GEM_KEY_LEFT:
-          if (_menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_BACK) {
+          if (_menuPageCurrent->getCurrentMenuItem() != nullptr &&
+              _menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_BACK) {
             menuItemSelect();
           }
           break;
         case GEM_KEY_CANCEL:
-          if (_menuPageCurrent->getMenuItem(0)->type == GEM_ITEM_BACK) {
+          if (_menuPageCurrent->getMenuItem(0) != nullptr &&
+              _menuPageCurrent->getMenuItem(0)->type == GEM_ITEM_BACK) {
             _menuPageCurrent->currentItemNum = 0;
             menuItemSelect();
           } else if (_menuPageCurrent->exitAction != nullptr) {

@@ -69,6 +69,9 @@
 //#define RECORD_GAP_MICROS 12000   // Default is 8000. Activate it for some LG air conditioner protocols
 //#define SEND_PWM_BY_TIMER         // Disable carrier PWM generation in software and use (restricted) hardware PWM.
 //#define USE_NO_SEND_PWM           // Use no carrier PWM, just simulate an active low receiver signal. Overrides SEND_PWM_BY_TIMER definition
+//#define NO_LED_FEEDBACK_CODE      // Saves 218 bytes program memory
+//#define NO_LED_RECEIVE_FEEDBACK_CODE  // Saves 82 bytes program memory
+//#define NO_LED_SEND_FEEDBACK_CODE     // Saves 58 bytes program memory
 
 //#define DEBUG // Activate this for lots of lovely debug output from the decoders.
 
@@ -79,7 +82,7 @@
 #define DELAY_BETWEEN_REPEATS_MILLIS        70
 
 // Storage for the recorded code, pre-filled with NEC data
-IRRawDataType sDecodedRawDataArray[DECODED_RAW_DATA_ARRAY_SIZE] = { 0x7B34ED12 }; // Initialize with NEC address 0x12 and command 0x34
+IRDecodedRawDataType sDecodedRawDataArray[DECODED_RAW_DATA_ARRAY_SIZE] = { 0x7B34ED12 }; // Initialize with NEC address 0x12 and command 0x34
 DistanceWidthTimingInfoStruct sDistanceWidthTimingInfo  = { 9000, 4500, 560, 1690, 560, 560 }; // Initialize with NEC timing
 uint8_t sNumberOfBits = 32;
 
@@ -101,7 +104,11 @@ void setup() {
     IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK);
     Serial.println(F("Ready to receive pulse distance/width coded IR signals at pin " STR(IR_RECEIVE_PIN)));
 
-    IrSender.begin(); // Start with IR_SEND_PIN -which is defined in PinDefinitionsAndMore.h- as send pin and enable feedback LED at default feedback LED pin
+    /*
+     * No IR send setup required :-)
+     * Default is to use IR_SEND_PIN -which is defined in PinDefinitionsAndMore.h- as send pin
+     * and use feedback LED at default feedback LED pin if not disabled by #define NO_LED_SEND_FEEDBACK_CODE
+     */
     Serial.print(F("Ready to send IR signals at pin " STR(IR_SEND_PIN) " on press of button at pin "));
     Serial.println(SEND_BUTTON_PIN);
 }
@@ -175,7 +182,12 @@ void loop() {
             if (sDecodedRawDataArray[0] != IrReceiver.decodedIRData.decodedRawDataArray[0]) {
                 *sDecodedRawDataArray = *IrReceiver.decodedIRData.decodedRawDataArray; // copy content here
                 Serial.print(F("Store new sDecodedRawDataArray[0]=0x"));
+#  if (__INT_WIDTH__ < 32)
                 Serial.println(IrReceiver.decodedIRData.decodedRawDataArray[0], HEX);
+#  else
+                PrintULL::print(&Serial, IrReceiver.decodedIRData.decodedRawDataArray[0], HEX);
+#  endif
+
             }
         }
         IrReceiver.resume(); // resume receiver

@@ -94,6 +94,27 @@ struct NoteDebugSyncStatus_Parameters {
     bool result;
 };
 
+struct NoteDelayMs_Parameters {
+    NoteDelayMs_Parameters(
+        void
+    ) :
+        invoked(0),
+        mock_time(false),
+        ms(0)
+    { }
+    void
+    reset (
+        void
+    ) {
+        invoked = 0;
+        mock_time = false;
+        ms = 0;
+    }
+    size_t invoked;
+    bool mock_time;
+    uint32_t ms;
+};
+
 struct NoteDeleteResponse_Parameters {
     NoteDeleteResponse_Parameters(
         void
@@ -194,6 +215,27 @@ struct NoteGetFnSerial_Parameters {
     serialTransmitFn transmitFn_result;
     serialAvailableFn availFn_result;
     serialReceiveFn receiveFn_result;
+};
+
+struct NoteGetMs_Parameters {
+    NoteGetMs_Parameters(
+        void
+    ) :
+        invoked(0),
+        default_result(0),
+        result(0)
+    { }
+    void
+    reset (
+        void
+    ) {
+        invoked = 0;
+        default_result = 0;
+        result.clear();
+    }
+    size_t invoked;
+    uint32_t default_result;
+    std::vector<uint32_t> result;
 };
 
 struct NoteNewCommand_Parameters {
@@ -431,7 +473,7 @@ struct NoteSetFnI2C_Parameters {
     ) :
         invoked(0),
         i2caddr(0),
-        i2cmax(0),
+        i2cmtu(0),
         resetfn(nullptr),
         transmitfn(nullptr),
         receivefn(nullptr)
@@ -442,14 +484,44 @@ struct NoteSetFnI2C_Parameters {
     ) {
         invoked = 0;
         i2caddr = 0;
-        i2cmax = 0;
+        i2cmtu = 0;
         resetfn = nullptr;
         transmitfn = nullptr;
         receivefn = nullptr;
     }
     size_t invoked;
     uint32_t i2caddr;
-    uint32_t i2cmax;
+    uint32_t i2cmtu;
+    i2cResetFn resetfn;
+    i2cTransmitFn transmitfn;
+    i2cReceiveFn receivefn;
+};
+
+struct NoteSetFnI2CDefault_Parameters {
+    NoteSetFnI2CDefault_Parameters(
+        void
+    ) :
+        invoked(0),
+        i2caddr(0),
+        i2cmtu(0),
+        resetfn(nullptr),
+        transmitfn(nullptr),
+        receivefn(nullptr)
+    { }
+    void
+    reset (
+        void
+    ) {
+        invoked = 0;
+        i2caddr = 0;
+        i2cmtu = 0;
+        resetfn = nullptr;
+        transmitfn = nullptr;
+        receivefn = nullptr;
+    }
+    size_t invoked;
+    uint32_t i2caddr;
+    uint32_t i2cmtu;
     i2cResetFn resetfn;
     i2cTransmitFn transmitfn;
     i2cReceiveFn receivefn;
@@ -524,6 +596,33 @@ struct NoteSetFnSerial_Parameters {
     serialReceiveFn readfn;
 };
 
+struct NoteSetFnSerialDefault_Parameters {
+    NoteSetFnSerialDefault_Parameters(
+        void
+    ) :
+        invoked(0),
+        resetfn(nullptr),
+        writefn(nullptr),
+        availfn(nullptr),
+        readfn(nullptr)
+    { }
+    void
+    reset (
+        void
+    ) {
+        invoked = 0;
+        resetfn = nullptr;
+        writefn = nullptr;
+        availfn = nullptr;
+        readfn = nullptr;
+    }
+    size_t invoked;
+    serialResetFn resetfn;
+    serialTransmitFn writefn;
+    serialAvailableFn availfn;
+    serialReceiveFn readfn;
+};
+
 struct NoteSetFnTransaction_Parameters {
     NoteSetFnTransaction_Parameters(
         void
@@ -543,6 +642,42 @@ struct NoteSetFnTransaction_Parameters {
     size_t invoked;
     txnStartFn startfn;
     txnStopFn stopfn;
+};
+
+struct NoteSetI2CAddress_Parameters {
+    NoteSetI2CAddress_Parameters(
+        void
+    ) :
+        invoked(0),
+        i2caddr(0)
+    { }
+    void
+    reset (
+        void
+    ) {
+        invoked = 0;
+        i2caddr = 0;
+    }
+    size_t invoked;
+    uint32_t i2caddr;
+};
+
+struct NoteSetI2CMtu_Parameters {
+    NoteSetI2CMtu_Parameters(
+        void
+    ) :
+        invoked(0),
+        i2cmtu(0)
+    { }
+    void
+    reset (
+        void
+    ) {
+        invoked = 0;
+        i2cmtu = 0;
+    }
+    size_t invoked;
+    uint32_t i2cmtu;
 };
 
 struct NoteSetUserAgent_Parameters {
@@ -568,9 +703,11 @@ struct NoteSetUserAgent_Parameters {
 extern JAddIntToObject_Parameters jAddIntToObject_Parameters;
 extern NoteDebug_Parameters noteDebug_Parameters;
 extern NoteDebugSyncStatus_Parameters noteDebugSyncStatus_Parameters;
+extern NoteDelayMs_Parameters noteDelayMs_Parameters;
 extern NoteDeleteResponse_Parameters noteDeleteResponse_Parameters;
 extern NoteGetFnI2C_Parameters noteGetFnI2C_Parameters;
 extern NoteGetFnSerial_Parameters noteGetFnSerial_Parameters;
+extern NoteGetMs_Parameters noteGetMs_Parameters;
 extern NoteNewCommand_Parameters noteNewCommand_Parameters;
 extern NoteNewRequest_Parameters noteNewRequest_Parameters;
 extern NoteRequest_Parameters noteRequest_Parameters;
@@ -582,10 +719,14 @@ extern NoteSetFnDebugOutput_Parameters noteSetFnDebugOutput_Parameters;
 extern NoteSetFn_Parameters noteSetFn_Parameters;
 extern NoteSetFnDefault_Parameters noteSetFnDefault_Parameters;
 extern NoteSetFnI2C_Parameters noteSetFnI2C_Parameters;
+extern NoteSetFnI2CDefault_Parameters noteSetFnI2CDefault_Parameters;
 extern NoteSetFnI2CMutex_Parameters noteSetFnI2CMutex_Parameters;
 extern NoteSetFnNoteMutex_Parameters noteSetFnNoteMutex_Parameters;
 extern NoteSetFnSerial_Parameters noteSetFnSerial_Parameters;
+extern NoteSetFnSerialDefault_Parameters noteSetFnSerialDefault_Parameters;
 extern NoteSetFnTransaction_Parameters noteSetFnTransaction_Parameters;
+extern NoteSetI2CAddress_Parameters noteSetI2CAddress_Parameters;
+extern NoteSetI2CMtu_Parameters noteSetI2CMtu_Parameters;
 extern NoteSetUserAgent_Parameters noteSetUserAgent_Parameters;
 
 #endif // MOCK_PARAMETERS_HPP

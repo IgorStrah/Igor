@@ -107,7 +107,9 @@ if (mode!=2) {
     if ((newCode[0] == 1111000005) || (newCode[0] == 16726215)) {
       if (mode==1&&sword==1)
       {
+            Serial.println("Open");
       radio.write(newCode, sizeof(newCode));  // Передаём данные по радиоканалу
+          Serial.println("Open2");
       }
     } else if ((newCode[0] == 1111000006) || (newCode[0] == 16734885)) {
       if (mode==2&&sword==1)

@@ -275,7 +275,7 @@ void loop() {
       // Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
       while (player.checkPlayState() == DY::PlayState::Playing) {
-        if (motor_value < 90) {
+        if (motor_value < 150) {
           motor_value++;
           analogWrite(MOTOR_PIN, motor_value);
           delay(20);
@@ -311,7 +311,7 @@ void loop() {
       // Serial.println(path);
       player.playSpecifiedDevicePath(DY::Device::Sd, path);
       // while (player.checkPlayState() == DY::PlayState::Playing) {}
-      while (motor_value < 90) {
+      while (motor_value < 150) {
         motor_value++;
         analogWrite(MOTOR_PIN, motor_value);
         delay(20);
@@ -342,7 +342,7 @@ void loop() {
         // Serial.println(path);
         player.playSpecifiedDevicePath(DY::Device::Sd, path);
         while (player.checkPlayState() == DY::PlayState::Playing) {
-          if (motor_value > 90) {
+          if (motor_value > 150) {
             motor_value--;
             analogWrite(MOTOR_PIN, motor_value);
             delay(20);
@@ -376,7 +376,7 @@ void loop() {
         // Serial.println(path);
         player.playSpecifiedDevicePath(DY::Device::Sd, path);
         while (player.checkPlayState() == DY::PlayState::Playing) {
-          if (motor_value < 105) {
+          if (motor_value < 150) {
             motor_value++;
             analogWrite(MOTOR_PIN, motor_value);
             delay(20);

@@ -23,7 +23,7 @@
  ************************************************************************************
  * MIT License
  *
- * Copyright (c) 2009-2025 Ken Shirriff, Armin Joachimsmeyer
+ * Copyright (c) 2009-2026 Ken Shirriff, Armin Joachimsmeyer
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -74,7 +74,12 @@
 #if !defined(RAW_BUFFER_LENGTH)
 // For air condition remotes it may require up to 750. Default is 200.
 #  if !((defined(RAMEND) && RAMEND <= 0x4FF) || (defined(RAMSIZE) && RAMSIZE < 0x4FF))
+// Here we most likely have 2 k RAM or more
 #define RAW_BUFFER_LENGTH  700 // we require 2 buffer of this size for this example
+#  endif
+#  if !((defined(RAMEND) && RAMEND <= 0x8FF) || (defined(RAMSIZE) && RAMSIZE < 0x8FF))
+// Here we most likely have 4 k RAM or more
+#define USE_16_BIT_TIMING_BUFFER    // Use a 16-bit buffer to preserve values above 12750 us
 #  endif
 #endif
 
@@ -84,6 +89,7 @@
 //#define RECORD_GAP_MICROS 12000   // Default is 8000. Activate it for some LG air conditioner protocols
 //#define SEND_PWM_BY_TIMER         // Disable carrier PWM generation in software and use (restricted) hardware PWM.
 //#define USE_NO_SEND_PWM           // Use no carrier PWM, just simulate an active low receiver signal. Overrides SEND_PWM_BY_TIMER definition
+//#define NO_LED_FEEDBACK_CODE      // Saves 202 bytes program memory
 
 // MARK_EXCESS_MICROS is subtracted from all marks and added to all spaces before decoding,
 // to compensate for the signal forming of different IR receiver modules. See also IRremote.hpp line 135.
@@ -103,7 +109,7 @@ struct storedIRDataStruct {
     IRData receivedIRData;
     // extensions for sendRaw
     uint8_t rawCode[RAW_BUFFER_LENGTH]; // The durations if raw
-    uint8_t rawCodeLength; // The length of the code
+    uint16_t rawCodeLength; // The length of the code
 } sStoredIRData;
 
 bool sSendButtonWasActive;
@@ -129,7 +135,11 @@ void setup() {
     printActiveIRProtocols(&Serial);
     Serial.println(F("at pin " STR(IR_RECEIVE_PIN)));
 
-    IrSender.begin(); // Start with IR_SEND_PIN -which is defined in PinDefinitionsAndMore.h- as send pin and enable feedback LED at default feedback LED pin
+    /*
+     * No IR library setup required :-)
+     * Default is to use IR_SEND_PIN -which is defined in PinDefinitionsAndMore.h- as send pin
+     * and use feedback LED at default feedback LED pin if not disabled by #define NO_LED_SEND_FEEDBACK_CODE
+     */
     Serial.print(F("Ready to send IR signal (with repeats) at pin " STR(IR_SEND_PIN) " as long as button at pin "));
     Serial.print(SEND_BUTTON_PIN);
     Serial.println(F(" is pressed."));
@@ -185,9 +195,9 @@ void loop() {
 // Stores the code for later playback in sStoredIRData
 // Most of this code is just logging
 void storeCode() {
-    if (IrReceiver.decodedIRData.rawDataPtr->rawlen < 4) {
+    if (IrReceiver.irparams.rawlen < 4) {
         Serial.print(F("Ignore data with rawlen="));
-        Serial.println(IrReceiver.decodedIRData.rawDataPtr->rawlen);
+        Serial.println(IrReceiver.irparams.rawlen);
         return;
     }
     if (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_IS_REPEAT) {
@@ -214,7 +224,7 @@ void storeCode() {
     auto tProtocol = sStoredIRData.receivedIRData.protocol;
     if (tProtocol == UNKNOWN || tProtocol == PULSE_WIDTH || tProtocol == PULSE_DISTANCE) {
         // TODO: support PULSE_WIDTH and PULSE_DISTANCE with IrSender.write
-        sStoredIRData.rawCodeLength = IrReceiver.decodedIRData.rawDataPtr->rawlen - 1;
+        sStoredIRData.rawCodeLength = IrReceiver.irparams.rawlen - 1;
         /*
          * Store the current raw data in a dedicated array for later usage
          */
@@ -223,7 +233,7 @@ void storeCode() {
          * Print info
          */
         Serial.print(F("Received unknown or pulse width/distance code and store "));
-        Serial.print(IrReceiver.decodedIRData.rawDataPtr->rawlen - 1);
+        Serial.print(IrReceiver.irparams.rawlen - 1);
         Serial.println(F(" timing entries as raw in buffer of size " STR(RAW_BUFFER_LENGTH)));
         IrReceiver.printIRResultRawFormatted(&Serial, true); // Output the results in RAW format
 
@@ -249,7 +259,7 @@ void sendCode(storedIRDataStruct *aIRDataToSend) {
          * Use the write function, which does the switch for different protocols
          */
         IrSender.write(&aIRDataToSend->receivedIRData);
-        printIRResultShort(&Serial, &aIRDataToSend->receivedIRData);
+        printIRDataShort(&Serial, &aIRDataToSend->receivedIRData);
     }
 }
 

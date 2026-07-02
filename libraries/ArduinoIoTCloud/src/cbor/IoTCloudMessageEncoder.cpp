@@ -9,7 +9,7 @@
 */
 
 /******************************************************************************
- * INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include "CBOREncoder.h"
@@ -17,12 +17,12 @@
 #include "IoTCloudMessageEncoder.h"
 
 /******************************************************************************
- * PUBLIC MEMBER FUNCTIONS
+  PUBLIC MEMBER FUNCTIONS
  ******************************************************************************/
 
 
 /******************************************************************************
-    PRIVATE MEMBER FUNCTIONS
+  PRIVATE MEMBER FUNCTIONS
  ******************************************************************************/
 
 MessageEncoder::Status OtaBeginCommandEncoder::encode(CborEncoder* encoder, Message *msg) {
@@ -240,7 +240,6 @@ void DeviceNetConfigCmdUpEncoder::getEncodingParams(NetworkAdapter type, uint8_t
     case NetworkAdapter::CATM1:    *typeID = 5; *paramsNum = 2; break;
     case NetworkAdapter::ETHERNET: *typeID = 6; *paramsNum = 4; break;
     case NetworkAdapter::CELL:     *typeID = 7; *paramsNum = 2; break;
-    case NetworkAdapter::NOTECARD: *typeID = 8; *paramsNum = 0; break;
     default:                       *typeID = 0; *paramsNum = 0; break;
   }
 }
@@ -358,4 +357,3 @@ namespace cbor { namespace encoder { namespace iotcloud {
     (void) deviceNetConfigCmdUpEncoder;
   }
 }}}
-

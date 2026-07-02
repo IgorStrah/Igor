@@ -12,6 +12,9 @@
 #include <ArduinoBLE.h>
 #include "utility/HCI.h"
 #include <Arduino_HEX.h>
+#include "ANetworkConfigurator_Config.h"
+
+#define SLOT_BOARD_PRIVATE_KEY 1
 
 extern const char *SKETCH_VERSION;
 
@@ -92,30 +95,47 @@ void ClaimingHandlerClass::poll() {
 }
 
 void ClaimingHandlerClass::getIdReqHandler() {
-  if (_ts != 0) {
-    byte _uhwidBytes[32];
-    hex::decode(_uhwid->c_str(), _uhwidBytes, _uhwid->length());
-    //Send UHWID
-    ProvisioningOutputMessage idMsg = {MessageOutputType::UHWID};
-    idMsg.m.uhwid = _uhwidBytes;
-    _agentManager.sendMsg(idMsg);
-
-    String token = getAIoTCloudJWT(*_secureElement, *_uhwid, _ts, 1);
-    if (token == "") {
-      DEBUG_ERROR("CH::%s Error: token not created", __FUNCTION__);
-      sendStatus(StatusMessage::ERROR);
-      return;
-    }
-
-    //Send JWT
-    ProvisioningOutputMessage jwtMsg = {MessageOutputType::JWT};
-    jwtMsg.m.jwt = token.c_str();
-    _agentManager.sendMsg(jwtMsg);
-    _ts = 0;
-  } else {
+  if (_ts == 0) {
     DEBUG_ERROR("CH::%s Error: timestamp not provided" , __FUNCTION__);
     sendStatus(StatusMessage::PARAMS_NOT_FOUND);
+    return;
   }
+
+  byte _uhwidBytes[32];
+  hex::decode(_uhwid->c_str(), _uhwidBytes, _uhwid->length());
+
+  String token = generateToken();
+  if (token == "") {
+    DEBUG_ERROR("CH::%s Error: token not created", __FUNCTION__);
+    sendStatus(StatusMessage::ERROR);
+    return;
+  }
+
+  SElementJWS sejws;
+  String publicKey =  sejws.publicKey(*_secureElement, SLOT_BOARD_PRIVATE_KEY, false);
+  if (publicKey == "") {
+    DEBUG_ERROR("CH::%s Error: public key not created", __FUNCTION__);
+    sendStatus(StatusMessage::ERROR);
+    return;
+  }
+
+  //Send public key
+  ProvisioningOutputMessage publicKeyMsg = {MessageOutputType::PROV_PUBLIC_KEY};
+  publicKeyMsg.m.provPublicKey = publicKey.c_str();
+  _agentManager.sendMsg(publicKeyMsg);
+
+
+  //Send UHWID
+  ProvisioningOutputMessage idMsg = {MessageOutputType::UHWID};
+  idMsg.m.uhwid = _uhwidBytes;
+  _agentManager.sendMsg(idMsg);
+
+  //Send JWT
+  ProvisioningOutputMessage jwtMsg = {MessageOutputType::JWT};
+  jwtMsg.m.jwt = token.c_str();
+  _agentManager.sendMsg(jwtMsg);
+  _ts = 0;
+
 }
 
 void ClaimingHandlerClass::resetStoredCredReqHandler() {
@@ -129,8 +149,14 @@ void ClaimingHandlerClass::resetStoredCredReqHandler() {
 }
 
 void ClaimingHandlerClass::getBLEMacAddressReqHandler() {
-  uint8_t mac[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+  /* Set the default MAC address as ff:ff:ff:ff:ff:ff for compatibility
+   * with the Arduino IoT Cloud WebUI
+   */
+  uint8_t mac[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
+#ifdef ARDUINO_OPTA
+  if(_getPid_() == OPTA_WIFI_PID) {
+#endif
   bool activated = false;
   ConfiguratorAgent * connectedAgent = _agentManager.getConnectedAgent();
   if(!_agentManager.isAgentEnabled(ConfiguratorAgent::AgentTypes::BLE) || (connectedAgent != nullptr &&
@@ -149,7 +175,9 @@ void ClaimingHandlerClass::getBLEMacAddressReqHandler() {
   if (activated) {
     BLE.end();
   }
-
+#ifdef ARDUINO_OPTA
+  }
+#endif
   ProvisioningOutputMessage outputMsg;
   outputMsg.type = MessageOutputType::BLE_MAC_ADDRESS;
   outputMsg.m.BLEMacAddress = mac;
@@ -186,7 +214,22 @@ void ClaimingHandlerClass::getProvSketchVersionRequestCb() {
   _receivedEvent = ClaimingReqEvents::GET_PROV_SKETCH_VERSION;
 }
 
+String ClaimingHandlerClass::generateToken() {
+  String token = getAIoTCloudJWT(*_secureElement, *_uhwid, _ts, SLOT_BOARD_PRIVATE_KEY);
+  if(token == "") {
+    byte publicKey[64];
+    DEBUG_INFO("Generating private key");
+    if(!_secureElement->generatePrivateKey(SLOT_BOARD_PRIVATE_KEY, publicKey)){
+      DEBUG_ERROR("CH::%s Error: private key generation failed", __FUNCTION__);
+      return "";
+    }
+    token = getAIoTCloudJWT(*_secureElement, *_uhwid, _ts, SLOT_BOARD_PRIVATE_KEY);
+  }
+
+  return token;
+}
+
 bool ClaimingHandlerClass::sendStatus(StatusMessage msg) {
-  ProvisioningOutputMessage statusMsg = { MessageOutputType::STATUS, { msg } };
-  return _agentManager.sendMsg(statusMsg);
+    ProvisioningOutputMessage statusMsg = {MessageOutputType::STATUS, {msg}};
+    return _agentManager.sendMsg(statusMsg);
 }

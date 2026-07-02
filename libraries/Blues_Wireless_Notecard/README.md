@@ -107,7 +107,6 @@ Before running an example, you will need to set the Product Identifier, either
 in code or on your connected Notecard. Steps on how to do this can be found at
 [https://dev.blues.io/tools-and-sdks/samples/product-uid](https://dev.blues.io/tools-and-sdks/samples/product-uid).
 
-
 ## Contributing
 
 We love issues, fixes, and pull requests from everyone. Please run the
@@ -243,6 +242,98 @@ in the `tests` array in the `main` function. The entry will occupy it's own line
 at the end of the array, and syntax should be as follows,
 `{test_name, "test_name"},`.
 
+## Notestation Dev Environment (Setup and Usage)
+
+To gain access to the Notestation array you must authenticate with our Tailscale
+VPN. Create a `.env` file based on `.env.example` in the `.devcontainer/notestation/`
+folder. Replace the placeholder TS_AUTHKEY with your actual Tailscale authentication
+key. Treat the .env file as sensitive and do not commit it to version control or
+share it publicly. This will set up the necessary environment variables for VPN access.
+
+### Launching the Dev Container
+
+Run:
+
+```sh
+devcontainer up --config .devcontainer/notestation/devcontainer.json --workspace-folder .
+```
+
+Verify containers are running:
+
+```sh
+docker ps -a --filter "name=note-arduino"
+```
+Confirm the following containers are up and running:
+
+```
+note-arduino_devcontainer
+note-arduino_tailnet-connection
+```
+
+Exec into the dev container:
+
+```sh
+docker exec -it note-arduino_devcontainer bash
+```
+
+Inside the container, check Notestation CLI availability and connectivity:
+
+```sh
+pipenv run notestation --version
+pipenv run notestation client list
+```
+
+### Compiling and Flashing Examples
+
+Inside the dev container:
+
+1. Compile for target firmware (i.e. `.ino` file) for the desired host MCU (e.g., CYGNET or SWAN_R5):
+
+   ```sh
+   arduino-cli compile ${input:example} --fqbn STMicroelectronics:stm32:Blues:pnum=${input:board},opt=ogstd,dbg=enable_sym --output-dir ./build/${input:board} --log-level trace --verbose --warnings all
+   ```
+
+   a. Replace ${input:example} with the path to your `.ino` file
+   b. Replace ${input:board} with either `SWAN_R5` or `CYGNET`
+
+2. Reserve a Notestation with the appropriate hardware support (e.g., mcu_cygnet for CYGNET or mcu_swan for SWAN_R5):
+
+   ```sh
+   pipenv run notestation client reserve --tags '["mcu_cygnet"]' &
+   ```
+
+   > _**NOTE:** This call is blocking, and therefore must be run it its own shell, or as a background task._
+
+3. Flash to Notestation (e.g., barcelona-notestation-2 for CYGNET):
+
+   ```sh
+   pipenv run notestation client flash --file ${input:binary}
+   ```
+   a. Replace ${input:binary} with the path to the newly created `.elf` file
+
+   > _**HINT:** Look in folder `./build/${input:board}`_
+
+4. Free the reserved Notestation by terminating the PID of the associated process.
+
+### Capturing Notestation Output (i.e. device logs)
+
+1. Capture application output using `tio` by monitoring the associated the pseudo-tty devices:
+
+   ```sh
+   tio ~/.notestation/pid-<pid>_<hostname>/host_mcu_usb
+   ```
+
+   > _**HINT:** The pseudo-tty devices are located in a folder related to the Notestattion reservations (e.g. `~/.notestation/pid-<pid>_<hostname>/<ptty_device>`)._
+
+   > _**HINT:** The devices are named according to their function, for example `host_mcu_usb` is a connection to the host MCU USB._
+
+### Troubleshooting
+
+- Tailscale errors: Verify TS_AUTHKEY, restart containers.
+- Client not found: Check `pipenv run notestation client list --all`; use online alternatives.
+- Stuck reservations: Kill lingering processes with `pkill -f notestation` or `kill -9 <PID>` for reservation PIDs.
+- Queue issues: Check queue with `pipenv run notestation client list`; if queue doesn't decrease, kill and retry.
+
 ## Generating a Release
 
 ### Update `note-c` dependency
@@ -300,7 +391,7 @@ For additional Notecard SDKs and Libraries, see:
 ## To learn more about Blues, the Notecard and Notehub, see:
 
 * [blues.com](https://blues.com)
-* [notehub.io][Notehub]
+* [notehub.io][notehub]
 * [wireless.dev](https://wireless.dev)
 
 ## License
@@ -315,4 +406,4 @@ Copyright (c) 2019 Blues Inc. Released under the MIT license. See
 [note-python]: https://github.com/blues/note-python
 [archive]: https://github.com/blues/note-arduino/archive/master.zip
 [code of conduct]: https://blues.github.io/opensource/code-of-conduct
-[Notehub]: https://notehub.io
+[notehub]: https://notehub.io

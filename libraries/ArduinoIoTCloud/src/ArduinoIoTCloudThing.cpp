@@ -10,12 +10,12 @@
 
 
 /******************************************************************************
- * INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <AIoTC_Config.h>
 
-#if defined(HAS_NOTECARD) || defined(HAS_TCP)
+#if defined(HAS_TCP)
 
 #include "ArduinoIoTCloudThing.h"
 #include "interfaces/CloudProcess.h"
@@ -23,7 +23,7 @@
 #include "property/types/CloudWrapperUnsignedInt.h"
 
 /******************************************************************************
- * CTOR/DTOR
+  CTOR/DTOR
  ******************************************************************************/
 ArduinoCloudThing::ArduinoCloudThing(MessageStream* ms)
 : CloudProcess(ms),
@@ -38,7 +38,7 @@ _utcOffsetExpireTimeProperty(nullptr) {
 }
 
 /******************************************************************************
- * PUBLIC MEMBER FUNCTIONS
+  PUBLIC MEMBER FUNCTIONS
  ******************************************************************************/
 
 void ArduinoCloudThing::begin() {
@@ -180,4 +180,4 @@ ArduinoCloudThing::State ArduinoCloudThing::handleDisconnect() {
   return State::Disconnect;
 }
 
-#endif /* HAS_NOTECARD || HAS_TCP */
+#endif /* HAS_TCP */

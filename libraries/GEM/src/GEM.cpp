@@ -14,7 +14,7 @@
   For documentation visit:
   https://github.com/Spirik/GEM
   
-  Copyright (c) 2018-2025 Alexander 'Spirik' Spiridonov
+  Copyright (c) 2018-2026 Alexander 'Spirik' Spiridonov
 
   This file is part of GEM library.
 
@@ -282,6 +282,10 @@ void GEM::drawTitleBar() {
   _glcd.fontFace(getMenuItemFontSize());
 }
 
+void GEM::drawSprite(uint8_t x, uint8_t y, uint8_t spriteId, uint8_t mode) {
+  _glcd.drawSprite(x, y, spriteId, mode);
+}
+
 void GEM::printMenuItemString(const char* str, byte num, byte startPos) {
   byte i = startPos;
   while (i < num + startPos && str[i] != '\0') {
@@ -349,16 +353,16 @@ void GEM::printMenuItems() {
               break;
             case GEM_VAL_BOOL:
               if (*(bool*)menuItemTmp->linkedVariable) {
-                _glcd.drawSprite(menuValuesLeftOffset, yDraw, GEM_SPR_CHECKBOX_CHECKED, GLCD_MODE_NORMAL);
+                drawSprite(menuValuesLeftOffset, yDraw, GEM_SPR_CHECKBOX_CHECKED, GLCD_MODE_NORMAL);
               } else {
-                _glcd.drawSprite(menuValuesLeftOffset, yDraw, GEM_SPR_CHECKBOX_UNCHECKED, GLCD_MODE_NORMAL);
+                drawSprite(menuValuesLeftOffset, yDraw, GEM_SPR_CHECKBOX_UNCHECKED, GLCD_MODE_NORMAL);
               }
               break;
             case GEM_VAL_SELECT:
               {
                 GEMSelect* select = menuItemTmp->select;
                 printMenuItemValue(select->getSelectedOptionName(menuItemTmp->linkedVariable));
-                _glcd.drawSprite(_glcd.xdim-7, yDraw, GEM_SPR_SELECT_ARROWS, GLCD_MODE_NORMAL);
+                drawSprite(_glcd.xdim-7, yDraw, GEM_SPR_SELECT_ARROWS, GLCD_MODE_NORMAL);
               }
               break;
             #ifdef GEM_SUPPORT_SPINNER
@@ -382,7 +386,7 @@ void GEM::printMenuItems() {
                   #endif
                 }
                 printMenuItemValue(valueStringTmp);
-                _glcd.drawSprite(_glcd.xdim-7, yDraw, GEM_SPR_SELECT_ARROWS, GLCD_MODE_NORMAL);
+                drawSprite(_glcd.xdim-7, yDraw, GEM_SPR_SELECT_ARROWS, GLCD_MODE_NORMAL);
               }
               break;
             #endif
@@ -409,10 +413,10 @@ void GEM::printMenuItems() {
         } else {
           printMenuItemFull(menuItemTmp->title);
         }
-        _glcd.drawSprite(_glcd.xdim-8, yDraw, GEM_SPR_ARROW_RIGHT, GLCD_MODE_NORMAL);
+        drawSprite(_glcd.xdim-8, yDraw, GEM_SPR_ARROW_RIGHT, GLCD_MODE_NORMAL);
         break;
       case GEM_ITEM_BACK:
-        _glcd.drawSprite(5, yDraw, GEM_SPR_ARROW_LEFT, GLCD_MODE_NORMAL);
+        drawSprite(5, yDraw, GEM_SPR_ARROW_LEFT, GLCD_MODE_NORMAL);
         break;
       case GEM_ITEM_BUTTON:
         _glcd.setX(11);
@@ -422,7 +426,7 @@ void GEM::printMenuItems() {
         } else {
           printMenuItemFull(menuItemTmp->title);
         }
-        _glcd.drawSprite(5, yDraw, GEM_SPR_ARROW_BTN, GLCD_MODE_NORMAL);
+        drawSprite(5, yDraw, GEM_SPR_ARROW_BTN, GLCD_MODE_NORMAL);
         break;
       case GEM_ITEM_LABEL:
         _glcd.setX(5);
@@ -480,69 +484,75 @@ void GEM::drawScrollbar() {
 //====================== MENU ITEMS NAVIGATION
 
 void GEM::nextMenuItem() {
-  if (getCurrentAppearance()->menuPointerType != GEM_POINTER_DASH) {
-    drawMenuPointer();
-  }
-  if (_menuPageCurrent->currentItemNum == _menuPageCurrent->itemsCount-1) {
-    _menuPageCurrent->currentItemNum = 0;
-  } else {
-    _menuPageCurrent->currentItemNum++;
-  }
-  byte menuItemsPerScreen = getMenuItemsPerScreen();
-  bool redrawMenu = (_menuPageCurrent->itemsCount > menuItemsPerScreen && _menuPageCurrent->currentItemNum % menuItemsPerScreen == 0);
-  if (redrawMenu) {
-    drawMenu();
-  } else {
-    drawMenuPointer();
+  if (_menuPageCurrent->itemsCount > 0) {
+    if (getCurrentAppearance()->menuPointerType != GEM_POINTER_DASH) {
+      drawMenuPointer();
+    }
+    if (_menuPageCurrent->currentItemNum == _menuPageCurrent->itemsCount-1) {
+      _menuPageCurrent->currentItemNum = 0;
+    } else {
+      _menuPageCurrent->currentItemNum++;
+    }
+    byte menuItemsPerScreen = getMenuItemsPerScreen();
+    bool redrawMenu = (_menuPageCurrent->itemsCount > menuItemsPerScreen && _menuPageCurrent->currentItemNum % menuItemsPerScreen == 0);
+    if (redrawMenu) {
+      drawMenu();
+    } else {
+      drawMenuPointer();
+    }
   }
 }
 
 void GEM::prevMenuItem() {
-  if (getCurrentAppearance()->menuPointerType != GEM_POINTER_DASH) {
-    drawMenuPointer();
-  }
-  byte menuItemsPerScreen = getMenuItemsPerScreen();
-  bool redrawMenu = (_menuPageCurrent->itemsCount > menuItemsPerScreen && _menuPageCurrent->currentItemNum % menuItemsPerScreen == 0);
-  if (_menuPageCurrent->currentItemNum == 0) {
-    _menuPageCurrent->currentItemNum = _menuPageCurrent->itemsCount-1;
-  } else {
-    _menuPageCurrent->currentItemNum--;
-  }
-  if (redrawMenu) {
-    drawMenu();
-  } else {
-    drawMenuPointer();
+  if (_menuPageCurrent->itemsCount > 0) {
+    if (getCurrentAppearance()->menuPointerType != GEM_POINTER_DASH) {
+      drawMenuPointer();
+    }
+    byte menuItemsPerScreen = getMenuItemsPerScreen();
+    bool redrawMenu = (_menuPageCurrent->itemsCount > menuItemsPerScreen && _menuPageCurrent->currentItemNum % menuItemsPerScreen == 0);
+    if (_menuPageCurrent->currentItemNum == 0) {
+      _menuPageCurrent->currentItemNum = _menuPageCurrent->itemsCount-1;
+    } else {
+      _menuPageCurrent->currentItemNum--;
+    }
+    if (redrawMenu) {
+      drawMenu();
+    } else {
+      drawMenuPointer();
+    }
   }
 }
 
 void GEM::menuItemSelect() {
   GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
-  switch (menuItemTmp->type) {
-    case GEM_ITEM_VAL:
-      if (!menuItemTmp->readonly) {
-        enterEditValueMode();
-      }
-      break;
-    case GEM_ITEM_LINK:
-      if (!menuItemTmp->readonly) {
+  if (menuItemTmp != nullptr) {
+    switch (menuItemTmp->type) {
+      case GEM_ITEM_VAL:
+        if (!menuItemTmp->readonly) {
+          enterEditValueMode();
+        }
+        break;
+      case GEM_ITEM_LINK:
+        if (!menuItemTmp->readonly) {
+          _menuPageCurrent = menuItemTmp->linkedPage;
+          drawMenu();
+        }
+        break;
+      case GEM_ITEM_BACK:
+        _menuPageCurrent->currentItemNum = (_menuPageCurrent->itemsCount > 1) ? 1 : 0;
         _menuPageCurrent = menuItemTmp->linkedPage;
         drawMenu();
-      }
-      break;
-    case GEM_ITEM_BACK:
-      _menuPageCurrent->currentItemNum = (_menuPageCurrent->itemsCount > 1) ? 1 : 0;
-      _menuPageCurrent = menuItemTmp->linkedPage;
-      drawMenu();
-      break;
-    case GEM_ITEM_BUTTON:
-      if (!menuItemTmp->readonly) {
-        if (menuItemTmp->callbackWithArgs) {
-          menuItemTmp->callbackActionArg(menuItemTmp->callbackData);
-        } else {
-          menuItemTmp->callbackAction();
+        break;
+      case GEM_ITEM_BUTTON:
+        if (!menuItemTmp->readonly) {
+          if (menuItemTmp->callbackWithArgs) {
+            menuItemTmp->callbackActionArg(menuItemTmp->callbackData);
+          } else {
+            menuItemTmp->callbackAction();
+          }
         }
-      }
-      break;
+        break;
+    }
   }
 }
 
@@ -626,9 +636,9 @@ void GEM::checkboxToggle() {
     }
   } else {
     if (!checkboxValue) {
-      _glcd.drawSprite(getCurrentAppearance()->menuValuesLeftOffset, topOffset, GEM_SPR_CHECKBOX_CHECKED, GLCD_MODE_NORMAL);
+      drawSprite(getCurrentAppearance()->menuValuesLeftOffset, topOffset, GEM_SPR_CHECKBOX_CHECKED, GLCD_MODE_NORMAL);
     } else {
-      _glcd.drawSprite(getCurrentAppearance()->menuValuesLeftOffset, topOffset, GEM_SPR_CHECKBOX_UNCHECKED, GLCD_MODE_NORMAL);
+      drawSprite(getCurrentAppearance()->menuValuesLeftOffset, topOffset, GEM_SPR_CHECKBOX_UNCHECKED, GLCD_MODE_NORMAL);
     }
     if (getCurrentAppearance()->menuPointerType != GEM_POINTER_DASH) {
       drawMenuPointer();
@@ -829,6 +839,65 @@ void GEM::prevEditValueDigit() {
   drawEditValueDigit(code);
 }
 
+#ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+void GEM::callPreviewCallback(bool reset) {
+  GEMItem* menuItemTmp = _menuPageCurrent->getCurrentMenuItem();
+  if (menuItemTmp->previewCallbackAction != nullptr) {
+    GEMPreviewCallbackData previewCallbackData;
+    previewCallbackData.callbackData = menuItemTmp->callbackData;
+    if (!reset) {
+      previewCallbackData.type = menuItemTmp->linkedType;
+      switch (menuItemTmp->linkedType) {
+        case GEM_VAL_INTEGER:
+          previewCallbackData.previewString = _valueString;
+          previewCallbackData.previewValInt = atoi(_valueString);
+          break;
+        case GEM_VAL_BYTE:
+          previewCallbackData.previewString = _valueString;
+          previewCallbackData.previewValByte = atoi(_valueString);
+          break;
+        case GEM_VAL_CHAR:
+          previewCallbackData.previewString = _valueString;
+          previewCallbackData.previewValChar = _valueString;
+          break;
+        case GEM_VAL_SELECT:
+          {
+            previewCallbackData.previewSelectNum = _valueSelectNum;
+            GEMSelect* select = menuItemTmp->select;
+            // Members of an anonymous union share the same memory location, so we can take pointer to any one of them
+            select->setValue(&previewCallbackData.previewValByte, _valueSelectNum);
+            previewCallbackData.type = select->getType();
+          }
+          break;
+        #ifdef GEM_SUPPORT_SPINNER
+        case GEM_VAL_SPINNER:
+          {
+            previewCallbackData.previewSelectNum = _valueSelectNum;
+            GEMSpinner* spinner = menuItemTmp->spinner;
+            void* linkedVariable = menuItemTmp->getLinkedVariablePointer();
+            // Members of an anonymous union share the same memory location, so we can take pointer to any one of them
+            spinner->setValue(&previewCallbackData.previewValByte, _valueSelectNum, linkedVariable);
+            previewCallbackData.type = spinner->getType();
+          }
+          break;
+        #endif
+        #ifdef GEM_SUPPORT_FLOAT_EDIT
+        case GEM_VAL_FLOAT:
+          previewCallbackData.previewString = _valueString;
+          previewCallbackData.previewValFloat = atof(_valueString);
+          break;
+        case GEM_VAL_DOUBLE:
+          previewCallbackData.previewString = _valueString;
+          previewCallbackData.previewValDouble = atof(_valueString);
+          break;
+        #endif
+      }
+    }
+    menuItemTmp->previewCallbackAction(previewCallbackData);
+  }
+}
+#endif
+
 void GEM::drawEditValueDigit(byte code) {
   char chrNew = (char)code;
   _valueString[_editValueVirtualCursorPosition] = chrNew;
@@ -837,6 +906,9 @@ void GEM::drawEditValueDigit(byte code) {
   int pointerPosition = getCurrentItemTopOffset();
   _glcd.setY(pointerPosition);
   _glcd.put(code);
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback();
+  #endif
   drawEditValueCursor();
 }
 
@@ -848,6 +920,9 @@ void GEM::nextEditValueSelect() {
   } else if (select->getLoop()) {
     _valueSelectNum = 0;
   }
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback();
+  #endif
   drawEditValueSelect();
 }
 
@@ -859,6 +934,9 @@ void GEM::prevEditValueSelect() {
   } else if (select->getLoop()) {
     _valueSelectNum = select->getLength() - 1;
   }
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback();
+  #endif
   drawEditValueSelect();
 }
 
@@ -871,6 +949,9 @@ void GEM::nextEditValueSpinner() {
   } else if (spinner->getLoop()) {
     _valueSelectNum = 0;
   }
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback();
+  #endif
   drawEditValueSelect();
 }
 
@@ -882,6 +963,9 @@ void GEM::prevEditValueSpinner() {
   } else if (spinner->getLoop()) {
     _valueSelectNum = spinner->getLength() - 1;
   }
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback();
+  #endif
   drawEditValueSelect();
 }
 #endif
@@ -925,7 +1009,7 @@ void GEM::drawEditValueSelect() {
     #endif
   }
 
-  _glcd.drawSprite(_glcd.xdim - 7, getCurrentItemTopOffset(true, true), GEM_SPR_SELECT_ARROWS, GLCD_MODE_NORMAL);
+  drawSprite(_glcd.xdim - 7, getCurrentItemTopOffset(true, true), GEM_SPR_SELECT_ARROWS, GLCD_MODE_NORMAL);
   drawEditValueCursor();
 }
 
@@ -981,6 +1065,9 @@ void GEM::saveEditValue() {
 }
 
 void GEM::cancelEditValue() {
+  #ifdef GEM_SUPPORT_PREVIEW_CALLBACKS
+  callPreviewCallback(true);
+  #endif
   exitEditValue();
 }
 
@@ -1115,8 +1202,9 @@ void GEM::dispatchKeyPress() {
           prevMenuItem();
           break;
         case GEM_KEY_RIGHT:
-          if (_menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_LINK ||
-              _menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_BUTTON) {
+          if (_menuPageCurrent->getCurrentMenuItem() != nullptr && (
+              _menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_LINK ||
+              _menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_BUTTON)) {
             menuItemSelect();
           }
           break;
@@ -1124,12 +1212,14 @@ void GEM::dispatchKeyPress() {
           nextMenuItem();
           break;
         case GEM_KEY_LEFT:
-          if (_menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_BACK) {
+          if (_menuPageCurrent->getCurrentMenuItem() != nullptr &&
+              _menuPageCurrent->getCurrentMenuItem()->type == GEM_ITEM_BACK) {
             menuItemSelect();
           }
           break;
         case GEM_KEY_CANCEL:
-          if (_menuPageCurrent->getMenuItem(0)->type == GEM_ITEM_BACK) {
+          if (_menuPageCurrent->getMenuItem(0) != nullptr &&
+              _menuPageCurrent->getMenuItem(0)->type == GEM_ITEM_BACK) {
             _menuPageCurrent->currentItemNum = 0;
             menuItemSelect();
           } else if (_menuPageCurrent->exitAction != nullptr) {

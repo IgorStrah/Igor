@@ -32,11 +32,9 @@
 #ifndef _IR_NEC_HPP
 #define _IR_NEC_HPP
 
-#if defined(DEBUG)
-#define LOCAL_DEBUG // IR_DEBUG_PRINT is a real print function here. Add local debug output.
-#else
-//#define LOCAL_DEBUG // This enables debug output only for this file. IR_DEBUG_PRINT is still a void function here.
-#endif
+// This block must be located after the includes of other *.hpp files
+//#define LOCAL_DEBUG // This enables debug output only for this file - only for development
+#include "LocalDebugLevelStart.h"
 
 /** \addtogroup Decoder Decoders and encoders for different protocols
  * @{
@@ -116,12 +114,12 @@
 #define APPLE_ADDRESS           0x87EE
 
 struct PulseDistanceWidthProtocolConstants const NECProtocolConstants PROGMEM = {NEC, NEC_KHZ, NEC_HEADER_MARK, NEC_HEADER_SPACE, NEC_BIT_MARK,
-    NEC_ONE_SPACE, NEC_BIT_MARK, NEC_ZERO_SPACE, PROTOCOL_IS_LSB_FIRST, (NEC_REPEAT_PERIOD / MICROS_IN_ONE_MILLI),
-    &sendNECSpecialRepeat};
+     NEC_ONE_SPACE, NEC_BIT_MARK, NEC_ZERO_SPACE, PROTOCOL_IS_LSB_FIRST | PROTOCOL_IS_PULSE_DISTANCE, (NEC_REPEAT_PERIOD / MICROS_IN_ONE_MILLI),
+     &sendNECSpecialRepeat};
 
 // Like NEC but repeats are full frames instead of special NEC repeats
 struct PulseDistanceWidthProtocolConstants const NEC2ProtocolConstants PROGMEM = {NEC2, NEC_KHZ, NEC_HEADER_MARK, NEC_HEADER_SPACE, NEC_BIT_MARK,
-    NEC_ONE_SPACE, NEC_BIT_MARK, NEC_ZERO_SPACE, PROTOCOL_IS_LSB_FIRST, (NEC_REPEAT_PERIOD / MICROS_IN_ONE_MILLI), nullptr};
+    NEC_ONE_SPACE, NEC_BIT_MARK, NEC_ZERO_SPACE, PROTOCOL_IS_LSB_FIRST | PROTOCOL_IS_PULSE_DISTANCE, (NEC_REPEAT_PERIOD / MICROS_IN_ONE_MILLI), nullptr};
 
 /************************************
  * Start of send and decode functions
@@ -242,22 +240,21 @@ bool IRrecv::decodeNEC() {
      */
     // Check we have the right amount of data (68). The +4 is for initial gap, start bit mark and space + stop bit mark.
     if (decodedIRData.rawlen != ((2 * NEC_BITS) + 4) && (decodedIRData.rawlen != 4)) {
-        IR_DEBUG_PRINT(F("NEC: "));
-        IR_DEBUG_PRINT(F("Data length="));
-        IR_DEBUG_PRINT(decodedIRData.rawlen);
-        IR_DEBUG_PRINTLN(F(" is not 68 or 4"));
+        DEBUG_PRINT(F("NEC: Data length="));
+        DEBUG_PRINT(decodedIRData.rawlen);
+        DEBUG_PRINTLN(F(" is not 68 or 4"));
         return false;
     }
 
     // Check header "mark" this must be done for repeat and data
-    if (!matchMark(decodedIRData.rawDataPtr->rawbuf[1], NEC_HEADER_MARK)) {
+    if (!matchMark(irparams.rawbuf[1], NEC_HEADER_MARK)) {
         return false;
     }
 
     // Check for repeat - here we have another header space length
     if (decodedIRData.rawlen == 4) {
-        if (matchSpace(decodedIRData.rawDataPtr->rawbuf[2], NEC_REPEAT_HEADER_SPACE)
-                && matchMark(decodedIRData.rawDataPtr->rawbuf[3], NEC_BIT_MARK)) {
+        if (matchSpace(irparams.rawbuf[2], NEC_REPEAT_HEADER_SPACE)
+                && matchMark(irparams.rawbuf[3], NEC_BIT_MARK)) {
             decodedIRData.flags = IRDATA_FLAGS_IS_REPEAT | IRDATA_FLAGS_IS_LSB_FIRST;
             decodedIRData.address = lastDecodedAddress;
             decodedIRData.command = lastDecodedCommand;
@@ -268,22 +265,13 @@ bool IRrecv::decodeNEC() {
     }
 
     // Check command header space
-    if (!matchSpace(decodedIRData.rawDataPtr->rawbuf[2], NEC_HEADER_SPACE)) {
-#if defined(LOCAL_DEBUG)
-        Serial.print(F("NEC: "));
-        Serial.println(F("Header space length is wrong"));
-#endif
+    if (!matchSpace(irparams.rawbuf[2], NEC_HEADER_SPACE)) {
+        DEBUG_PRINTLN(F("NEC: Header space length is wrong"));
         return false;
     }
 
-    // Try to decode as NEC protocol
-    if (!decodePulseDistanceWidthData_P(&NECProtocolConstants, NEC_BITS)) {
-#if defined(LOCAL_DEBUG)
-        Serial.print(F("NEC: "));
-        Serial.println(F("Decode failed"));
-#endif
-        return false;
-    }
+    // Decode as NEC protocol
+    decodePulseDistanceWidthData_P(&NECProtocolConstants, NEC_BITS);
 
     // Success
 //    decodedIRData.flags = IRDATA_FLAGS_IS_LSB_FIRST; // Not required, since this is the start value
@@ -292,7 +280,7 @@ bool IRrecv::decodeNEC() {
     decodedIRData.command = tValue.UByte.MidHighByte; // 8 bit
 
 #if defined(DECODE_ONKYO)
-    // Here only Onkyo protocol is supported -> force 16 bit address and command decoding
+    // Here only Onkyo protocol is supported -> force 16 bit address and command decoding. No NEC decoding possible!
     decodedIRData.address = tValue.UWord.LowWord; // first 16 bit
     decodedIRData.protocol = ONKYO;
     decodedIRData.command = tValue.UWord.HighWord; // 16 bit command
@@ -362,37 +350,24 @@ bool IRrecv::decodeNECMSB(decode_results *aResults) {
 
     // Check we have the right amount of data (32). +4 for initial gap, start bit mark and space + stop bit mark
     if (aResults->rawlen != (2 * NEC_BITS) + 4) {
-        IR_DEBUG_PRINT(F("NEC MSB: "));
-        IR_DEBUG_PRINT(F("Data length="));
-        IR_DEBUG_PRINT(aResults->rawlen);
-        IR_DEBUG_PRINTLN(F(" is not 68"));
+        DEBUG_PRINT(F("NEC MSB: Data length="));
+        DEBUG_PRINT(aResults->rawlen);
+        DEBUG_PRINTLN(F(" is not 68"));
         return false;
     }
 
 // Check header "space"
     if (!matchSpace(aResults->rawbuf[offset], NEC_HEADER_SPACE)) {
-#if defined(LOCAL_DEBUG)
-        Serial.print(F("NEC MSB: "));
-        Serial.println(F("Header space length is wrong"));
-#endif
+        DEBUG_PRINTLN(F("NEC MSB: Header space length is wrong"));
         return false;
     }
     offset++;
 
-    if (!decodePulseDistanceWidthData(NEC_BITS, offset, NEC_BIT_MARK, NEC_ONE_SPACE, 0, PROTOCOL_IS_MSB_FIRST)) {
-#if defined(LOCAL_DEBUG)
-        Serial.print(F("NEC MSB: "));
-        Serial.println(F("Decode failed"));
-#endif
-        return false;
-    }
+    decodePulseDistanceWidthData(NEC_BITS, offset, NEC_BIT_MARK, NEC_ONE_SPACE, 0, PROTOCOL_IS_MSB_FIRST);
 
     // Stop bit
     if (!matchMark(aResults->rawbuf[offset + (2 * NEC_BITS)], NEC_BIT_MARK)) {
-#if defined(LOCAL_DEBUG)
-        Serial.print(F("NEC MSB: "));
-        Serial.println(F("Stop bit mark length is wrong"));
-#endif
+        DEBUG_PRINTLN(F("NEC MSB: Stop bit mark length is wrong"));
         return false;
     }
 
@@ -434,7 +409,6 @@ void IRsend::sendNECMSB(uint32_t data, uint8_t nbits, bool repeat) {
 }
 
 /** @}*/
-#if defined(LOCAL_DEBUG)
-#undef LOCAL_DEBUG
-#endif
+#include "LocalDebugLevelEnd.h"
+
 #endif // _IR_NEC_HPP

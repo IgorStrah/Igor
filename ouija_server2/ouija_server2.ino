@@ -66,10 +66,10 @@ String expectedUID = "";
 int x;
 
 const char* expectedUIDs[] = {
-  "4DCD063E",
+  "116B3BFF",
   "D1673BFF",
-  "91CD063E",
-  "53CD063E",
+  "91CD063E", 
+  "04BD7A4AB42A81",
   "DCA8063E"
 };
 const int totalSteps = sizeof(expectedUIDs) / sizeof(expectedUIDs[0]);
@@ -120,19 +120,19 @@ void procedure7() {
 
 const int stepSequence[] = { 1, 3, 5, 2, 4, 1 };  // порядок шагов
 Step steps[] = {
-  { "@clock1815%", procedure1, "048A8E1A237380" },
+  { "@clock1815%", procedure1, "E11B3BFF" },
   { "@knockdoor6%", procedure2, "3FA8063E" },
-  { "@exploreshelf%", procedure3, "4DCD063E" },
+  { "@exploreshelf%", procedure3, "116B3BFF" }, //4DCD063E
   { "@insideshelf%", procedure3, "D1673BFF" },
   { "@usekey%", procedure4, "91CD063E" },
-  { "@secretknock%", procedure5, "53CD063E" },
+  { "@secretknock%", procedure5, "04BD7A4AB42A81" }, // 53CD063E 04BD7A4AB42A81
   { "@dolleg%", procedure6, "DCA8063E" },
- { "@blackmugheat%", procedure7, "4DCD063E" },
-  { "@door6827%", procedure6, "4DCD063E" }
+ { "@blackmugheat%", procedure7, "116B3BFF" },
+  { "@door6827%", procedure6, "116B3BFF" }
 };
 
 // Step steps[] = {
-//   { "@clock1815%", procedure1, "048A8E1A237380"  - 7888063E  },
+//   { "@clock1815%", procedure1, "E11B3BFF"   },
 
 // };
 const int stepCount = sizeof(steps) / sizeof(steps[0]);
@@ -259,7 +259,7 @@ void loop() {
     if (strcmp(receivedUID, "3FA8063E") == 0) {
       lightflashclock = 9000;
     }
-    if (strcmp(receivedUID, "048A8E1A237380") == 0) {
+    if (strcmp(receivedUID, "E11B3BFF") == 0) {
       currentLetterIndex = 0;
       waitingForWord = true;
       waitingForWordwite = false;

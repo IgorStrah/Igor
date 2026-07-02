@@ -18,7 +18,8 @@ void setup() {
   radio.setPALevel(RF24_PA_HIGH); // Выбираем высокую мощность передатчика (-6dBm)
   radio.openReadingPipe(1, 0x7878787878LL); // Открываем трубу с ID передатчика
   radio.startListening(); // Включаем прослушивание открытой трубы
-  pinMode(2, OUTPUT); digitalWrite(2, HIGH);
+  pinMode(2, OUTPUT); digitalWrite(2, LOW); delay(1000); digitalWrite(2, HIGH);
+   Serial.print("start");
 }
 
 void loop() {
